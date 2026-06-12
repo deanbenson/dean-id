@@ -1,0 +1,9 @@
+{
+  "name": "dean-id",
+  "main": "index.js",
+  "compatibility_date": "2026-06-12",
+  "routes": [
+    { "pattern": "dean.id", "custom_domain": true },
+    { "pattern": "www.dean.id", "custom_domain": true }
+  ]
+}
