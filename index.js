@@ -6,35 +6,28 @@ const ME = {
   currently: "helping businesses do more with less",
   contact: "hello@dean.id",
   built_by: "dean.id",
-  _comment: "yes, we tag our own work"
+  _comment: "yes, I tag my own work"
 };
 
-const BADGE_DARK = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
-<rect width="92" height="26" rx="6" fill="#0d1117"/>
-<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#e6edf3">dean.id</text>
-<rect x="70" y="7" width="7" height="13" fill="#28c840"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
+function badgeSVG(theme, cursor, blink) {
+  const dark = theme === "dark" || theme === "transparent-dark";
+  const chip =
+    theme === "dark" ? `<rect width="92" height="26" rx="6" fill="#0d1117"/>` :
+    theme === "light" ? `<rect width="92" height="26" rx="6" fill="#f4f1ea" stroke="#d8d4c8" stroke-width="1"/>` :
+    "";
+  const textFill = dark ? "#e6edf3" : "#1a1a1a";
+  const cursorFill = dark ? "#28c840" : "#1d9e75";
+  const anim = blink
+    ? `<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/>`
+    : "";
+  const block = cursor === "underscore"
+    ? `<rect x="70" y="17" width="8" height="2.5" fill="${cursorFill}">${anim}</rect>`
+    : `<rect x="70" y="7" width="7" height="13" fill="${cursorFill}">${anim}</rect>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
+${chip}<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="${textFill}">dean.id</text>
+${block}
 </svg>`;
-
-const BADGE_LIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
-<rect width="92" height="26" rx="6" fill="#f4f1ea" stroke="#d8d4c8" stroke-width="1"/>
-<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#1a1a1a">dean.id</text>
-<rect x="70" y="7" width="7" height="13" fill="#1d9e75"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
-</svg>`;
-
-const BADGE_TRANSPARENT = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
-<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#1a1a1a">dean.id</text>
-<rect x="70" y="7" width="7" height="13" fill="#1d9e75"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
-</svg>`;
-
-const BADGE_TRANSPARENT_DARK = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
-<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#e6edf3">dean.id</text>
-<rect x="70" y="7" width="7" height="13" fill="#28c840"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
-</svg>`;
-
-const SNIPPET_DARK = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
-const SNIPPET_LIGHT = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=light" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
-const SNIPPET_TRANSPARENT = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=transparent" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
-const SNIPPET_TRANSPARENT_DARK = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=transparent-dark" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
+}
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -184,7 +177,7 @@ const BADGE_PAGE = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>the stamp — dean.id</title>
-<meta name="description" content="Put the dean.id stamp on your site.">
+<meta name="description" content="Configure the dean.id stamp for your site.">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -194,55 +187,70 @@ const BADGE_PAGE = `<!doctype html>
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 22px;
+    gap: 24px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    padding: 32px 24px;
-    color: #b8b8c0;
   }
-  h1 { font-size: 17px; font-weight: 500; color: #fafafa; }
-  p.sub { font-size: 13.5px; max-width: 440px; text-align: center; line-height: 1.7; }
-  .row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; justify-content: center; }
-  .chip { padding: 14px 18px; border-radius: 10px; border: 1px solid #26262a; }
-  .chip.l { background: #e9e6df; }
-  .code {
-    width: 100%;
-    max-width: 560px;
-    background: #0d1117;
+  .stage {
+    padding: 34px 56px;
+    border-radius: 14px;
     border: 1px solid #26262a;
-    border-radius: 10px;
-    padding: 14px 16px;
+    background: #1a1a1e;
+    cursor: pointer;
+    transition: background .25s;
+  }
+  .stage.l { background: #e9e6df; }
+  .stage:hover { border-color: #4a4a52; }
+  .row { display: flex; gap: 6px; }
+  .row span { font-size: 11.5px; color: #55555c; width: 72px; text-align: right; margin-right: 6px; align-self: center; }
+  .row button {
     font-family: ui-monospace, Menlo, Consolas, monospace;
     font-size: 12px;
-    line-height: 1.7;
-    color: #9FE1CB;
-    white-space: pre-wrap;
-    word-break: break-all;
+    color: #8a8a93;
+    background: none;
+    border: 1px solid #26262a;
+    border-radius: 20px;
+    padding: 5px 13px;
     cursor: pointer;
   }
-  .code:hover { border-color: #3a3a40; }
-  .hint { font-size: 11.5px; color: #55555c; }
-  a { color: #9FE1CB; }
+  .row button.on { color: #fafafa; border-color: #28c840; }
+  .hint { font-size: 12.5px; color: #8a8a93; min-height: 18px; }
+  .hint a { color: #b8b8c0; }
 </style>
 </head>
 <body>
-  <h1>the stamp</h1>
-  <p class="sub">If we built, fixed, or grew your site together, this little fella goes in your footer and links back to <a href="https://dean.id">dean.id</a>. Click a snippet to copy it.</p>
-  <div class="row">
-    <span class="chip">${BADGE_DARK}</span>
-    <span class="chip l">${BADGE_LIGHT}</span>
-    <span class="chip">${BADGE_TRANSPARENT_DARK}</span>
-    <span class="chip l">${BADGE_TRANSPARENT}</span>
+  <div class="stage" id="stage" onclick="cp()" title="click to copy embed code">
+    <img id="pv" src="/badge.svg" alt="dean.id stamp preview" width="92" height="26">
   </div>
-  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_DARK)}</div>
-  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_LIGHT)}</div>
-  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_TRANSPARENT_DARK)}</div>
-  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_TRANSPARENT)}</div>
-  <p class="hint" id="hint">dark chip &middot; light chip &middot; transparent for dark sites &middot; transparent for light sites &mdash; click to copy &middot; <a href="/">back</a></p>
+  <div class="row"><span>background</span><button data-k="theme" data-v="dark" class="on">dark</button><button data-k="theme" data-v="light">light</button><button data-k="theme" data-v="transparent-dark">clear&middot;dark</button><button data-k="theme" data-v="transparent">clear&middot;light</button></div>
+  <div class="row"><span>cursor</span><button data-k="cursor" data-v="block" class="on">block</button><button data-k="cursor" data-v="underscore">_</button></div>
+  <div class="row"><span>blink</span><button data-k="blink" data-v="1" class="on">on</button><button data-k="blink" data-v="0">off</button></div>
+  <p class="hint" id="hint">click the stamp to copy its embed code &middot; <a href="/">dean.id</a></p>
 <script>
-  function cp(el) {
-    navigator.clipboard.writeText(el.textContent).then(function(){
-      document.getElementById('hint').textContent = 'copied.';
-      setTimeout(function(){ location.reload(); }, 1200);
+  var s = { theme: 'dark', cursor: 'block', blink: '1' };
+  function qs() {
+    var p = [];
+    if (s.theme !== 'dark') p.push('theme=' + s.theme);
+    if (s.cursor !== 'block') p.push('cursor=' + s.cursor);
+    if (s.blink !== '1') p.push('blink=0');
+    return p.length ? '?' + p.join('&') : '';
+  }
+  function update() {
+    document.getElementById('pv').src = '/badge.svg' + qs();
+    var st = document.getElementById('stage');
+    st.className = 'stage' + ((s.theme === 'light' || s.theme === 'transparent') ? ' l' : '');
+  }
+  document.querySelectorAll('.row button').forEach(function(b) {
+    b.onclick = function() {
+      s[b.dataset.k] = b.dataset.v;
+      document.querySelectorAll('[data-k="' + b.dataset.k + '"]').forEach(function(x){ x.className = ''; });
+      b.className = 'on';
+      update();
+    };
+  });
+  function cp() {
+    var snippet = '<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg' + qs() + '" alt="site by dean.id" width="92" height="26" loading="lazy"></a>';
+    navigator.clipboard.writeText(snippet).then(function(){
+      document.getElementById('hint').innerHTML = 'copied — paste it in your footer &middot; <a href="/">dean.id</a>';
     });
   }
 </script>
@@ -276,13 +284,11 @@ export default {
     }
 
     if (path === "/badge.svg") {
-      const theme = url.searchParams.get("theme");
-      const svg =
-        theme === "light" ? BADGE_LIGHT :
-        theme === "transparent" ? BADGE_TRANSPARENT :
-        theme === "transparent-dark" ? BADGE_TRANSPARENT_DARK :
-        BADGE_DARK;
-      return new Response(svg, {
+      const themes = ["dark", "light", "transparent", "transparent-dark"];
+      const theme = themes.includes(url.searchParams.get("theme")) ? url.searchParams.get("theme") : "dark";
+      const cursor = url.searchParams.get("cursor") === "underscore" ? "underscore" : "block";
+      const blink = url.searchParams.get("blink") !== "0";
+      return new Response(badgeSVG(theme, cursor, blink), {
         headers: {
           "content-type": "image/svg+xml",
           "access-control-allow-origin": "*",
