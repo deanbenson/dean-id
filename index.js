@@ -45,7 +45,12 @@ const HOME = `<!doctype html>
 <meta property="og:url" content="https://dean.id/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="dean.id">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://dean.id/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, web, automation, strategy.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://dean.id/og.png">
 <meta name="twitter:title" content="dean.id · Dean Benson">
 <meta name="twitter:description" content="ai, web, automation, strategy. It's a real API: curl dean.id/v1/me">
 <script type="application/ld+json">
