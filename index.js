@@ -112,7 +112,7 @@ const HOME = `<!doctype html>
   .badge200.show { opacity: 1; }
   #out {
     padding: 18px 20px;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.9;
     color: #e6edf3;
     min-height: 285px;
@@ -128,12 +128,14 @@ const HOME = `<!doctype html>
     text-indent: 0;
     margin-bottom: 10px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
     line-height: 1.65;
     color: #d6d6dc;
   }
   #out.human a { color: #9FE1CB; }
   @media (max-width: 480px) {
-    #out { font-size: 12px; padding: 16px 14px; }
+    #out { font-size: 13px; padding: 16px 14px; }
+    #out.human div { font-size: 14px; }
     .url { font-size: 11px; }
   }
   .k { color: #AFA9EC; }
@@ -167,7 +169,7 @@ const HOME = `<!doctype html>
   }
   .get {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 11.5px;
+    font-size: 12.5px;
     color: #8a8a93;
   }
   .get a { color: #b8b8c0; }
