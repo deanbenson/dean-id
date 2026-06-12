@@ -36,9 +36,30 @@ const HOME = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dean.id</title>
+<title>dean.id — Dean Benson</title>
 <meta name="description" content="dean.id — ai, web, automation, strategy. North Yorkshire, UK.">
 <meta name="theme-color" content="#111113">
+<link rel="canonical" href="https://dean.id/">
+<meta property="og:title" content="dean.id — Dean Benson">
+<meta property="og:description" content="ai, web, automation, strategy. North Yorkshire, UK. It's a real API: curl dean.id/v1/me">
+<meta property="og:url" content="https://dean.id/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="dean.id">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="dean.id — Dean Benson">
+<meta name="twitter:description" content="ai, web, automation, strategy. It's a real API: curl dean.id/v1/me">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Dean Benson",
+  "url": "https://dean.id",
+  "jobTitle": "AI, web, automation & strategy",
+  "address": { "@type": "PostalAddress", "addressRegion": "North Yorkshire", "addressCountry": "GB" },
+  "knowsAbout": ["AI", "automation", "web development", "business strategy"],
+  "mainEntityOfPage": "https://dean.id/v1/me"
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -133,13 +154,15 @@ const HOME = `<!doctype html>
   .get {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 11.5px;
-    color: #55555c;
+    color: #8a8a93;
   }
-  .get a { color: #8a8a93; }
+  .get a { color: #b8b8c0; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (prefers-reduced-motion: reduce) { .cursor, .stamp .block { animation: none; } }
 </style>
 </head>
 <body>
+  <h1 class="sr">dean.id — Dean Benson: ai, web, automation, strategy</h1>
   <div class="win" role="img" aria-label="API response: GET dean.id/v1/me returns Dean Benson, online, North Yorkshire UK, stack ai web automation strategy, currently helping businesses do more with less, contact hello@dean.id">
     <div class="bar">
       <span class="method">GET</span>
@@ -196,6 +219,7 @@ const BADGE_PAGE = `<!doctype html>
 <title>the stamp — dean.id</title>
 <meta name="description" content="Configure the dean.id stamp for your site.">
 <meta name="theme-color" content="#111113">
+<link rel="canonical" href="https://dean.id/badge">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -228,7 +252,7 @@ const BADGE_PAGE = `<!doctype html>
   .stage.l { background: #e9e6df; }
   .stage:hover { border-color: #4a4a52; }
   .row { display: flex; gap: 6px; }
-  .row span { font-size: 11.5px; color: #55555c; width: 72px; text-align: right; margin-right: 6px; align-self: center; }
+  .row span { font-size: 11.5px; color: #8a8a93; width: 72px; text-align: right; margin-right: 6px; align-self: center; }
   .row button {
     font-family: ui-monospace, Menlo, Consolas, monospace;
     font-size: 12px;
@@ -352,6 +376,58 @@ export default {
       return respond(BADGE_PAGE, 200, {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "public, max-age=300"
+      });
+    }
+
+    if (path === "/robots.txt") {
+      const robots = [
+        "# dean.id — humans and machines welcome",
+        "# AI crawlers: see /llms.txt and the live profile at /v1/me",
+        "User-agent: *",
+        "Allow: /",
+        "",
+        "Sitemap: https://dean.id/sitemap.xml"
+      ].join("\n") + "\n";
+      return respond(robots, 200, {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=86400"
+      });
+    }
+
+    if (path === "/sitemap.xml") {
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://dean.id/</loc></url>
+<url><loc>https://dean.id/badge</loc></url>
+</urlset>
+`;
+      return respond(sitemap, 200, {
+        "content-type": "application/xml; charset=utf-8",
+        "cache-control": "public, max-age=86400"
+      });
+    }
+
+    if (path === "/llms.txt") {
+      const llms = [
+        "# dean.id",
+        "",
+        "> The personal site of Dean Benson — AI, web, automation and strategy, based in North Yorkshire, UK. Currently helping businesses do more with less.",
+        "",
+        "This entire site is served as a JSON API response, because the medium is the message.",
+        "",
+        "## Live data",
+        "",
+        "- [Machine-readable profile](https://dean.id/v1/me): plain JSON, no auth, CORS-open. Works over http and https (`curl dean.id/v1/me`).",
+        "- [The stamp](https://dean.id/badge): the badge Dean places in the footer of sites he has built, fixed, or grown.",
+        "",
+        "## Contact",
+        "",
+        "- Email: hello@dean.id",
+        ""
+      ].join("\n");
+      return respond(llms, 200, {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=86400"
       });
     }
 
