@@ -37,13 +37,15 @@ const HOME = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dean.id</title>
-<meta name="description" content="dean.id — websites built, websites rescued. hello@dean.id">
+<meta name="description" content="dean.id — ai, web, automation, strategy. North Yorkshire, UK.">
+<meta name="theme-color" content="#111113">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #111113;
     min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -82,14 +84,22 @@ const HOME = `<!doctype html>
     transition: opacity .4s;
   }
   .badge200.show { opacity: 1; }
-  pre {
+  #out {
     padding: 18px 20px;
     font-size: 13px;
     line-height: 1.9;
     color: #e6edf3;
     min-height: 285px;
+  }
+  #out div {
     white-space: pre-wrap;
     word-break: break-word;
+    padding-left: 4ch;
+    text-indent: -4ch;
+  }
+  @media (max-width: 480px) {
+    #out { font-size: 12px; padding: 16px 14px; }
+    .url { font-size: 11px; }
   }
   .k { color: #AFA9EC; }
   .s { color: #9FE1CB; }
@@ -136,11 +146,11 @@ const HOME = `<!doctype html>
       <span class="url">https://dean.id/v1/me</span>
       <span class="badge200" id="badge">200 OK</span>
     </div>
-    <pre id="out" aria-hidden="true"></pre>
+    <div id="out" aria-hidden="true"></div>
   </div>
   <p class="foot">
     <a class="stamp" href="https://dean.id">dean.id<span class="block"></span></a>
-    <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">get this stamp for your site</a></span>
+    <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
   </p>
 <script>
   var lines = [
@@ -155,13 +165,20 @@ const HOME = `<!doctype html>
   ];
   var out = document.getElementById('out');
   var i = 0;
+  function render(n, cur) {
+    var h = '';
+    for (var k = 0; k < n; k++) {
+      h += '<div>' + lines[k] + (cur && k === n - 1 ? '<span class="cursor"></span>' : '') + '</div>';
+    }
+    return h;
+  }
   function step() {
     if (i < lines.length) {
-      out.innerHTML = lines.slice(0, i + 1).join('\\n') + '<span class="cursor"></span>';
+      out.innerHTML = render(i + 1, true);
       i++;
       setTimeout(step, 160);
     } else {
-      out.innerHTML = lines.join('\\n');
+      out.innerHTML = render(lines.length, false);
       document.getElementById('badge').classList.add('show');
     }
   }
@@ -178,17 +195,27 @@ const BADGE_PAGE = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>the stamp — dean.id</title>
 <meta name="description" content="Configure the dean.id stamp for your site.">
+<meta name="theme-color" content="#111113">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #111113;
     min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 24px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 24px 16px;
+  }
+  .sub {
+    font-size: 12.5px;
+    color: #8a8a93;
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.6;
   }
   .stage {
     padding: 34px 56px;
@@ -213,11 +240,17 @@ const BADGE_PAGE = `<!doctype html>
     cursor: pointer;
   }
   .row button.on { color: #fafafa; border-color: #28c840; }
-  .hint { font-size: 12.5px; color: #8a8a93; min-height: 18px; }
+  .hint { font-size: 12.5px; color: #8a8a93; min-height: 18px; text-align: center; }
   .hint a { color: #b8b8c0; }
+  @media (max-width: 480px) {
+    .row { flex-wrap: wrap; justify-content: center; }
+    .row span { width: 100%; text-align: center; margin: 0 0 2px; }
+    .stage { padding: 28px 38px; }
+  }
 </style>
 </head>
 <body>
+  <p class="sub">the stamp goes in the footer of sites I&rsquo;ve built, fixed, or grown &mdash; linking back here.</p>
   <div class="stage" id="stage" onclick="cp()" title="click to copy embed code">
     <img id="pv" src="/badge.svg" alt="dean.id stamp preview" width="92" height="26">
   </div>
