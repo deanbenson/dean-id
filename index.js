@@ -257,29 +257,49 @@ const BADGE_PAGE = `<!doctype html>
 </body>
 </html>`;
 
+const SEC = {
+  "strict-transport-security": "max-age=31536000",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "no-referrer",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-resource-policy": "cross-origin",
+  "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+};
+
+function respond(body, status, headers) {
+  return new Response(body, { status, headers: { ...SEC, ...headers } });
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\/$/, "") || "/";
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+
+    if (!["GET", "HEAD"].includes(request.method)) {
+      return respond("method not allowed\n", 405, {
+        "content-type": "text/plain; charset=utf-8",
+        "allow": "GET, HEAD"
+      });
+    }
 
     if (url.hostname === "www.dean.id") {
       url.hostname = "dean.id";
       url.protocol = "https:";
-      return Response.redirect(url.toString(), 301);
+      return respond(null, 301, { location: url.toString() });
     }
 
     if (url.protocol === "http:" && path !== "/v1/me") {
       url.protocol = "https:";
-      return Response.redirect(url.toString(), 301);
+      return respond(null, 301, { location: url.toString() });
     }
 
     if (path === "/v1/me") {
-      return new Response(JSON.stringify(ME, null, 2) + "\n", {
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "access-control-allow-origin": "*",
-          "cache-control": "public, max-age=3600"
-        }
+      return respond(JSON.stringify(ME, null, 2) + "\n", 200, {
+        "content-type": "application/json; charset=utf-8",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=3600"
       });
     }
 
@@ -288,24 +308,23 @@ export default {
       const theme = themes.includes(url.searchParams.get("theme")) ? url.searchParams.get("theme") : "dark";
       const cursor = url.searchParams.get("cursor") === "underscore" ? "underscore" : "block";
       const blink = url.searchParams.get("blink") !== "0";
-      return new Response(badgeSVG(theme, cursor, blink), {
-        headers: {
-          "content-type": "image/svg+xml",
-          "access-control-allow-origin": "*",
-          "cache-control": "public, max-age=86400"
-        }
+      return respond(badgeSVG(theme, cursor, blink), 200, {
+        "content-type": "image/svg+xml",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=86400"
       });
     }
 
     if (path === "/badge") {
-      return new Response(BADGE_PAGE, {
-        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" }
+      return respond(BADGE_PAGE, 200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=300"
       });
     }
 
-    return new Response(HOME, {
-      status: path === "/" ? 200 : 404,
-      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" }
+    return respond(HOME, path === "/" ? 200 : 404, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=300"
     });
   }
 };
