@@ -36,17 +36,17 @@ const HOME = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dean.id — Dean Benson</title>
-<meta name="description" content="dean.id — ai, web, automation, strategy. North Yorkshire, UK.">
+<title>dean.id · Dean Benson</title>
+<meta name="description" content="ai, web, automation, strategy. North Yorkshire, UK.">
 <meta name="theme-color" content="#111113">
 <link rel="canonical" href="https://dean.id/">
-<meta property="og:title" content="dean.id — Dean Benson">
+<meta property="og:title" content="dean.id · Dean Benson">
 <meta property="og:description" content="ai, web, automation, strategy. North Yorkshire, UK. It's a real API: curl dean.id/v1/me">
 <meta property="og:url" content="https://dean.id/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="dean.id">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="dean.id — Dean Benson">
+<meta name="twitter:title" content="dean.id · Dean Benson">
 <meta name="twitter:description" content="ai, web, automation, strategy. It's a real API: curl dean.id/v1/me">
 <script type="application/ld+json">
 {
@@ -162,7 +162,8 @@ const HOME = `<!doctype html>
 </style>
 </head>
 <body>
-  <h1 class="sr">dean.id — Dean Benson: ai, web, automation, strategy</h1>
+  <h1 class="sr">dean.id, Dean Benson: ai, web, automation, strategy</h1>
+  <main style="display: contents;">
   <div class="win" role="img" aria-label="API response: GET dean.id/v1/me returns Dean Benson, online, North Yorkshire UK, stack ai web automation strategy, currently helping businesses do more with less, contact hello@dean.id">
     <div class="bar">
       <span class="method">GET</span>
@@ -175,6 +176,7 @@ const HOME = `<!doctype html>
     <a class="stamp" href="https://dean.id">dean.id<span class="block"></span></a>
     <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
   </p>
+  </main>
 <script>
   var lines = [
     '<span class="p">{</span>',
@@ -183,7 +185,7 @@ const HOME = `<!doctype html>
     '  <span class="k">"location"</span>: <span class="s">"North Yorkshire, UK"</span>,',
     '  <span class="k">"stack"</span>: [<span class="s">"ai"</span>, <span class="s">"web"</span>, <span class="s">"automation"</span>, <span class="s">"strategy"</span>],',
     '  <span class="k">"currently"</span>: <span class="s">"helping businesses do more with less"</span>,',
-    '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id">hello@dean.id</a>"</span>',
+    '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>"</span>',
     '<span class="p">}</span>'
   ];
   var out = document.getElementById('out');
@@ -216,7 +218,7 @@ const BADGE_PAGE = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>the stamp — dean.id</title>
+<title>the stamp · dean.id</title>
 <meta name="description" content="Configure the dean.id stamp for your site.">
 <meta name="theme-color" content="#111113">
 <link rel="canonical" href="https://dean.id/badge">
@@ -274,7 +276,8 @@ const BADGE_PAGE = `<!doctype html>
 </style>
 </head>
 <body>
-  <p class="sub">the stamp goes in the footer of sites I&rsquo;ve built, fixed, or grown &mdash; linking back here.</p>
+  <main style="display: contents;">
+  <p class="sub">the stamp goes in the footer of sites I&rsquo;ve built, fixed, or grown. it links back here.</p>
   <div class="stage" id="stage" onclick="cp()" title="click to copy embed code">
     <img id="pv" src="/badge.svg" alt="dean.id stamp preview" width="92" height="26">
   </div>
@@ -282,6 +285,7 @@ const BADGE_PAGE = `<!doctype html>
   <div class="row"><span>cursor</span><button data-k="cursor" data-v="block" class="on">block</button><button data-k="cursor" data-v="underscore">_</button></div>
   <div class="row"><span>blink</span><button data-k="blink" data-v="1" class="on">on</button><button data-k="blink" data-v="0">off</button></div>
   <p class="hint" id="hint">click the stamp to copy its embed code &middot; <a href="/">dean.id</a></p>
+  </main>
 <script>
   var s = { theme: 'dark', cursor: 'block', blink: '1' };
   function qs() {
@@ -307,7 +311,7 @@ const BADGE_PAGE = `<!doctype html>
   function cp() {
     var snippet = '<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg' + qs() + '" alt="site by dean.id" width="92" height="26" loading="lazy"></a>';
     navigator.clipboard.writeText(snippet).then(function(){
-      document.getElementById('hint').innerHTML = 'copied — paste it in your footer &middot; <a href="/">dean.id</a>';
+      document.getElementById('hint').innerHTML = 'copied. paste it in your footer &middot; <a href="/">dean.id</a>';
     });
   }
 </script>
@@ -315,7 +319,7 @@ const BADGE_PAGE = `<!doctype html>
 </html>`;
 
 const SEC = {
-  "strict-transport-security": "max-age=31536000",
+  "strict-transport-security": "max-age=63072000; includeSubDomains",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
   "referrer-policy": "no-referrer",
@@ -379,9 +383,17 @@ export default {
       });
     }
 
+    if (path === "/favicon.ico" || path === "/favicon.svg") {
+      const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#0d1117"/><rect x="30" y="30" width="18" height="40" fill="#28c840"/></svg>`;
+      return respond(icon, 200, {
+        "content-type": "image/svg+xml",
+        "cache-control": "public, max-age=604800"
+      });
+    }
+
     if (path === "/robots.txt") {
       const robots = [
-        "# dean.id — humans and machines welcome",
+        "# dean.id: humans and machines welcome",
         "# AI crawlers: see /llms.txt and the live profile at /v1/me",
         "User-agent: *",
         "Allow: /",
@@ -411,7 +423,7 @@ export default {
       const llms = [
         "# dean.id",
         "",
-        "> The personal site of Dean Benson — AI, web, automation and strategy, based in North Yorkshire, UK. Currently helping businesses do more with less.",
+        "> The personal site of Dean Benson: AI, web, automation and strategy. Based in North Yorkshire, UK. Currently helping businesses do more with less.",
         "",
         "This entire site is served as a JSON API response, because the medium is the message.",
         "",
