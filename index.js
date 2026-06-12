@@ -2,7 +2,8 @@ const ME = {
   name: "Dean Benson",
   status: "online",
   location: "North Yorkshire, UK",
-  services: ["websites built", "websites rescued"],
+  stack: ["ai", "web", "automation", "strategy"],
+  currently: "helping businesses do more with less",
   contact: "hello@dean.id",
   built_by: "dean.id",
   _comment: "yes, we tag our own work"
@@ -20,8 +21,20 @@ const BADGE_LIGHT = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="
 <rect x="70" y="7" width="7" height="13" fill="#1d9e75"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
 </svg>`;
 
+const BADGE_TRANSPARENT = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
+<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#1a1a1a">dean.id</text>
+<rect x="70" y="7" width="7" height="13" fill="#1d9e75"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
+</svg>`;
+
+const BADGE_TRANSPARENT_DARK = `<svg xmlns="http://www.w3.org/2000/svg" width="92" height="26" viewBox="0 0 92 26" role="img" aria-label="dean.id">
+<text x="12" y="17.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" fill="#e6edf3">dean.id</text>
+<rect x="70" y="7" width="7" height="13" fill="#28c840"><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/></rect>
+</svg>`;
+
 const SNIPPET_DARK = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
 const SNIPPET_LIGHT = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=light" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
+const SNIPPET_TRANSPARENT = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=transparent" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
+const SNIPPET_TRANSPARENT_DARK = `<a href="https://dean.id" title="site by dean.id"><img src="https://dean.id/badge.svg?theme=transparent-dark" alt="site by dean.id" width="92" height="26" loading="lazy"></a>`;
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -124,7 +137,7 @@ const HOME = `<!doctype html>
 </style>
 </head>
 <body>
-  <div class="win" role="img" aria-label="API response: GET dean.id/v1/me returns Dean Benson, online, North Yorkshire UK, services websites built and rescued, contact hello@dean.id">
+  <div class="win" role="img" aria-label="API response: GET dean.id/v1/me returns Dean Benson, online, North Yorkshire UK, stack ai web automation strategy, currently helping businesses do more with less, contact hello@dean.id">
     <div class="bar">
       <span class="method">GET</span>
       <span class="url">https://dean.id/v1/me</span>
@@ -142,7 +155,8 @@ const HOME = `<!doctype html>
     '  <span class="k">"name"</span>: <span class="s">"Dean Benson"</span>,',
     '  <span class="k">"status"</span>: <span class="g">"online"</span>,',
     '  <span class="k">"location"</span>: <span class="s">"North Yorkshire, UK"</span>,',
-    '  <span class="k">"services"</span>: [<span class="s">"websites built"</span>, <span class="s">"websites rescued"</span>],',
+    '  <span class="k">"stack"</span>: [<span class="s">"ai"</span>, <span class="s">"web"</span>, <span class="s">"automation"</span>, <span class="s">"strategy"</span>],',
+    '  <span class="k">"currently"</span>: <span class="s">"helping businesses do more with less"</span>,',
     '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id">hello@dean.id</a>"</span>',
     '<span class="p">}</span>'
   ];
@@ -212,14 +226,18 @@ const BADGE_PAGE = `<!doctype html>
 </head>
 <body>
   <h1>the stamp</h1>
-  <p class="sub">If I built or rescued your site, this little fella goes in your footer and links back to <a href="https://dean.id">dean.id</a>. Click a snippet to copy it.</p>
+  <p class="sub">If we built, fixed, or grew your site together, this little fella goes in your footer and links back to <a href="https://dean.id">dean.id</a>. Click a snippet to copy it.</p>
   <div class="row">
     <span class="chip">${BADGE_DARK}</span>
-    <span class="chip l">${BADGE_LIGHT.replace('badge.svg"', 'badge.svg?theme=light"')}</span>
+    <span class="chip l">${BADGE_LIGHT}</span>
+    <span class="chip">${BADGE_TRANSPARENT_DARK}</span>
+    <span class="chip l">${BADGE_TRANSPARENT}</span>
   </div>
   <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_DARK)}</div>
   <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_LIGHT)}</div>
-  <p class="hint" id="hint">dark &middot; light &mdash; click to copy &middot; <a href="/">back</a></p>
+  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_TRANSPARENT_DARK)}</div>
+  <div class="code" onclick="cp(this)" title="click to copy">${esc(SNIPPET_TRANSPARENT)}</div>
+  <p class="hint" id="hint">dark chip &middot; light chip &middot; transparent for dark sites &middot; transparent for light sites &mdash; click to copy &middot; <a href="/">back</a></p>
 <script>
   function cp(el) {
     navigator.clipboard.writeText(el.textContent).then(function(){
@@ -238,6 +256,12 @@ export default {
 
     if (url.hostname === "www.dean.id") {
       url.hostname = "dean.id";
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+
+    if (url.protocol === "http:" && path !== "/v1/me") {
+      url.protocol = "https:";
       return Response.redirect(url.toString(), 301);
     }
 
@@ -253,7 +277,12 @@ export default {
 
     if (path === "/badge.svg") {
       const theme = url.searchParams.get("theme");
-      return new Response(theme === "light" ? BADGE_LIGHT : BADGE_DARK, {
+      const svg =
+        theme === "light" ? BADGE_LIGHT :
+        theme === "transparent" ? BADGE_TRANSPARENT :
+        theme === "transparent-dark" ? BADGE_TRANSPARENT_DARK :
+        BADGE_DARK;
+      return new Response(svg, {
         headers: {
           "content-type": "image/svg+xml",
           "access-control-allow-origin": "*",
