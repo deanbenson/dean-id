@@ -126,7 +126,7 @@ const HOME = `<!doctype html>
   .s { color: #9FE1CB; }
   .g { color: #28c840; }
   .p { color: #7d8590; }
-  pre a { color: #9FE1CB; }
+  #out a { color: #9FE1CB; }
   .cursor {
     display: inline-block;
     width: 8px;
