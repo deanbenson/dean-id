@@ -118,6 +118,15 @@ const HOME = `<!doctype html>
     padding-left: 4ch;
     text-indent: -4ch;
   }
+  #out.human div {
+    padding-left: 0;
+    text-indent: 0;
+    margin-bottom: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.65;
+    color: #d6d6dc;
+  }
+  #out.human a { color: #9FE1CB; }
   @media (max-width: 480px) {
     #out { font-size: 12px; padding: 16px 14px; }
     .url { font-size: 11px; }
@@ -164,21 +173,21 @@ const HOME = `<!doctype html>
 <body>
   <h1 class="sr">dean.id, Dean Benson: ai, web, automation, strategy</h1>
   <main style="display: contents;">
-  <div class="win" role="img" aria-label="API response: GET dean.id/v1/me returns Dean Benson, online, North Yorkshire UK, stack ai web automation strategy, currently helping businesses do more with less, contact hello@dean.id">
+  <div class="win" role="img" aria-label="Dean Benson, North Yorkshire UK. Helps businesses grow with websites, systems, automation and AI. Contact hello@dean.id. Styled as an API response; a human-readable toggle follows.">
     <div class="bar">
-      <span class="method">GET</span>
-      <span class="url">https://dean.id/v1/me</span>
+      <span class="method" id="m">GET</span>
+      <span class="url" id="u">https://dean.id/v1/me</span>
       <span class="badge200" id="badge">200 OK</span>
     </div>
     <div id="out" aria-hidden="true"></div>
   </div>
   <p class="foot">
     <a class="stamp" href="https://dean.id">dean.id<span class="block"></span></a>
-    <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
+    <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a> &nbsp;&middot;&nbsp; <a href="#human" id="mode">human?</a></span>
   </p>
   </main>
 <script>
-  var lines = [
+  var jsonLines = [
     '<span class="p">{</span>',
     '  <span class="k">"name"</span>: <span class="s">"Dean Benson"</span>,',
     '  <span class="k">"status"</span>: <span class="g">"online"</span>,',
@@ -188,27 +197,60 @@ const HOME = `<!doctype html>
     '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>"</span>',
     '<span class="p">}</span>'
   ];
+  var humanLines = [
+    'Hi, I\\'m Dean.',
+    'I help businesses grow. Sharper websites, systems that run themselves, automation that kills the boring work.',
+    'I deploy AI that blows minds and quietly makes you money.',
+    'North Yorkshire, UK. Say hello: <a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>'
+  ];
   var out = document.getElementById('out');
-  var i = 0;
-  function render(n, cur) {
+  var modeLink = document.getElementById('mode');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timer = null;
+  var mode = 'machine';
+  function render(arr, n, cur) {
     var h = '';
     for (var k = 0; k < n; k++) {
-      h += '<div>' + lines[k] + (cur && k === n - 1 ? '<span class="cursor"></span>' : '') + '</div>';
+      h += '<div>' + arr[k] + (cur && k === n - 1 ? '<span class="cursor"></span>' : '') + '</div>';
     }
     return h;
   }
-  function step() {
-    if (i < lines.length) {
-      out.innerHTML = render(i + 1, true);
-      i++;
-      setTimeout(step, 160);
-    } else {
-      out.innerHTML = render(lines.length, false);
-      document.getElementById('badge').classList.add('show');
+  function typeSet(arr, instant) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var i = instant ? arr.length : 0;
+    function step() {
+      if (i < arr.length) {
+        out.innerHTML = render(arr, i + 1, true);
+        i++;
+        timer = setTimeout(step, 160);
+      } else {
+        out.innerHTML = render(arr, arr.length, false);
+        document.getElementById('badge').classList.add('show');
+      }
     }
+    step();
   }
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { i = lines.length; }
-  setTimeout(step, 350);
+  function setMode(m, instant) {
+    mode = m;
+    var human = m === 'human';
+    out.className = human ? 'human' : '';
+    document.getElementById('m').textContent = human ? 'HI' : 'GET';
+    document.getElementById('u').textContent = human ? 'dean benson, in plain english' : 'https://dean.id/v1/me';
+    modeLink.textContent = human ? 'machine?' : 'human?';
+    modeLink.setAttribute('href', human ? '#' : '#human');
+    typeSet(human ? humanLines : jsonLines, instant || reduced);
+  }
+  modeLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    var next = mode === 'machine' ? 'human' : 'machine';
+    if (history.replaceState) { history.replaceState(null, '', next === 'human' ? '#human' : location.pathname); }
+    setMode(next, false);
+  });
+  if (location.hash === '#human') {
+    setMode('human', true);
+  } else {
+    timer = setTimeout(function () { typeSet(jsonLines, reduced); }, 350);
+  }
 </script>
 </body>
 </html>`;
