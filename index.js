@@ -221,7 +221,7 @@ const BADGE_PAGE = `<!doctype html>
   <div class="stage" id="stage" onclick="cp()" title="click to copy embed code">
     <img id="pv" src="/badge.svg" alt="dean.id stamp preview" width="92" height="26">
   </div>
-  <div class="row"><span>background</span><button data-k="theme" data-v="dark" class="on">dark</button><button data-k="theme" data-v="light">light</button><button data-k="theme" data-v="transparent-dark">clear&middot;dark</button><button data-k="theme" data-v="transparent">clear&middot;light</button></div>
+  <div class="row"><span>background</span><button data-k="theme" data-v="dark" class="on">dark</button><button data-k="theme" data-v="light">light</button><button data-k="theme" data-v="transparent-dark">clear &middot; light text</button><button data-k="theme" data-v="transparent">clear &middot; dark text</button></div>
   <div class="row"><span>cursor</span><button data-k="cursor" data-v="block" class="on">block</button><button data-k="cursor" data-v="underscore">_</button></div>
   <div class="row"><span>blink</span><button data-k="blink" data-v="1" class="on">on</button><button data-k="blink" data-v="0">off</button></div>
   <p class="hint" id="hint">click the stamp to copy its embed code &middot; <a href="/">dean.id</a></p>
