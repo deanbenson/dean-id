@@ -1,0 +1,37 @@
+# Fika & Co
+
+> A cafe, kitchen and bar at 7 High Street, Norton, Stockton-on-Tees TS20 1AH.
+> Inspired by the Swedish ritual of fika: brunch, speciality coffee, small plates and cocktails.
+> Tagline: slow down, sip well, eat bright.
+
+## Contact
+- Address: 7 High Street, Norton, Stockton-on-Tees, TS20 1AH, United Kingdom
+- Phone: 01642 609341
+- Email: info@fikaco.com
+- Instagram: https://www.instagram.com/fika.co_norton
+- Facebook: https://www.facebook.com/people/FikaCo-Norton/61576331661216/
+
+## The Fika Week (opening hours)
+- Monday: 8am–2pm (brunch menu)
+- Tuesday: 8am–2pm (brunch menu)
+- Wednesday: 8am–4pm
+- Thursday: 8am–10pm
+- Friday: 8am–10pm
+- Saturday: 9am–10pm
+- Sunday: 9am–2pm
+
+## Menus
+- All-Day: brunch served all day, mains from 11.30am
+- Brunch: Mondays and Tuesdays, 8am–2pm
+- Evening: small plates made for sharing
+- Thursday Set Menu: £35 per person
+- Bar Snacks: Thursday–Saturday, 5pm–8.30pm, any 3 for £15
+- Desserts, Coffee & After-Dinner
+
+## Book / vouchers
+- Book a table: https://togo.uk.com/makebookingv2.aspx?venueid=2744&nv=true
+- Gift vouchers: https://togo.uk.com/voucherpurchase.aspx?venueid=2744
+
+## Notes
+- Owner/founder: Michael Jones. Front of house: Harry.
+- This page is a demo build by dean.id (https://dean.id).
