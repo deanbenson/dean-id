@@ -302,7 +302,8 @@
   .q-who{font-size:14px;color:var(--ink-soft)}
   .q-who strong{display:block;color:var(--ink);font-weight:600}
   .q-who .src{font-size:12px;letter-spacing:.06em;text-transform:uppercase}
-  .rev-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
+  .rev-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+  .rev-note{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:22px}
 </style>
 <noscript><style>.panel{display:block}.reveal{opacity:1;transform:none}img[data-k]{display:none}</style></noscript>
 <script type="application/ld+json">
@@ -756,6 +757,7 @@
           <figcaption class="q-who"><strong>Lauren Watson</strong><span class="src">Local Guide on Google</span></figcaption>
         </figure>
       </div>
+      <p class="rev-note reveal">A random handful of our 44 reviews. Refresh to see more.</p>
       <div class="rev-ctas reveal">
         <a class="btn btn-solid" href="https://www.google.com/maps?cid=6602977855604932665" target="_blank" rel="noopener">Read all our reviews</a>
         <a class="btn btn-ghost" href="https://www.google.com/maps?cid=6602977855604932665" target="_blank" rel="noopener">Leave a review</a>
@@ -844,6 +846,29 @@
     const D=JSON.parse(document.getElementById('imgdata').textContent);
     document.querySelectorAll('img[data-k]').forEach(i=>{ if(D[i.dataset.k]) i.src=D[i.dataset.k]; });
   }catch(e){}
+
+  // Reviews: random selection from a curated pool of real Google reviews.
+  // Static cards in the HTML remain as the no-JS / crawler fallback.
+  window.REVIEWS = [{"n": "Jordan Richardson", "s": "via Google", "t": "Had a lovely breakfast at Fika & Co. The atmosphere was relaxing, with a great range of breakfast options that were cooked perfectly and excellent value for money. The flat white was especially good."}, {"n": "Neville Auffret", "s": "via Google", "t": "We\u2019ve been here a couple of times now and it\u2019s absolutely class. The menu is brilliant and all the dishes that we\u2019ve tried have been amazing, the Korean wings are the best!"}, {"n": "Alex Nisbet", "s": "Local Guide on Google", "t": "Just been for a Thursday Tapas/small plates evening\u2026 This is my 4th time eating at Fika in the last 6 months and each time has been amazing. Service is always incredibly friendly and efficient."}, {"n": "Lauren Watson", "s": "Local Guide on Google", "t": "The decor in here is absolutely beautiful and simplistic. Feels like a very calming atmosphere. The menu is lovely, good pricing and the food is outstanding! Really recommend."}, {"n": "Claire Peare", "s": "via Google", "t": "Fika & Co in Norton is such a brilliant new addition to the area. The vibe is relaxed and welcoming, with a lovely influence from Swedish fika that makes it feel calm, cosy and perfect for relaxing whilst enjoying good food."}, {"n": "Peter McDermott", "s": "via Google", "t": "What a cool vibe in Fika! Absolutely fantastic decor\u2026 the food is out of this world\u2026 the tranquil/calm vibe hit us straight away\u2026 Really cool and efficient staff."}, {"n": "Marek TryBull", "s": "via Google", "t": "Quality food, interesting concept of sharing smaller plates, a lovely dining experience in Norton."}, {"n": "Wendy MacDonald", "s": "via Google", "t": "Visited last night for the first time and it won\u2019t be the last. Beautiful relaxed atmosphere, attentive service and amazing food!"}, {"n": "Emma Bryson", "s": "Local Guide on Google", "t": "Gorgeous new place!! The decor is beautiful and the food was fab. We had full English, the avo on sourdough and pancakes, all lovely! Dog friendly too."}, {"n": "Hayley Markham", "s": "via Google", "t": "Definitely recommend. Lovely, chilled atmosphere, great service and the food is really tasty. Been twice and will definitely go again!"}, {"n": "Sophie Lenagh", "s": "via Google", "t": "Gorgeous breakfast, will definitely be back to try the dinner time menu & cocktails."}, {"n": "Adrian Lambert", "s": "Local Guide on Google", "t": "Restaurant has a lovely ambience, and a small but great menu\u2026 The food presentation was excellent and flavours complemented each dish."}, {"n": "Neil McGee", "s": "Local Guide on Google", "t": "Great addition to Norton Village. Staff lovely and food delicious. Definitely looking forward to going again."}, {"n": "Garry Wells", "s": "via Google", "t": "The service delivery was exceptionally delivered with a smiley face. The food was delicious and very well presented. We decided on the wonderful breakfast options."}];
+  (function(){
+    var grid=document.querySelector('.q-grid');
+    if(!grid||!window.REVIEWS) return;
+    var STAR='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>';
+    var STAR5=STAR+STAR+STAR+STAR+STAR;
+    var pool=window.REVIEWS.slice();
+    for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
+    var pick=pool.slice(0,4);
+    grid.innerHTML='';
+    pick.forEach(function(r){
+      var fig=document.createElement('figure'); fig.className='q-card reveal in';
+      var st=document.createElement('div'); st.className='q-stars'; st.setAttribute('role','img'); st.setAttribute('aria-label','5 out of 5'); st.innerHTML=STAR5; fig.appendChild(st);
+      var bq=document.createElement('blockquote'); bq.className='q-text'; bq.textContent='\u201c'+r.t+'\u201d'; fig.appendChild(bq);
+      var fc=document.createElement('figcaption'); fc.className='q-who';
+      var nm=document.createElement('strong'); nm.textContent=r.n; fc.appendChild(nm);
+      var sr=document.createElement('span'); sr.className='src'; sr.textContent=r.s; fc.appendChild(sr);
+      fig.appendChild(fc); grid.appendChild(fig);
+    });
+  })();
 
   // Menu tabs, with keyboard support
   const tabs=[...document.querySelectorAll('.tab')],panels=document.querySelectorAll('.panel');
