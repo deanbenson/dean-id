@@ -173,6 +173,22 @@ const HOME = `<!doctype html>
     color: #8a8a93;
   }
   .get a { color: #b8b8c0; }
+  .toggle {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13.5px;
+    color: #e6edf3;
+    background: #1a1a1e;
+    border: 1px solid #3a3a40;
+    border-radius: 24px;
+    padding: 9px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color .2s, background .2s;
+  }
+  .toggle:hover, .toggle:focus-visible { border-color: #28c840; background: #15241a; }
+  .toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: #28c840; display: inline-block; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (prefers-reduced-motion: reduce) { .cursor, .stamp .block { animation: none; } }
 </style>
@@ -188,9 +204,10 @@ const HOME = `<!doctype html>
     </div>
     <div id="out" aria-hidden="true"></div>
   </div>
+  <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
     <a class="stamp" href="https://dean.id">dean.id<span class="block"></span></a>
-    <span class="get">it&rsquo;s real: <span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a> &nbsp;&middot;&nbsp; <a href="#human" id="mode">human?</a></span>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
   </p>
   </main>
 <script>
@@ -208,7 +225,8 @@ const HOME = `<!doctype html>
     'Hi, I\\'m Dean.',
     'I help businesses grow. Sharper websites, systems that run themselves, automation that kills the boring work.',
     'I deploy AI that blows minds and quietly makes you money.',
-    'North Yorkshire, UK. Say hello: <a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>'
+    'North Yorkshire, UK. Say hello: <a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>',
+    '<span style="font-size:12.5px; color:#7d8590;">P.S. the other version of this page is dressed up as computer code. Same me, just showing off a bit.</span>'
   ];
   var out = document.getElementById('out');
   var modeLink = document.getElementById('mode');
@@ -243,7 +261,7 @@ const HOME = `<!doctype html>
     out.className = human ? 'human' : '';
     document.getElementById('m').textContent = human ? 'HI' : 'GET';
     document.getElementById('u').textContent = human ? 'dean benson, in plain english' : 'https://dean.id/v1/me';
-    modeLink.textContent = human ? 'machine?' : 'human?';
+    modeLink.innerHTML = human ? 'see the techie version' : '<span class="dot"></span>not a robot? read this in plain english';
     modeLink.setAttribute('href', human ? '#' : '#human');
     typeSet(human ? humanLines : jsonLines, instant || reduced);
   }
