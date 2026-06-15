@@ -362,7 +362,7 @@
 
     /* -------- services -------- */
     .services { background: var(--forest); position: relative; }
-    .svc-grid { display: grid; gap: 28px; grid-template-columns: 1fr 1fr; }
+    .svc-grid { display: grid; gap: 28px; grid-template-columns: 1fr 1fr; align-items: start; }
     @media (max-width: 820px) { .svc-grid { grid-template-columns: 1fr; } }
     .svc {
       border: 1px solid var(--rule);
@@ -430,16 +430,16 @@
       position: absolute; inset: 0;
       background-position: center;
       background-size: cover;
-      filter: saturate(0.9) brightness(0.64) contrast(1.08);
+      filter: saturate(0.95) brightness(0.76) contrast(1.06);
       z-index: 0;
     }
     /* dark green wash that pulls the photo into the palette */
     .band::before {
       content: ""; position: absolute; inset: 0; z-index: 1;
       background:
-        radial-gradient(ellipse at center, transparent 42%, #0E1410d9 100%),
-        linear-gradient(180deg, var(--ink) 0%, transparent 18%, transparent 82%, var(--ink) 100%),
-        linear-gradient(180deg, #1B2A2055 0%, #1B2A2099 100%);
+        radial-gradient(ellipse at center, transparent 50%, #0E1410b3 100%),
+        linear-gradient(180deg, var(--ink) 0%, transparent 20%, transparent 80%, var(--ink) 100%),
+        linear-gradient(180deg, #1B2A2033 0%, #1B2A2066 100%);
       pointer-events: none;
     }
     .band-inner {
@@ -751,7 +751,7 @@
         </div>
         <div class="extra reveal">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M5 4h14v3a4 4 0 0 1-4 4h-6a4 4 0 0 1-4-4z"/><path d="M12 11v6"/><path d="M9 20h6"/>
+            <path d="M12 3.5c3.2 4 5.5 6.8 5.5 10.2a5.5 5.5 0 0 1-11 0C6.5 10.3 8.8 7.5 12 3.5z"/>
           </svg>
           <h4>The wash</h4>
           <p>Treatments and scalp care using high-quality products, all done by hand while you sit back.</p>
