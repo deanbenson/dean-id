@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Thor &middot; Hairdressing at Hutton Rudby</title>
+  <meta name="description" content="Thor, a small hair salon on the village green at Hutton Rudby. Deep green walls, mustard chairs, good coffee. By appointment. 01642 701197." />
+  <meta name="theme-color" content="#1B2A20" />
+  <link rel="canonical" href="https://dean.id/demos/thor/" />
+  <meta property="og:title" content="Thor · Hairdressing at Hutton Rudby" />
+  <meta property="og:description" content="Thor, a small hair salon on the village green at Hutton Rudby. Deep green walls, mustard chairs, good coffee. By appointment. 01642 701197." />
+  <meta property="og:url" content="https://dean.id/demos/thor/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://dean.id/demos/thor/shopfront.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://dean.id/demos/thor/shopfront.jpg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* -------- palette pulled from the actual interior --------
+       deep botanical green walls + jungle wallpaper, mustard mid-century
+       chairs, walnut floor, brass accents, black-tile wash area, painted
+       blue-grey shopfront, gold sign lettering. */
+    :root {
+      --ink:        #0E1410;   /* near-black, the wash area */
+      --forest:     #1B2A20;   /* the painted wall green */
+      --forest-2:   #243A2C;
+      --canopy:     #2E4A38;
+      --walnut:     #5A3E26;
+      --walnut-2:   #3A2818;
+      --mustard:    #C49946;   /* the chair leather */
+      --mustard-2:  #B8853A;
+      --brass:      #C8A95E;   /* the sign letters */
+      --cream:      #EDE6D8;
+      --paper:      #F5F1E7;
+      --rule:       #ffffff14;
+      --max:        1180px;
+      --pad:        clamp(20px, 4vw, 56px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--forest);
+      color: var(--paper);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 300;
+      font-size: 17px;
+      line-height: 1.6;
+      letter-spacing: 0.005em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; }
+
+    .serif { font-family: 'Cormorant Garamond', 'Times New Roman', serif; font-weight: 400; }
+    .eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 11px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--brass);
+    }
+    .rule { width: 60px; height: 1px; background: var(--brass); opacity: 0.7; margin: 28px auto; }
+    .rule.left { margin-left: 0; }
+
+    /* -------- botanical SVG accents (decorative) -------- */
+    .leaf { position: absolute; pointer-events: none; opacity: 0.18; color: var(--brass); }
+    .leaf svg { width: 100%; height: 100%; display: block; }
+
+    /* -------- splash / "speakeasy" entry -------- */
+    #splash {
+      position: fixed; inset: 0; z-index: 100;
+      background:
+        radial-gradient(ellipse at center, #243A2C 0%, #0c1310 80%),
+        var(--forest);
+      display: grid; place-items: center;
+      transition: opacity 800ms ease, visibility 800ms ease;
+      overflow: hidden;
+    }
+    #splash::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 35%, #00000088 100%);
+      pointer-events: none;
+    }
+    #splash.is-out { opacity: 0; visibility: hidden; }
+
+    .splash-inner {
+      position: relative; z-index: 2;
+      width: min(440px, 88vw);
+      text-align: center;
+      padding: 40px 28px;
+    }
+    .splash-mono {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 72px; line-height: 1; color: var(--brass);
+      letter-spacing: 0.04em; font-weight: 500;
+      text-shadow: 0 4px 30px #00000040;
+    }
+    .splash-sub {
+      margin-top: 14px;
+      font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.7;
+    }
+    .splash-prompt {
+      margin: 44px 0 18px;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 22px; color: var(--paper); opacity: 0.92;
+    }
+    .code-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 22px; }
+    .code-cell {
+      width: 48px; height: 58px;
+      padding: 0;
+      margin: 0;
+      background: #00000033;
+      border: 1px solid #c8a95e44;
+      border-radius: 2px;
+      color: var(--brass);
+      /* Inter (the body font) has predictable metrics — text and caret
+         sit dead-centre. We keep the serif vibe with the splash heading
+         and use a sans for the input itself for reliable centring. */
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 26px;
+      /* line-height equal to the visible inner height keeps the digit
+         and the caret vertically centred regardless of metrics */
+      line-height: 56px;
+      text-align: center;
+      text-indent: 0;
+      vertical-align: middle;
+      caret-color: var(--brass);
+      transition: border-color 200ms ease, background 200ms ease;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    /* no transform on focus — that's what was causing the bounce as the
+       cursor advanced from cell to cell */
+    .code-cell:focus { border-color: var(--brass); background: #00000055; }
+    .code-cell.filled { border-color: var(--brass); background: #00000055; }
+    .code-row.shake { animation: shake 420ms cubic-bezier(.36,.07,.19,.97); }
+    @keyframes shake {
+      10%, 90% { transform: translateX(-2px); }
+      20%, 80% { transform: translateX(4px); }
+      30%, 50%, 70% { transform: translateX(-7px); }
+      40%, 60% { transform: translateX(7px); }
+    }
+    .code-cell.error { border-color: #d97a7a; color: #d97a7a; }
+    .splash-hint {
+      margin-top: 6px;
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.45;
+      transition: color 200ms ease, opacity 200ms ease;
+    }
+    .splash-hint.is-error { color: #d97a7a; opacity: 0.95; }
+    #splash .leaf-tl { top: -40px; left: -30px; width: 260px; height: 260px; transform: rotate(20deg); }
+    #splash .leaf-br { bottom: -60px; right: -40px; width: 320px; height: 320px; transform: rotate(200deg); opacity: 0.14; }
+
+    /* -------- top bar -------- */
+    .topbar {
+      position: relative; z-index: 5;
+      padding: 18px var(--pad) 0;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 20px;
+      font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.82;
+    }
+    .topbar a { text-decoration: none; }
+    .topbar a:hover { color: var(--brass); }
+    .topbar-right { display: flex; gap: 28px; }
+    @media (max-width: 700px) {
+      .topbar { flex-direction: column; gap: 8px; padding-top: 14px; font-size: 10px; }
+      .topbar-right { gap: 16px; flex-wrap: wrap; justify-content: center; }
+    }
+
+    /* -------- hero -------- */
+    .hero {
+      position: relative;
+      min-height: 92vh;
+      display: grid; place-items: center;
+      text-align: center;
+      padding: 80px var(--pad) 100px;
+      overflow: hidden;
+      background: var(--forest);
+    }
+    .hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, #0E141055 0%, #0E141033 28%, #0E141055 60%, #0E1410ee 92%, #0E1410 100%),
+        url('exterior-night.jpg') center 50% / cover no-repeat;
+      /* the night shot already has its own warmth and contrast — lighter
+         touch on the filter so the warm window glow comes through */
+      filter: saturate(0.95) brightness(0.78);
+      z-index: 0;
+    }
+    .hero-inner { position: relative; z-index: 2; max-width: 920px; }
+    .hero-mark {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 500;
+      font-size: clamp(96px, 22vw, 240px);
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+      color: var(--brass);
+      text-shadow: 0 6px 40px #00000060;
+      margin: 0;
+    }
+    .hero-sub {
+      margin-top: 18px;
+      font-size: 12px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--paper);
+    }
+    .hero-tagline {
+      margin: 36px auto 0;
+      max-width: 540px;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 400;
+      font-size: clamp(20px, 2.4vw, 26px);
+      color: var(--paper); opacity: 0.95;
+      line-height: 1.4;
+    }
+    .hero-cta {
+      margin-top: 44px;
+      display: inline-flex; align-items: center; gap: 14px;
+      padding: 16px 28px;
+      border: 1px solid var(--mustard);
+      color: var(--mustard);
+      text-decoration: none;
+      font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+      transition: background 240ms ease, color 240ms ease;
+      background: #00000055;
+      backdrop-filter: blur(2px);
+    }
+    .hero-cta:hover { background: var(--mustard); color: var(--ink); }
+    .hero-cta .num { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; letter-spacing: 0.08em; text-transform: none; }
+
+    .hero .leaf-l { left: -60px; top: 18%; width: 320px; height: 320px; transform: rotate(-30deg); z-index: 1; opacity: 0.20; }
+    .hero .leaf-r { right: -80px; bottom: 8%; width: 380px; height: 380px; transform: rotate(160deg); z-index: 1; opacity: 0.20; }
+
+    .scroll-cue {
+      position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 2;
+      font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.55;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .scroll-cue .line { width: 1px; height: 36px; background: var(--paper); opacity: 0.4; }
+
+    /* -------- generic section -------- */
+    section { padding: clamp(80px, 12vw, 140px) var(--pad); position: relative; }
+    .wrap { max-width: var(--max); margin: 0 auto; position: relative; z-index: 2; }
+    .section-head { text-align: center; margin-bottom: clamp(40px, 6vw, 72px); }
+    .section-head h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(36px, 5vw, 56px);
+      margin: 14px 0 0;
+      letter-spacing: 0.01em;
+      color: var(--paper);
+    }
+
+    /* -------- the room (atmospheric photo background) -------- */
+    .room {
+      background: var(--ink);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .room-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background-position: center; background-size: cover;
+      /* heavy desaturation + darken pulls the photo into the green/black palette */
+      filter: saturate(0.55) brightness(0.4) contrast(1.05);
+    }
+    .room::after {
+      content: ""; position: absolute; inset: 0; z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at center, transparent 25%, #0E1410ee 100%),
+        linear-gradient(180deg, var(--ink) 0%, transparent 16%, transparent 84%, var(--ink) 100%),
+        linear-gradient(180deg, #1B2A2099 0%, #1B2A20cc 100%);
+    }
+    .room .wrap { position: relative; z-index: 2; }
+    .room-copy {
+      max-width: 720px; margin: 0 auto;
+      text-align: left;
+    }
+    .room-copy h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(34px, 4.5vw, 50px);
+      margin: 14px 0 22px;
+      line-height: 1.1;
+    }
+    .room-copy p { color: var(--paper); opacity: 0.92; margin: 0 0 18px; text-shadow: 0 2px 14px #00000066; }
+    .room-copy .signature {
+      margin-top: 28px;
+      font-family: 'Cormorant Garamond', serif; font-style: italic;
+      color: var(--brass); font-size: 22px;
+    }
+    .room-detail {
+      list-style: none; padding: 0; margin: 28px 0 0;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px;
+    }
+    @media (max-width: 560px) { .room-detail { grid-template-columns: 1fr; } }
+    .room-detail li {
+      font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.78;
+      padding-left: 18px; position: relative;
+    }
+    .room-detail li::before {
+      content: ""; position: absolute; left: 0; top: 9px;
+      width: 8px; height: 1px; background: var(--mustard);
+    }
+
+    /* -------- services -------- */
+    .services { background: var(--forest); position: relative; overflow: hidden; }
+    .services .leaf-bg {
+      position: absolute; left: -120px; bottom: -100px; width: 460px; height: 460px;
+      opacity: 0.08; color: var(--brass); transform: rotate(-25deg);
+      pointer-events: none;
+    }
+    .svc-grid { display: grid; gap: 28px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 820px) { .svc-grid { grid-template-columns: 1fr; } }
+    .svc {
+      border: 1px solid var(--rule);
+      padding: 44px clamp(24px, 4vw, 44px);
+      background: linear-gradient(180deg, #243A2C 0%, #182722 100%);
+      position: relative;
+    }
+    .svc::after {
+      content: ""; position: absolute; left: 24px; right: 24px; top: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, #c8a95e44, transparent);
+    }
+    .svc h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: 32px;
+      margin: 8px 0 6px;
+      color: var(--paper);
+    }
+    .svc .kicker {
+      font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase;
+      color: var(--mustard);
+    }
+    .svc ul { list-style: none; padding: 0; margin: 28px 0 0; }
+    .svc li {
+      padding: 14px 0;
+      border-bottom: 1px dashed var(--rule);
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 16px;
+    }
+    .svc li:last-child { border-bottom: 0; }
+    .svc li .name { color: var(--paper); }
+    .svc li .meta { color: var(--paper); opacity: 0.5; font-size: 13px; font-style: italic; }
+    .svc-foot {
+      margin-top: 22px;
+      font-size: 12px; color: var(--paper); opacity: 0.55; line-height: 1.6;
+    }
+
+    /* -------- small details -------- */
+    .extras { background: linear-gradient(180deg, #182722 0%, #0E1410 100%); padding-top: clamp(60px, 8vw, 100px); padding-bottom: clamp(60px, 8vw, 100px); }
+    .extras-grid { display: grid; gap: 24px; grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 820px) { .extras-grid { grid-template-columns: 1fr; } }
+    .extra {
+      text-align: center;
+      padding: 36px 24px;
+      border: 1px solid var(--rule);
+      background: #0a100c;
+    }
+    .extra .ico { width: 36px; height: 36px; margin: 0 auto 16px; color: var(--brass); }
+    .extra h4 { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; margin: 0 0 8px; color: var(--paper); }
+    .extra p { margin: 0; font-size: 14px; color: var(--paper); opacity: 0.7; }
+
+    /* -------- atmospheric photo band --------
+       Photos used as quiet texture between sections rather than as a
+       gallery. Heavy gradient at top & bottom blends the band into the
+       dark sections above and below; a green tint pulls the colour into
+       the site's palette so it reads as atmosphere, not a photo card. */
+    .band {
+      position: relative;
+      padding: 0;
+      background: var(--ink);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .band-photo {
+      position: absolute; inset: 0;
+      background-position: center;
+      background-size: cover;
+      filter: saturate(0.55) brightness(0.42) contrast(1.05);
+      z-index: 0;
+    }
+    /* dark green wash that pulls the photo into the palette */
+    .band::before {
+      content: ""; position: absolute; inset: 0; z-index: 1;
+      background:
+        radial-gradient(ellipse at center, transparent 25%, #0E1410ee 100%),
+        linear-gradient(180deg, var(--ink) 0%, transparent 16%, transparent 84%, var(--ink) 100%),
+        linear-gradient(180deg, #1B2A2099 0%, #1B2A20cc 100%);
+      pointer-events: none;
+    }
+    .band-inner {
+      position: relative; z-index: 2;
+      max-width: 760px; margin: 0 auto;
+      padding: clamp(120px, 18vw, 200px) var(--pad);
+      text-align: center;
+    }
+    .band-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: clamp(22px, 2.6vw, 30px);
+      line-height: 1.4;
+      color: var(--paper);
+      margin: 0;
+      text-shadow: 0 4px 30px #00000099;
+    }
+    .band-eyebrow {
+      display: block;
+      margin-bottom: 22px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--brass); opacity: 0.85;
+    }
+
+    /* -------- visit -------- */
+    .visit { background: linear-gradient(180deg, #0E1410 0%, #1B2A20 100%); position: relative; overflow: hidden; }
+    .visit-grid { display: grid; gap: clamp(40px, 6vw, 80px); grid-template-columns: 1fr 1fr; align-items: start; }
+    @media (max-width: 820px) { .visit-grid { grid-template-columns: 1fr; } }
+
+    .hours { margin: 0; }
+    .hours dt {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--brass); margin-top: 22px;
+    }
+    .hours dt:first-child { margin-top: 0; }
+    .hours dd {
+      margin: 6px 0 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px; color: var(--paper); line-height: 1.55;
+    }
+    .hours dd a { text-decoration: none; border-bottom: 1px solid #c8a95e44; }
+    .hours dd a:hover { color: var(--brass); }
+    .hours table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .hours table td {
+      padding: 8px 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 19px; color: var(--paper);
+      border-bottom: 1px dashed var(--rule);
+    }
+    .hours table td.day { width: 50%; opacity: 0.85; }
+    .hours table td.time { text-align: right; opacity: 0.95; }
+    .hours table tr.today td { color: var(--mustard); }
+    .hours .today-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--mustard); margin-right: 8px; vertical-align: middle; }
+
+    .visit-cta {
+      border: 1px solid var(--rule);
+      padding: 44px clamp(24px, 4vw, 44px);
+      background: #0a100c;
+      text-align: center;
+    }
+    .visit-cta .eyebrow { color: var(--brass); }
+    .visit-cta .num {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(36px, 5vw, 52px);
+      letter-spacing: 0.04em;
+      color: var(--paper);
+      margin: 18px 0 24px;
+    }
+    .visit-cta a.call {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 16px 28px;
+      border: 1px solid var(--mustard); color: var(--mustard);
+      text-decoration: none;
+      font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+      transition: background 240ms ease, color 240ms ease;
+    }
+    .visit-cta a.call:hover { background: var(--mustard); color: var(--ink); }
+    .visit-cta .note { margin-top: 22px; font-size: 12px; color: var(--paper); opacity: 0.6; line-height: 1.6; }
+    .visit-cta .review-badge {
+      margin-top: 22px;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 16px;
+      border: 1px solid #c8a95e44;
+      font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.85;
+    }
+    .visit-cta .review-badge .stars { color: var(--mustard); letter-spacing: 0.05em; font-size: 13px; }
+
+    /* -------- footer -------- */
+    footer {
+      padding: 48px var(--pad) 36px;
+      border-top: 1px solid var(--rule);
+      text-align: center;
+      font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.6;
+      background: var(--ink);
+    }
+    footer .mono {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 18px; letter-spacing: 0.04em;
+      text-transform: none;
+      color: var(--brass);
+      margin-bottom: 12px;
+      opacity: 0.95;
+    }
+    /* designer credit — "Cut & finished by Pulse Intelligence" puns on the
+       salon's "Cut & finish" service so it both credits the build clearly
+       and rhymes with the rest of the page. */
+    .credit {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--rule);
+      display: inline-flex; align-items: baseline; gap: 10px;
+      font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--paper); opacity: 0.65;
+    }
+    .credit a { text-decoration: none; color: inherit; transition: color 240ms ease, opacity 240ms ease; }
+    .credit a:hover { color: var(--brass); opacity: 1; }
+    .credit .studio {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      color: var(--brass);
+      opacity: 0.92;
+    }
+    .credit .dot { opacity: 0.5; }
+
+    /* -------- reveal animation --------
+       Default state is visible. The .js-reveal class is added by JS on
+       boot so reveal-prepared elements start hidden ONLY when JS is
+       available; if JS fails or the IntersectionObserver never fires,
+       content stays visible. */
+    .reveal { transition: opacity 800ms ease, transform 800ms ease; }
+    .js-reveal .reveal:not(.in) { opacity: 0; transform: translateY(14px); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== reusable monstera/palm SVG symbols ===== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="leaf" viewBox="0 0 200 200">
+        <g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M100 195 Q102 150 100 110 Q98 70 100 20" />
+          <path d="M100 30 C 60 35, 35 60, 30 95 C 28 115, 36 130, 50 138 C 60 142, 68 138, 75 130 C 80 124, 80 116, 75 110 C 70 104, 62 104, 58 110 C 55 116, 58 124, 65 128 M100 30 C 140 35, 165 60, 170 95 C 172 115, 164 130, 150 138 C 140 142, 132 138, 125 130 C 120 124, 120 116, 125 110 C 130 104, 138 104, 142 110 C 145 116, 142 124, 135 128" opacity="0.9"/>
+          <path d="M100 60 L70 75 M100 80 L62 95 M100 100 L58 115 M100 120 L66 135 M100 60 L130 75 M100 80 L138 95 M100 100 L142 115 M100 120 L134 135" opacity="0.5"/>
+        </g>
+      </symbol>
+      <symbol id="palm" viewBox="0 0 200 200">
+        <g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <path d="M100 200 Q102 130 100 30" />
+          <path d="M100 50 Q60 40 30 60 M100 50 Q140 40 170 60 M100 70 Q55 65 28 90 M100 70 Q145 65 172 90 M100 92 Q55 92 30 120 M100 92 Q145 92 170 120 M100 112 Q60 118 38 145 M100 112 Q140 118 162 145" opacity="0.8"/>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ===== speakeasy splash ===== -->
+  <div id="splash" role="dialog" aria-label="Enter">
+    <div class="leaf leaf-tl"><svg><use href="#leaf"/></svg></div>
+    <div class="leaf leaf-br"><svg><use href="#palm"/></svg></div>
+    <div class="splash-inner">
+      <div class="splash-mono">T</div>
+      <div class="splash-sub">By Appointment</div>
+      <div class="splash-prompt">Please enter the code</div>
+      <form id="codeForm" class="code-row" autocomplete="off">
+        <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" autofocus aria-label="Code digit 1" />
+        <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 2" />
+        <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 3" />
+        <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 4" />
+      </form>
+      <div id="splashHint" class="splash-hint">Hutton Rudby &middot; Members Only</div>
+    </div>
+  </div>
+
+  <!-- ===== top bar ===== -->
+  <div class="topbar">
+    <div>Thor &middot; Hutton Rudby</div>
+    <div class="topbar-right">
+      <a href="#room">The room</a>
+      <a href="#services">Services</a>
+      <a href="#visit">Visit</a>
+      <a href="tel:+441642701197">01642 701197</a>
+    </div>
+  </div>
+
+  <!-- ===== hero ===== -->
+  <header class="hero">
+    <div class="leaf leaf-l"><svg><use href="#palm"/></svg></div>
+    <div class="leaf leaf-r"><svg><use href="#leaf"/></svg></div>
+    <div class="hero-inner">
+      <h1 class="hero-mark">THOR</h1>
+      <div class="hero-sub">At Hutton Rudby &middot; North Yorkshire</div>
+      <p class="hero-tagline">A small, considered hair salon on the village green. Deep green walls, mustard chairs, good coffee.</p>
+      <a class="hero-cta" href="tel:+441642701197">
+        <span>Call to book</span>
+        <span class="num">01642 701197</span>
+      </a>
+    </div>
+    <div class="scroll-cue"><span>Step inside</span><span class="line"></span></div>
+  </header>
+
+  <!-- ===== the room (atmospheric photo background) =====
+       DEMO NOTE: every photo on this page (exterior-night, interior, wash,
+       corner) is a demo placeholder pulled from the salon's Google Maps
+       listing. Before launch all should be replaced with originals from
+       Thor / his photographer. -->
+  <section id="room" class="room">
+    <div class="room-bg" style="background-image: url('interior.jpg');" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="room-copy reveal">
+        <span class="eyebrow">The room</span>
+        <h2>A jungle, a chair, a quiet hour.</h2>
+        <p>Behind a painted blue-grey shopfront on the south side of Hutton Rudby, the room opens into deep green walls, a botanical mural, dark walnut floors and two mustard mid-century chairs. A scattering of palms, brass fittings, framed bird prints and a faint wash of pink neon at the back.</p>
+        <p>It is small on purpose. One or two guests at a time, no rush, the kettle on. Most appointments arrive by recommendation and stay for years.</p>
+        <ul class="room-detail">
+          <li>Forest green walls</li>
+          <li>Mustard chairs</li>
+          <li>Walnut floor</li>
+          <li>Botanical mural</li>
+          <li>Brass &amp; black-tile wash</li>
+          <li>Coffee on the table</li>
+        </ul>
+        <p class="signature">Thor</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== services ===== -->
+  <section id="services" class="services">
+    <div class="leaf-bg"><svg><use href="#palm"/></svg></div>
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">What we do</span>
+        <h2>Services</h2>
+        <div class="rule"></div>
+      </div>
+
+      <div class="svc-grid">
+        <div class="svc reveal">
+          <span class="kicker">For her</span>
+          <h3>Hair, considered</h3>
+          <ul>
+            <li><span class="name">Cut &amp; finish</span><span class="meta">consultation included</span></li>
+            <li><span class="name">Restyle</span><span class="meta">extended appointment</span></li>
+            <li><span class="name">Colour &middot; root tint</span><span class="meta">single process</span></li>
+            <li><span class="name">Highlights &middot; full / half head</span><span class="meta">with toner</span></li>
+            <li><span class="name">Balayage</span><span class="meta">hand painted</span></li>
+            <li><span class="name">Blow-dry</span><span class="meta">soft, polished</span></li>
+            <li><span class="name">Bridal &amp; occasion</span><span class="meta">by arrangement</span></li>
+            <li><span class="name">Conditioning treatments</span><span class="meta">added to any service</span></li>
+          </ul>
+          <p class="svc-foot">A consultation is part of every first appointment. Pricing is given in person and depends on length, density and time in the chair.</p>
+        </div>
+
+        <div class="svc reveal">
+          <span class="kicker">For him</span>
+          <h3>Quiet grooming</h3>
+          <ul>
+            <li><span class="name">Cut &amp; finish</span><span class="meta">scissor or clipper</span></li>
+            <li><span class="name">Skin fade</span><span class="meta">when wanted</span></li>
+            <li><span class="name">Beard tidy</span><span class="meta">with the cut</span></li>
+            <li><span class="name">Grey blending</span><span class="meta">discreet, low maintenance</span></li>
+          </ul>
+          <p class="svc-foot">Bookings for men are taken alongside the main diary. The room is kept the same: one chair, no rush.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== small details ===== -->
+  <section class="extras">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Small things</span>
+        <h2>The other reasons people stay.</h2>
+      </div>
+      <div class="extras-grid">
+        <div class="extra reveal">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 8h13a4 4 0 0 1 0 8H3z"/><path d="M16 8h2a3 3 0 0 1 0 6h-2"/><path d="M5 4v2M9 4v2M13 4v2"/>
+          </svg>
+          <h4>Coffee &amp; tea</h4>
+          <p>Made properly. Sometimes there are gluten-free biscuits.</p>
+        </div>
+        <div class="extra reveal">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>
+          </svg>
+          <h4>One conversation</h4>
+          <p>One or two guests in the room at a time. Take your time.</p>
+        </div>
+        <div class="extra reveal">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 4h14v3a4 4 0 0 1-4 4h-6a4 4 0 0 1-4-4z"/><path d="M12 11v6"/><path d="M9 20h6"/>
+          </svg>
+          <h4>The wash</h4>
+          <p>Black tile and brass fittings. Room to lean back.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== atmospheric band (a corner of the room, blended) ===== -->
+  <section class="band" aria-label="A corner of the room">
+    <div class="band-photo" style="background-image: url('corner.jpg');" role="img" aria-label="A corner of the salon: green walls, plants, ring light, faint green neon."></div>
+    <div class="band-inner">
+      <span class="band-eyebrow">Inside</span>
+      <p class="band-quote">Soft music, plants by the window, the kettle on.</p>
+    </div>
+  </section>
+
+  <!-- ===== atmospheric band (the wash, blended) ===== -->
+  <section class="band" aria-label="The wash area">
+    <div class="band-photo" style="background-image: url('wash.jpg');" role="img" aria-label="The wash basin area at Thor: black-tile walls, two black leather wash chairs."></div>
+    <div class="band-inner">
+      <span class="band-eyebrow">The wash</span>
+      <p class="band-quote">Black tile, brass fittings, leather chairs that lean back. The pause between cut and finish.</p>
+    </div>
+  </section>
+
+  <!-- ===== visit ===== -->
+  <section id="visit" class="visit">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Find us</span>
+        <h2>Visit</h2>
+        <div class="rule"></div>
+      </div>
+
+      <div class="visit-grid">
+        <dl class="hours reveal">
+          <dt>Address</dt>
+          <dd>
+            <a href="https://www.google.com/maps/place/THOR+at+Hutton+Rudby" target="_blank" rel="noopener">
+              8a South Side<br/>Hutton Rudby<br/>North Yorkshire&nbsp;&middot;&nbsp;TS15&nbsp;0DD
+            </a>
+          </dd>
+
+          <dt>Telephone</dt>
+          <dd><a href="tel:+441642701197">01642&nbsp;701197</a></dd>
+
+          <dt>Opening hours</dt>
+          <dd>
+            <table id="hours-table">
+              <tr data-day="1"><td class="day">Monday</td><td class="time">Closed</td></tr>
+              <tr data-day="2"><td class="day">Tuesday</td><td class="time">8:30 &ndash; 19:30</td></tr>
+              <tr data-day="3"><td class="day">Wednesday</td><td class="time">8:30 &ndash; 18:30</td></tr>
+              <tr data-day="4"><td class="day">Thursday</td><td class="time">8:30 &ndash; 20:00</td></tr>
+              <tr data-day="5"><td class="day">Friday</td><td class="time">8:30 &ndash; 18:30</td></tr>
+              <tr data-day="6"><td class="day">Saturday</td><td class="time">8:30 &ndash; 16:00</td></tr>
+              <tr data-day="0"><td class="day">Sunday</td><td class="time">Closed</td></tr>
+            </table>
+          </dd>
+
+          <dt>Booking</dt>
+          <dd>By telephone only.<br/><span style="opacity:.55;font-size:15px">Appointments are required. A short call helps us match you with the right slot.</span></dd>
+        </dl>
+
+        <div class="visit-cta reveal">
+          <span class="eyebrow">Call to book</span>
+          <span class="num">01642&nbsp;701197</span>
+          <a class="call" href="tel:+441642701197">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span>Tap to call</span>
+          </a>
+          <p class="note">We don&rsquo;t take bookings online. Please ring the salon and we&rsquo;ll find a time that works.</p>
+          <div class="review-badge">
+            <span class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+            <span>4.9 on Google &middot; 18 reviews</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== footer ===== -->
+  <footer>
+    <div class="mono">Thor</div>
+    <div>8a South Side &middot; Hutton Rudby &middot; TS15&nbsp;0DD &middot; 01642&nbsp;701197</div>
+    <div style="margin-top:14px; opacity:.7;">&copy; <span id="yr"></span> Thor at Hutton Rudby Ltd</div>
+    <div class="credit">
+      <a href="https://dean.id" target="_blank" rel="noopener" title="site by dean.id">site by dean.id</a>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // highlight today's row in the hours table
+    (function () {
+      const today = new Date().getDay();
+      const row = document.querySelector('#hours-table tr[data-day="' + today + '"]');
+      if (row) {
+        row.classList.add('today');
+        const dayCell = row.querySelector('.day');
+        if (dayCell) {
+          const dot = document.createElement('span');
+          dot.className = 'today-dot';
+          dayCell.prepend(dot);
+        }
+      }
+    })();
+
+    // ===== speakeasy splash =====
+    // Real lock: the code is 7777. Wrong codes get rejected with a shake.
+    // Once entered correctly, we remember it in localStorage so refreshes
+    // and return visits skip the splash entirely.
+    (function () {
+      const splash    = document.getElementById('splash');
+      const cells     = Array.from(document.querySelectorAll('.code-cell'));
+      const form      = document.getElementById('codeForm');
+      const row       = form;
+      const hint      = document.getElementById('splashHint');
+      const hintText  = hint && hint.textContent;
+      const CODE      = '7777';
+      const STORE_KEY = 'thor.unlocked.v1';
+
+      // helpers tolerant of private-mode / storage-disabled browsers
+      function isUnlocked() {
+        try { return localStorage.getItem(STORE_KEY) === '1'; } catch (e) { return false; }
+      }
+      function rememberUnlocked() {
+        try { localStorage.setItem(STORE_KEY, '1'); } catch (e) { /* private mode etc. */ }
+      }
+
+      // ---- already unlocked? skip splash without animation ----
+      if (isUnlocked()) {
+        splash.style.transition = 'none';
+        splash.style.display = 'none';
+        document.body.style.overflow = '';
+        return;
+      }
+
+      function dismiss() {
+        rememberUnlocked();
+        splash.classList.add('is-out');
+        document.body.style.overflow = '';
+        setTimeout(() => { splash.style.display = 'none'; }, 900);
+      }
+
+      function reject() {
+        cells.forEach(c => c.classList.add('error'));
+        row.classList.remove('shake');
+        // force reflow so the animation restarts on repeated rejects
+        void row.offsetWidth;
+        row.classList.add('shake');
+        hint.classList.add('is-error');
+        hint.textContent = 'Wrong code. Try again.';
+        setTimeout(() => {
+          cells.forEach(c => { c.value = ''; c.classList.remove('filled', 'error'); });
+          hint.classList.remove('is-error');
+          hint.textContent = hintText;
+          cells[0].focus();
+        }, 850);
+      }
+
+      function tryCode() {
+        const entered = cells.map(c => c.value).join('');
+        if (entered.length < CODE.length) return;
+        if (entered === CODE) dismiss();
+        else reject();
+      }
+
+      // lock scroll while splash is up
+      document.body.style.overflow = 'hidden';
+
+      // focus aggressively (autofocus attribute is set, but call too,
+      // including after layout settles, so it works across browsers)
+      function focusFirst() { try { cells[0] && cells[0].focus({ preventScroll: true }); } catch (e) { cells[0] && cells[0].focus(); } }
+      focusFirst();
+      requestAnimationFrame(focusFirst);
+      setTimeout(focusFirst, 60);
+      setTimeout(focusFirst, 250);
+      // also focus when the user clicks anywhere on the splash
+      splash.addEventListener('click', focusFirst);
+
+      cells.forEach((cell, i) => {
+        cell.addEventListener('input', (e) => {
+          // restrict to digits
+          const v = (e.target.value || '').replace(/\D/g, '').slice(-1);
+          cell.value = v;
+          if (v) {
+            cell.classList.add('filled');
+            cell.classList.remove('error');
+            const next = cells[i + 1];
+            if (next) next.focus();
+            else setTimeout(tryCode, 180);
+          } else {
+            cell.classList.remove('filled');
+          }
+        });
+        cell.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !cell.value && i > 0) cells[i - 1].focus();
+          if (e.key === 'Enter') { e.preventDefault(); tryCode(); }
+        });
+        // paste a 4-digit code into any cell
+        cell.addEventListener('paste', (e) => {
+          const t = (e.clipboardData || window.clipboardData).getData('text') || '';
+          const digits = t.replace(/\D/g, '').slice(0, cells.length);
+          if (digits.length) {
+            e.preventDefault();
+            digits.split('').forEach((d, k) => {
+              const c = cells[k];
+              if (c) { c.value = d; c.classList.add('filled'); c.classList.remove('error'); }
+            });
+            (cells[digits.length] || cells[cells.length - 1]).focus();
+            if (digits.length >= cells.length) setTimeout(tryCode, 180);
+          }
+        });
+      });
+
+      form.addEventListener('submit', (e) => { e.preventDefault(); tryCode(); });
+    })();
+
+    // ===== reveal on scroll =====
+    (function () {
+      // opt-in to hidden initial state only once JS is running
+      document.documentElement.classList.add('js-reveal');
+      const els = document.querySelectorAll('.reveal');
+
+      function showAll() { els.forEach(el => el.classList.add('in')); }
+
+      // safety net: if anything goes wrong, content always shows after 2.5s
+      const safety = setTimeout(showAll, 2500);
+
+      if (!('IntersectionObserver' in window)) { showAll(); return; }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(en => {
+          if (en.isIntersecting) {
+            en.target.classList.add('in');
+            io.unobserve(en.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      els.forEach(el => io.observe(el));
+    })();
+  </script>
+</body>
+</html>
