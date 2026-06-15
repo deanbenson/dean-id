@@ -73,10 +73,6 @@
     .rule { width: 60px; height: 1px; background: var(--brass); opacity: 0.7; margin: 28px auto; }
     .rule.left { margin-left: 0; }
 
-    /* -------- botanical SVG accents (decorative) -------- */
-    .leaf { position: absolute; pointer-events: none; opacity: 0.18; color: var(--brass); }
-    .leaf svg { width: 100%; height: 100%; display: block; }
-
     /* -------- splash / "speakeasy" entry -------- */
     #splash {
       position: fixed; inset: 0; z-index: 100;
@@ -164,11 +160,17 @@
       transition: color 200ms ease, opacity 200ms ease;
     }
     .splash-hint.is-error { color: #d97a7a; opacity: 0.95; }
-    #splash .leaf-tl { top: -40px; left: -30px; width: 260px; height: 260px; transform: rotate(20deg); opacity: 0.32; }
-    #splash .leaf-br { bottom: -60px; right: -40px; width: 320px; height: 320px; transform: rotate(200deg); opacity: 0.28; }
-    #splash .leaf-tr { top: -56px; right: -56px; width: 240px; height: 240px; transform: rotate(-44deg); opacity: 0.22; }
-    #splash .leaf-bl { bottom: -54px; left: -48px; width: 300px; height: 300px; transform: rotate(128deg); opacity: 0.20; }
-    #splash .leaf-mid { top: 50%; left: 50%; width: 560px; height: 560px; transform: translate(-50%, -50%) rotate(8deg); opacity: 0.07; }
+    .splash-enquire {
+      margin-top: 30px;
+      font-size: 12.5px; line-height: 1.7;
+      color: var(--paper); opacity: 0.72;
+    }
+    .splash-enquire a {
+      color: var(--brass); text-decoration: none;
+      border-bottom: 1px solid #c8a95e55; padding-bottom: 1px;
+      white-space: nowrap; transition: opacity 200ms ease, border-color 200ms ease;
+    }
+    .splash-enquire a:hover { opacity: 1; border-color: var(--brass); }
 
     /* -------- top bar -------- */
     .topbar {
@@ -181,7 +183,9 @@
     }
     .topbar a { text-decoration: none; }
     .topbar a:hover { color: var(--brass); }
-    .topbar-right { display: flex; gap: 28px; }
+    .topbar-right { display: flex; gap: 28px; align-items: center; }
+    .nav-soon { display: inline-flex; align-items: center; gap: 7px; opacity: 0.6; cursor: default; }
+    .nav-soon .soon-tag { font-size: 8px; letter-spacing: 0.16em; border: 1px solid #c8a95e66; color: var(--brass); padding: 2px 6px; border-radius: 10px; }
     @media (max-width: 700px) {
       .topbar { flex-direction: column; gap: 8px; padding-top: 14px; font-size: 10px; }
       .topbar-right { gap: 16px; flex-wrap: wrap; justify-content: center; }
@@ -248,9 +252,6 @@
     }
     .hero-cta:hover { background: var(--mustard); color: var(--ink); }
     .hero-cta .num { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; letter-spacing: 0.08em; text-transform: none; }
-
-    .hero .leaf-l { left: -60px; top: 18%; width: 320px; height: 320px; transform: rotate(-30deg); z-index: 1; opacity: 0.20; }
-    .hero .leaf-r { right: -80px; bottom: 8%; width: 380px; height: 380px; transform: rotate(160deg); z-index: 1; opacity: 0.20; }
 
     .scroll-cue {
       position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
@@ -329,12 +330,7 @@
     }
 
     /* -------- services -------- */
-    .services { background: var(--forest); position: relative; overflow: hidden; }
-    .services .leaf-bg {
-      position: absolute; left: -120px; bottom: -100px; width: 460px; height: 460px;
-      opacity: 0.08; color: var(--brass); transform: rotate(-25deg);
-      pointer-events: none;
-    }
+    .services { background: var(--forest); position: relative; }
     .svc-grid { display: grid; gap: 28px; grid-template-columns: 1fr 1fr; }
     @media (max-width: 820px) { .svc-grid { grid-template-columns: 1fr; } }
     .svc {
@@ -363,11 +359,11 @@
       padding: 14px 0;
       border-bottom: 1px dashed var(--rule);
       display: flex; justify-content: space-between; align-items: baseline;
-      gap: 16px;
+      gap: 4px 16px; flex-wrap: wrap;
     }
     .svc li:last-child { border-bottom: 0; }
-    .svc li .name { color: var(--paper); }
-    .svc li .meta { color: var(--paper); opacity: 0.5; font-size: 13px; font-style: italic; }
+    .svc li .name { color: var(--paper); min-width: 0; }
+    .svc li .meta { color: var(--paper); opacity: 0.5; font-size: 13px; font-style: italic; text-align: right; padding-right: 2px; }
     .svc-foot {
       margin-top: 22px;
       font-size: 12px; color: var(--paper); opacity: 0.55; line-height: 1.6;
@@ -421,6 +417,10 @@
       padding: clamp(120px, 18vw, 200px) var(--pad);
       text-align: center;
     }
+    .band-inner::before {
+      content: ""; position: absolute; inset: -10% -5%; z-index: -1; pointer-events: none;
+      background: radial-gradient(ellipse 78% 60% at center, rgba(7,13,9,0.66) 0%, rgba(7,13,9,0) 72%);
+    }
     .band-quote {
       font-family: 'Cormorant Garamond', serif;
       font-style: italic;
@@ -435,8 +435,9 @@
       display: block;
       margin-bottom: 22px;
       font-family: 'Inter', sans-serif;
-      font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase;
-      color: var(--brass); opacity: 0.85;
+      font-size: 11px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--mustard); opacity: 1;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.9);
     }
 
     /* -------- visit -------- */
@@ -503,7 +504,9 @@
       border: 1px solid #c8a95e44;
       font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
       color: var(--paper); opacity: 0.85;
+      text-decoration: none; transition: border-color 200ms ease, opacity 200ms ease;
     }
+    .visit-cta a.review-badge:hover { opacity: 1; border-color: var(--mustard); }
     .visit-cta .review-badge .stars { color: var(--mustard); letter-spacing: 0.05em; font-size: 13px; }
 
     /* -------- footer -------- */
@@ -584,22 +587,21 @@
 
   <!-- ===== speakeasy splash ===== -->
   <div id="splash" role="dialog" aria-label="Enter">
-    <div class="leaf leaf-mid"><svg><use href="#palm"/></svg></div>
-    <div class="leaf leaf-tl"><svg><use href="#leaf"/></svg></div>
-    <div class="leaf leaf-br"><svg><use href="#palm"/></svg></div>
-    <div class="leaf leaf-tr"><svg><use href="#palm"/></svg></div>
-    <div class="leaf leaf-bl"><svg><use href="#leaf"/></svg></div>
     <div class="splash-inner">
       <img class="splash-crest" src="crest.png" alt="Thor" width="232" />
-      <div class="splash-sub">By Appointment</div>
-      <div class="splash-prompt">Please enter the code</div>
+      <div class="splash-sub">By Appointment Only</div>
+      <div class="splash-prompt">Members, enter your code</div>
       <form id="codeForm" class="code-row" autocomplete="off">
         <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" autofocus aria-label="Code digit 1" />
         <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 2" />
         <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 3" />
         <input class="code-cell" maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="Code digit 4" />
       </form>
-      <div id="splashHint" class="splash-hint">Hutton Rudby &middot; Members Only</div>
+      <div id="splashHint" class="splash-hint">Hutton Rudby, North Yorkshire</div>
+      <div class="splash-enquire">
+        New to Thor, or visiting again? We see clients by appointment.<br/>
+        <a href="tel:+441642701197">Call 01642&nbsp;701197 to book</a>
+      </div>
     </div>
   </div>
 
@@ -610,14 +612,13 @@
       <a href="#room">The room</a>
       <a href="#services">Services</a>
       <a href="#visit">Visit</a>
+      <span class="nav-soon">Shop <span class="soon-tag">soon</span></span>
       <a href="tel:+441642701197">01642 701197</a>
     </div>
   </div>
 
   <!-- ===== hero ===== -->
   <header class="hero">
-    <div class="leaf leaf-l"><svg><use href="#palm"/></svg></div>
-    <div class="leaf leaf-r"><svg><use href="#leaf"/></svg></div>
     <div class="hero-inner">
       <img class="hero-crest" src="crest.png" alt="" aria-hidden="true" />
       <h1 class="hero-mark">THOR</h1>
@@ -657,7 +658,6 @@
 
   <!-- ===== services ===== -->
   <section id="services" class="services">
-    <div class="leaf-bg"><svg><use href="#palm"/></svg></div>
     <div class="wrap">
       <div class="section-head reveal">
         <span class="eyebrow">What we do</span>
@@ -735,8 +735,8 @@
   <section class="band" aria-label="A corner of the room">
     <div class="band-photo" style="background-image: url('inside.jpg');" role="img" aria-label="Inside Thor: deep green walls, framed bird prints, plants and warm light."></div>
     <div class="band-inner">
-      <span class="band-eyebrow">Inside</span>
-      <p class="band-quote">Soft music, palms by the window, and more room than you&rsquo;d think from the street.</p>
+      <span class="band-eyebrow">The craft</span>
+      <p class="band-quote">Precision cutting, expert colour and balayage, from stylists who really know their craft.</p>
     </div>
   </section>
 
@@ -795,10 +795,10 @@
             <span>Tap to call</span>
           </a>
           <p class="note">We don&rsquo;t take bookings online. Please ring the salon and we&rsquo;ll find a time that works.</p>
-          <div class="review-badge">
+          <a class="review-badge" href="https://www.google.com/maps/place/THOR+at+Hutton+Rudby" target="_blank" rel="noopener">
             <span class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
             <span>4.9 on Google &middot; 18 reviews</span>
-          </div>
+          </a>
         </div>
       </div>
     </div>
