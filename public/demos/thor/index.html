@@ -11,9 +11,11 @@
   <meta property="og:description" content="Thor is a hair salon on the village green at Hutton Rudby. A small shopfront with far more room inside than it looks. Deep green walls, plants, and stylists who know their craft. By appointment. 01642 701197." />
   <meta property="og:url" content="https://dean.id/demos/thor/" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://dean.id/demos/thor/shopfront.jpg" />
+  <meta property="og:image" content="https://dean.id/demos/thor/og.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://dean.id/demos/thor/shopfront.jpg" />
+  <meta name="twitter:image" content="https://dean.id/demos/thor/og.jpg" />
+  <link rel="icon" type="image/png" href="crest-icon.png" />
+  <link rel="apple-touch-icon" href="crest-icon.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -79,7 +81,8 @@
     #splash {
       position: fixed; inset: 0; z-index: 100;
       background:
-        radial-gradient(ellipse at 50% 36%, #2F5A3C 0%, #16301F 46%, #070D09 100%),
+        radial-gradient(ellipse at 50% 38%, rgba(30,58,40,0.68) 0%, rgba(13,26,17,0.85) 55%, rgba(7,13,9,0.96) 100%),
+        url('splash-jungle.jpg') center 35% / cover no-repeat,
         var(--forest);
       display: grid; place-items: center;
       transition: opacity 800ms ease, visibility 800ms ease;
@@ -98,11 +101,11 @@
       text-align: center;
       padding: 40px 28px;
     }
-    .splash-mono {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 72px; line-height: 1; color: var(--brass);
-      letter-spacing: 0.04em; font-weight: 500;
-      text-shadow: 0 4px 30px #00000040;
+    .splash-crest {
+      width: min(232px, 56vw);
+      height: auto;
+      margin: 0 auto;
+      filter: drop-shadow(0 12px 36px rgba(0,0,0,0.6));
     }
     .splash-sub {
       margin-top: 14px;
@@ -206,6 +209,7 @@
       z-index: 0;
     }
     .hero-inner { position: relative; z-index: 2; max-width: 920px; }
+    .hero-crest { width: min(150px, 32vw); height: auto; margin: 0 auto 18px; filter: drop-shadow(0 8px 28px rgba(0,0,0,0.55)); }
     .hero-mark {
       font-family: 'Cormorant Garamond', serif;
       font-weight: 500;
@@ -520,6 +524,7 @@
       margin-bottom: 12px;
       opacity: 0.95;
     }
+    footer .footer-crest { width: 76px; height: auto; margin: 0 auto 16px; opacity: 0.9; }
     /* designer credit: a small "site by dean.id" stamp linking back to dean.id. */
     .credit {
       margin-top: 28px;
@@ -585,7 +590,7 @@
     <div class="leaf leaf-tr"><svg><use href="#palm"/></svg></div>
     <div class="leaf leaf-bl"><svg><use href="#leaf"/></svg></div>
     <div class="splash-inner">
-      <div class="splash-mono">T</div>
+      <img class="splash-crest" src="crest.png" alt="Thor" width="232" />
       <div class="splash-sub">By Appointment</div>
       <div class="splash-prompt">Please enter the code</div>
       <form id="codeForm" class="code-row" autocomplete="off">
@@ -614,6 +619,7 @@
     <div class="leaf leaf-l"><svg><use href="#palm"/></svg></div>
     <div class="leaf leaf-r"><svg><use href="#leaf"/></svg></div>
     <div class="hero-inner">
+      <img class="hero-crest" src="crest.png" alt="" aria-hidden="true" />
       <h1 class="hero-mark">THOR</h1>
       <div class="hero-sub">At Hutton Rudby &middot; North Yorkshire</div>
       <p class="hero-tagline">A small shopfront on the village green that&rsquo;s much bigger inside than it looks. Green walls, plants everywhere, and stylists who really know what they&rsquo;re doing.</p>
@@ -626,12 +632,10 @@
   </header>
 
   <!-- ===== the room (atmospheric photo background) =====
-       DEMO NOTE: every photo on this page (exterior-night, interior, wash,
-       corner) is a demo placeholder pulled from the salon's Google Maps
-       listing. Before launch all should be replaced with originals from
-       Thor / his photographer. -->
+       Photos are Thor's own salon images (jungle mural, interior, the wash)
+       plus the storefront. The gold crest is Thor's logo. -->
   <section id="room" class="room">
-    <div class="room-bg" style="background-image: url('interior.jpg');" aria-hidden="true"></div>
+    <div class="room-bg" style="background-image: url('mural.jpg');" aria-hidden="true"></div>
     <div class="wrap">
       <div class="room-copy reveal">
         <span class="eyebrow">The room</span>
@@ -729,7 +733,7 @@
 
   <!-- ===== atmospheric band (a corner of the room, blended) ===== -->
   <section class="band" aria-label="A corner of the room">
-    <div class="band-photo" style="background-image: url('corner.jpg');" role="img" aria-label="A corner of the salon: green walls, plants, ring light, faint green neon."></div>
+    <div class="band-photo" style="background-image: url('inside.jpg');" role="img" aria-label="Inside Thor: deep green walls, framed bird prints, plants and warm light."></div>
     <div class="band-inner">
       <span class="band-eyebrow">Inside</span>
       <p class="band-quote">Soft music, palms by the window, and more room than you&rsquo;d think from the street.</p>
@@ -738,7 +742,7 @@
 
   <!-- ===== atmospheric band (the wash, blended) ===== -->
   <section class="band" aria-label="The wash area">
-    <div class="band-photo" style="background-image: url('wash.jpg');" role="img" aria-label="The wash area at Thor, where treatments and conditioning are worked in by hand."></div>
+    <div class="band-photo" style="background-image: url('washroom.jpg');" role="img" aria-label="The wash area at Thor, where treatments and conditioning are worked in by hand."></div>
     <div class="band-inner">
       <span class="band-eyebrow">The wash</span>
       <p class="band-quote">Treatments, good products and a proper scalp massage. The bit between cut and finish where you actually relax.</p>
@@ -802,6 +806,7 @@
 
   <!-- ===== footer ===== -->
   <footer>
+    <img class="footer-crest" src="crest.png" alt="Thor" width="76" />
     <div class="mono">Thor</div>
     <div>8a South Side &middot; Hutton Rudby &middot; TS15&nbsp;0DD &middot; 01642&nbsp;701197</div>
     <div style="margin-top:14px; opacity:.7;">&copy; <span id="yr"></span> Thor at Hutton Rudby Ltd</div>
