@@ -1,7 +1,7 @@
 const ME = {
   name: "Dean Benson",
   status: "online",
-  location: "North Yorkshire, UK",
+  location: "North East, UK",
   stack: ["ai", "tech", "automation", "web", "strategy"],
   currently: "helping businesses do more with less",
   contact: "hello@dean.id",
@@ -37,11 +37,11 @@ const HOME = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dean.id · Dean Benson</title>
-<meta name="description" content="ai, tech, automation, web, strategy. North Yorkshire, UK.">
+<meta name="description" content="ai, tech, automation, web, strategy. North East, UK.">
 <meta name="theme-color" content="#111113">
 <link rel="canonical" href="https://dean.id/">
 <meta property="og:title" content="dean.id · Dean Benson">
-<meta property="og:description" content="ai, tech, automation, web, strategy. North Yorkshire, UK. It's a real API: curl dean.id/v1/me">
+<meta property="og:description" content="ai, tech, automation, web, strategy. North East, UK. It's a real API: curl dean.id/v1/me">
 <meta property="og:url" content="https://dean.id/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="dean.id">
@@ -60,7 +60,7 @@ const HOME = `<!doctype html>
   "name": "Dean Benson",
   "url": "https://dean.id",
   "jobTitle": "AI, tech, automation, web & strategy",
-  "address": { "@type": "PostalAddress", "addressRegion": "North Yorkshire", "addressCountry": "GB" },
+  "address": { "@type": "PostalAddress", "addressRegion": "North East", "addressCountry": "GB" },
   "knowsAbout": ["AI", "automation", "web development", "technology", "business strategy"],
   "mainEntityOfPage": "https://dean.id/v1/me"
 }
@@ -196,7 +196,7 @@ const HOME = `<!doctype html>
 <body>
   <h1 class="sr">dean.id, Dean Benson: ai, tech, automation, web, strategy</h1>
   <main style="display: contents;">
-  <div class="win" role="img" aria-label="Dean Benson, North Yorkshire UK. Helps businesses grow with websites, systems, automation and AI. Contact hello@dean.id. Styled as an API response; a human-readable toggle follows.">
+  <div class="win" role="img" aria-label="Dean Benson, North East UK. Helps businesses grow with websites, systems, automation and AI. Contact hello@dean.id. Styled as an API response; a human-readable toggle follows.">
     <div class="bar">
       <span class="method" id="m">GET</span>
       <span class="url" id="u">https://dean.id/v1/me</span>
@@ -215,7 +215,7 @@ const HOME = `<!doctype html>
     '<span class="p">{</span>',
     '  <span class="k">"name"</span>: <span class="s">"Dean Benson"</span>,',
     '  <span class="k">"status"</span>: <span class="g">"online"</span>,',
-    '  <span class="k">"location"</span>: <span class="s">"North Yorkshire, UK"</span>,',
+    '  <span class="k">"location"</span>: <span class="s">"North East, UK"</span>,',
     '  <span class="k">"stack"</span>: [<span class="s">"ai"</span>, <span class="s">"tech"</span>, <span class="s">"automation"</span>, <span class="s">"web"</span>, <span class="s">"strategy"</span>],',
     '  <span class="k">"currently"</span>: <span class="s">"helping businesses do more with less"</span>,',
     '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>"</span>',
@@ -225,7 +225,7 @@ const HOME = `<!doctype html>
     'Hi, I\\'m Dean.',
     'I help businesses grow. Sharper websites, systems that run themselves, automation that kills the boring work.',
     'I deploy AI that blows minds and quietly makes you money.',
-    'North Yorkshire, UK. Say hello: <a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>',
+    'North East, UK. Say hello: <a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>',
     '<span style="font-size:12.5px; color:#7d8590;">P.S. the other version of this page is dressed up as computer code. Same me, just showing off a bit.</span>'
   ];
   var out = document.getElementById('out');
@@ -495,7 +495,7 @@ export default {
       const llms = [
         "# dean.id",
         "",
-        "> The personal site of Dean Benson: AI, tech, automation, web and strategy. Based in North Yorkshire, UK. Currently helping businesses do more with less.",
+        "> The personal site of Dean Benson: AI, tech, automation, web and strategy. Based in North East, UK. Currently helping businesses do more with less.",
         "",
         "This entire site is served as a JSON API response, because the medium is the message.",
         "",
