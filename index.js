@@ -206,7 +206,7 @@ const HOME = `<!doctype html>
   </div>
   <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
-    <a class="stamp" href="https://dean.id">dean.id<span class="block"></span></a>
+    <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
     <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
   </p>
   </main>
@@ -337,12 +337,6 @@ const BADGE_PAGE = `<!doctype html>
   .hint a { color: #b8b8c0; }
   .api { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: #b8b8c0; background: #1a1a1e; border: 1px solid #26262a; border-radius: 8px; padding: 8px 13px; max-width: 340px; word-break: break-all; }
   .api .m { color: #5DCAA5; }
-  .ctxwrap { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; }
-  .ctxcap { font-size: 11.5px; color: #8a8a93; text-align: center; }
-  .ctx { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; border-radius: 8px; font-size: 11px; }
-  .ctx.d { background: #0d1117; color: #6f7681; border: 1px solid #26262a; }
-  .ctx.l { background: #e9e6df; color: #8a8580; border: 1px solid #d8d4c8; }
-  .ctx img { display: block; flex-shrink: 0; }
   @media (max-width: 480px) {
     .row { flex-wrap: wrap; justify-content: center; }
     .row span { width: 100%; text-align: center; margin: 0 0 2px; }
@@ -360,11 +354,6 @@ const BADGE_PAGE = `<!doctype html>
   <div class="row"><span>background</span><button data-k="theme" data-v="dark" class="on">dark</button><button data-k="theme" data-v="light">light</button><button data-k="theme" data-v="transparent-dark">clear &middot; light text</button><button data-k="theme" data-v="transparent">clear &middot; dark text</button></div>
   <div class="row"><span>cursor</span><button data-k="cursor" data-v="block" class="on">block</button><button data-k="cursor" data-v="underscore">_</button></div>
   <div class="row"><span>blink</span><button data-k="blink" data-v="1" class="on">on</button><button data-k="blink" data-v="0">off</button></div>
-  <div class="ctxwrap">
-    <span class="ctxcap">how it sits in a footer</span>
-    <div class="ctx d"><span>&copy; 2026 yoursite.com</span><img id="cd" src="/badge.svg" alt="" width="92" height="26"></div>
-    <div class="ctx l"><span>&copy; 2026 yoursite.com</span><img id="cl" src="/badge.svg" alt="" width="92" height="26"></div>
-  </div>
   <p class="hint" id="hint">click the stamp to copy its embed code &middot; <a href="/">dean.id</a></p>
   </main>
 <script>
@@ -377,10 +366,7 @@ const BADGE_PAGE = `<!doctype html>
     return p.length ? '?' + p.join('&') : '';
   }
   function update() {
-    var src = '/badge.svg' + qs();
-    document.getElementById('pv').src = src;
-    document.getElementById('cd').src = src;
-    document.getElementById('cl').src = src;
+    document.getElementById('pv').src = '/badge.svg' + qs();
     document.getElementById('apiurl').textContent = 'https://dean.id/badge.svg' + qs();
     var st = document.getElementById('stage');
     st.className = 'stage' + ((s.theme === 'light' || s.theme === 'transparent') ? ' l' : '');
