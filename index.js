@@ -2,7 +2,7 @@ const ME = {
   name: "Dean Benson",
   status: "online",
   location: "North Yorkshire, UK",
-  stack: ["ai", "web", "automation", "strategy"],
+  stack: ["ai", "tech", "automation", "web", "strategy"],
   currently: "helping businesses do more with less",
   contact: "hello@dean.id",
   built_by: "dean.id",
@@ -37,31 +37,31 @@ const HOME = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dean.id · Dean Benson</title>
-<meta name="description" content="ai, web, automation, strategy. North Yorkshire, UK.">
+<meta name="description" content="ai, tech, automation, web, strategy. North Yorkshire, UK.">
 <meta name="theme-color" content="#111113">
 <link rel="canonical" href="https://dean.id/">
 <meta property="og:title" content="dean.id · Dean Benson">
-<meta property="og:description" content="ai, web, automation, strategy. North Yorkshire, UK. It's a real API: curl dean.id/v1/me">
+<meta property="og:description" content="ai, tech, automation, web, strategy. North Yorkshire, UK. It's a real API: curl dean.id/v1/me">
 <meta property="og:url" content="https://dean.id/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="dean.id">
 <meta property="og:image" content="https://dean.id/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, web, automation, strategy.">
+<meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, tech, automation, web, strategy.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://dean.id/og.png">
 <meta name="twitter:title" content="dean.id · Dean Benson">
-<meta name="twitter:description" content="ai, web, automation, strategy. It's a real API: curl dean.id/v1/me">
+<meta name="twitter:description" content="ai, tech, automation, web, strategy. It's a real API: curl dean.id/v1/me">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Person",
   "name": "Dean Benson",
   "url": "https://dean.id",
-  "jobTitle": "AI, web, automation & strategy",
+  "jobTitle": "AI, tech, automation, web & strategy",
   "address": { "@type": "PostalAddress", "addressRegion": "North Yorkshire", "addressCountry": "GB" },
-  "knowsAbout": ["AI", "automation", "web development", "business strategy"],
+  "knowsAbout": ["AI", "automation", "web development", "technology", "business strategy"],
   "mainEntityOfPage": "https://dean.id/v1/me"
 }
 </script>
@@ -194,7 +194,7 @@ const HOME = `<!doctype html>
 </style>
 </head>
 <body>
-  <h1 class="sr">dean.id, Dean Benson: ai, web, automation, strategy</h1>
+  <h1 class="sr">dean.id, Dean Benson: ai, tech, automation, web, strategy</h1>
   <main style="display: contents;">
   <div class="win" role="img" aria-label="Dean Benson, North Yorkshire UK. Helps businesses grow with websites, systems, automation and AI. Contact hello@dean.id. Styled as an API response; a human-readable toggle follows.">
     <div class="bar">
@@ -216,7 +216,7 @@ const HOME = `<!doctype html>
     '  <span class="k">"name"</span>: <span class="s">"Dean Benson"</span>,',
     '  <span class="k">"status"</span>: <span class="g">"online"</span>,',
     '  <span class="k">"location"</span>: <span class="s">"North Yorkshire, UK"</span>,',
-    '  <span class="k">"stack"</span>: [<span class="s">"ai"</span>, <span class="s">"web"</span>, <span class="s">"automation"</span>, <span class="s">"strategy"</span>],',
+    '  <span class="k">"stack"</span>: [<span class="s">"ai"</span>, <span class="s">"tech"</span>, <span class="s">"automation"</span>, <span class="s">"web"</span>, <span class="s">"strategy"</span>],',
     '  <span class="k">"currently"</span>: <span class="s">"helping businesses do more with less"</span>,',
     '  <span class="k">"contact"</span>: <span class="s">"<a href="mailto:hello@dean.id" tabindex="-1">hello@dean.id</a>"</span>',
     '<span class="p">}</span>'
@@ -490,7 +490,7 @@ export default {
       const llms = [
         "# dean.id",
         "",
-        "> The personal site of Dean Benson: AI, web, automation and strategy. Based in North Yorkshire, UK. Currently helping businesses do more with less.",
+        "> The personal site of Dean Benson: AI, tech, automation, web and strategy. Based in North Yorkshire, UK. Currently helping businesses do more with less.",
         "",
         "This entire site is served as a JSON API response, because the medium is the message.",
         "",
