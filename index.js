@@ -82,7 +82,7 @@ const HOME = `<!doctype html>
   }
   .win {
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     background: #0d1117;
     border: 1px solid #26262a;
     border-radius: 10px;
