@@ -1,0 +1,29 @@
+# Lily in Bloom
+
+> A florist in Skelton, Teesside, run by Lily Calvert.
+> Bespoke, hand-tied flowers for weddings, celebrations and every day.
+> Tagline: bespoke, seasonal, hand-tied.
+
+## Contact
+- Address: 20 Glastonbury Road, Skelton, TS12 2YL, United Kingdom
+- Phone: 07456 656182
+- Owner and florist: Lily Calvert
+- Delivery across Teesside: Saltburn, Guisborough, Marske, Redcar, Brotton
+
+## Studio hours
+- Tuesday to Saturday: 9am to 5pm
+- Sunday and Monday: by appointment
+
+## What she does
+- Weddings and events: bridal bouquets, buttonholes, ceremony and table flowers (bespoke, by consultation)
+- Birthdays and anniversaries: hand-tied bouquets (from £45)
+- Seasonal and everyday: posies, new-home blooms, thank-yous (from £25)
+
+## Pricing (guide)
+- The Posy: from £25
+- The Bouquet: from £45 (free local delivery in Skelton)
+- The Statement: from £75
+- Weddings and events: bespoke, by consultation
+
+## Notes
+- This page is a demo build by dean.id (https://dean.id).

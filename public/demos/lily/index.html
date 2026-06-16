@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lily in Bloom Florist | Skelton, Teesside</title>
+<meta name="description" content="Hand-tied flowers by Lily Calvert. Wedding flowers, celebrations and seasonal bouquets, made in Skelton and delivered across Teesside." />
+<link rel="canonical" href="https://dean.id/demos/lily/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Lily in Bloom · Florist, Skelton">
+<meta property="og:description" content="Hand-tied flowers by Lily Calvert. Weddings, celebrations and seasonal blooms, delivered across Teesside.">
+<meta property="og:image" content="https://dean.id/demos/lily/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Lily in Bloom, florist in Skelton, Teesside">
+<meta property="og:url" content="https://dean.id/demos/lily/">
+<meta property="og:site_name" content="Lily in Bloom">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Lily in Bloom · Florist, Skelton">
+<meta name="twitter:description" content="Hand-tied flowers by Lily Calvert, delivered across Teesside.">
+<meta name="twitter:image" content="https://dean.id/demos/lily/og.jpg">
+<meta name="twitter:image:alt" content="Lily in Bloom, florist in Skelton, Teesside">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Florist","name":"Lily in Bloom","image":"https://dean.id/demos/lily/og.jpg","url":"https://dean.id/demos/lily/","telephone":"+447456656182","priceRange":"££","areaServed":"Teesside","address":{"@type":"PostalAddress","streetAddress":"20 Glastonbury Road","addressLocality":"Skelton","addressRegion":"North Yorkshire","postalCode":"TS12 2YL","addressCountry":"GB"},"openingHours":"Tu-Sa 09:00-17:00"}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23241D14' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 16 C12 9 12 4 16 2 C20 4 20 9 16 16Z'/%3E%3Cpath d='M16 16 C9 13 5 13 3 16 C7 19 12 19 16 16Z'/%3E%3Cpath d='M16 16 C23 13 27 13 29 16 C25 19 20 19 16 16Z'/%3E%3Cpath d='M16 16 C13 21 12 25 14 29'/%3E%3Cpath d='M16 16 C19 21 20 25 18 29'/%3E%3Cpath d='M16 16 V30'/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   LILY IN BLOOM, Florist
+   Ink on ivory · Bodoni masthead · lily-in-profile mark
+   Easy edits: see CONFIG in the script at the foot of the file
+   ============================================================ */
+:root{
+  --ink:#241D14; --ink-2:#3A2F22; --soft:#7A6650; --mute:#9C8B73;
+  --ivory:#F4EEE1; --ivory-2:#EDE4D2; --paper:#FBF8F0;
+  --line:#CDBBA0; --hair:rgba(36,29,20,.16);
+  --display:'Bodoni Moda', Georgia, serif;
+  --serif:'Cormorant Garamond', Georgia, serif;
+  --sans:'Jost','Helvetica Neue',Arial,sans-serif;
+  --maxw:1240px; --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--serif);color:var(--ink);background:var(--ivory);font-size:20px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(92%,var(--maxw));margin-inline:auto}
+.display{font-family:var(--display);font-weight:600;font-optical-sizing:none;font-variation-settings:'opsz' 24,'wght' 600;letter-spacing:.02em;line-height:1.04}
+h1,h2,h3{font-weight:600;line-height:1.05}
+.eyebrow{font-family:var(--sans);font-weight:500;font-size:.7rem;letter-spacing:.4em;text-transform:uppercase;color:var(--soft)}
+.lead{font-size:clamp(1.12rem,1.7vw,1.4rem);line-height:1.62;color:var(--ink-2)}
+em{font-style:italic}
+
+/* hairline rule helpers */
+.hr{height:1px;background:var(--line);border:0}
+.flank{display:flex;align-items:center;justify-content:center;gap:1.4rem}
+.flank::before,.flank::after{content:"";height:1px;width:clamp(40px,12vw,120px);background:var(--line)}
+
+/* lily inline mark */
+.lily{display:block;color:var(--ink);width:120px;aspect-ratio:400/470}
+.lily svg,svg.lily{width:100%;height:100%}
+
+/* buttons */
+.btn{font-family:var(--sans);font-weight:500;font-size:.76rem;letter-spacing:.24em;text-transform:uppercase;display:inline-flex;align-items:center;gap:.7em;padding:1.05em 2em;border:1px solid var(--ink);background:var(--ink);color:var(--ivory);cursor:pointer;transition:all .45s var(--ease)}
+.btn:hover{background:transparent;color:var(--ink);transform:translateY(-2px)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--ivory)}
+.btn svg{width:1em;height:1em}
+
+/* ===================== NAV ===================== */
+header.nav{position:fixed;inset:0 0 auto 0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:1.15rem clamp(1rem,4vw,2.6rem);transition:all .5s var(--ease)}
+header.nav.scrolled{background:rgba(244,238,225,.93);backdrop-filter:blur(10px);padding:.6rem clamp(1rem,4vw,2.6rem);box-shadow:0 1px 0 var(--hair)}
+.brand{display:flex;align-items:center;gap:.8rem}
+.brand .lily{width:34px}
+.brand .bname{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 18,'wght' 600;font-size:1.18rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+nav.links{display:flex;align-items:center;gap:1.8rem}
+nav.links a{font-family:var(--sans);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);position:relative;padding:.2em 0}
+nav.links a::after{content:"";position:absolute;left:0;bottom:-3px;height:1px;width:0;background:var(--ink);transition:width .35s var(--ease)}
+nav.links a:hover::after{width:100%}
+.nav-call{font-family:var(--sans);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--ink);padding:.62em 1.1em;display:inline-flex;align-items:center;gap:.5em;transition:all .4s var(--ease)}
+.nav-call:hover{background:var(--ink);color:var(--ivory)}
+.nav-call svg{width:.95em;height:.95em}
+.burger{display:none;flex-direction:column;gap:5px;background:none;border:0;cursor:pointer;padding:8px;z-index:70}
+.burger span{width:26px;height:1.5px;background:var(--ink);transition:.4s var(--ease)}
+.burger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+#mobileMenu{position:fixed;inset:0;z-index:65;background:var(--ivory);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;opacity:0;pointer-events:none;transform:translateY(-10px);transition:.5s var(--ease)}
+#mobileMenu.open{opacity:1;pointer-events:auto;transform:none}
+#mobileMenu a{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 40,'wght' 600;font-size:2rem;letter-spacing:.04em}
+#mobileMenu .mob-call{font-family:var(--sans);font-size:.85rem;letter-spacing:.2em;text-transform:uppercase;border:1px solid var(--ink);padding:.9em 1.6em;margin-top:1rem}
+
+/* ===================== HERO (masthead) ===================== */
+.hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 1rem 4rem}
+.hero .toprule{display:flex;align-items:center;gap:1.4rem;width:min(86%,760px);margin-bottom:2.4rem}
+.hero .toprule .l{flex:1;height:1px;background:var(--line)}
+.hero .toprule .lbl{font-family:var(--sans);font-size:.72rem;letter-spacing:.42em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
+.hero .lily{width:clamp(96px,13vw,150px);margin-bottom:1.6rem;animation:rise 1.2s var(--ease) both}
+.hero h1{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 28,'wght' 600;font-size:clamp(2.5rem,9.6vw,8rem);letter-spacing:.04em;line-height:.98;white-space:nowrap}
+.hero .florist{margin:1.5rem 0 0;font-family:var(--sans);font-size:clamp(.7rem,1.4vw,.95rem);letter-spacing:.5em;text-transform:uppercase;color:var(--soft)}
+.hero .tagline{margin-top:2rem;font-family:var(--sans);font-size:.74rem;letter-spacing:.34em;text-transform:uppercase;color:var(--mute)}
+.hero-cta{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin-top:2.6rem}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.scroll-cue{position:absolute;bottom:1.6rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.5rem;color:var(--soft)}
+.scroll-cue span{font-family:var(--sans);font-size:.6rem;letter-spacing:.3em;text-transform:uppercase}
+.scroll-cue .ln{width:1px;height:42px;background:linear-gradient(var(--soft),transparent);position:relative;overflow:hidden}
+.scroll-cue .ln::after{content:"";position:absolute;top:-50%;left:0;width:100%;height:50%;background:var(--ink);animation:drop 2s var(--ease) infinite}
+@keyframes drop{0%{transform:translateY(-100%)}60%,100%{transform:translateY(300%)}}
+
+/* ===================== SECTIONS ===================== */
+.section{padding:clamp(4.5rem,10vw,8.5rem) 0}
+.section.alt{background:var(--ivory-2)}
+.sec-head{max-width:720px;margin:0 auto clamp(2.6rem,5vw,4.2rem);text-align:center}
+.sec-head .eyebrow{display:block;margin-bottom:1.3rem}
+.sec-head h2{font-size:clamp(2.1rem,5vw,3.7rem)}
+.sec-head .flank{margin:1.4rem auto 0}
+.sec-head p{margin-top:1.4rem}
+.reveal{opacity:0;transform:translateY(30px);transition:opacity 1s var(--ease),transform 1s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.22s}.d3{transition-delay:.34s}.d4{transition-delay:.46s}
+
+/* ABOUT */
+.about-grid{display:grid;grid-template-columns:.82fr 1.18fr;gap:clamp(2rem,5vw,5rem);align-items:center}
+.portrait{position:relative;aspect-ratio:4/5;background:var(--paper);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.portrait .fr{position:absolute;inset:16px;border:1px solid var(--line)}
+.portrait .lily{width:58%;color:var(--ink-2)}
+.portrait .cap{position:absolute;bottom:26px;left:0;right:0;text-align:center;font-family:var(--sans);font-size:.62rem;letter-spacing:.34em;text-transform:uppercase;color:var(--soft)}
+.about-copy h2{font-size:clamp(2rem,4.4vw,3.3rem);margin-bottom:.5em}
+.about-copy .name{font-style:normal}
+.about-copy p+p{margin-top:1.1rem}
+.sig{margin-top:1.8rem;font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 16,'wght' 500;font-style:italic;font-size:2rem}
+.role{font-family:var(--sans);font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:var(--soft);margin-top:.3rem}
+.stats{display:flex;gap:2.6rem;margin-top:2.2rem;flex-wrap:wrap}
+.stats .n{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 28,'wght' 600;font-size:2.4rem;line-height:1}
+.stats .k{font-family:var(--sans);font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--soft);margin-top:.45rem}
+
+/* OCCASIONS */
+.occ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.occ{position:relative;background:var(--paper);border:1px solid var(--hair);padding:2.8rem 2rem;text-align:center;transition:transform .55s var(--ease),box-shadow .55s var(--ease)}
+.occ:hover{transform:translateY(-7px);box-shadow:0 28px 50px -30px rgba(36,29,20,.3)}
+.occ .ic{width:60px;height:60px;margin:0 auto 1.4rem;color:var(--ink)}
+.occ h3{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 20,'wght' 600;font-size:1.7rem;margin-bottom:.5rem}
+.occ p{font-size:1.02rem;color:var(--ink-2)}
+.occ .from{display:block;margin-top:1.3rem;font-family:var(--sans);font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--soft)}
+
+/* MEANINGS */
+.flower-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem}
+.flower{perspective:1200px;height:240px;cursor:pointer}
+.flower-in{position:relative;width:100%;height:100%;transition:transform .8s var(--ease);transform-style:preserve-3d}
+.flower.flip .flower-in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.4rem;border:1px solid var(--hair)}
+.front{background:var(--paper)}
+.front .ic{width:62px;height:62px;color:var(--ink);margin-bottom:.8rem}
+.front h4{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 18,'wght' 600;font-size:1.32rem;letter-spacing:.02em}
+.front .hint{font-family:var(--sans);font-size:.56rem;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-top:.5rem}
+.back{background:var(--ink);color:var(--ivory);transform:rotateY(180deg)}
+.back .m{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 16,'wght' 500;font-style:italic;font-size:1.7rem;color:var(--ivory);margin-bottom:.5rem}
+.back p{font-size:1rem;color:rgba(244,238,225,.82)}
+.meanings .note{text-align:center;font-style:italic;color:var(--soft);margin-top:2.4rem;font-size:1.15rem}
+
+/* GALLERY */
+.gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+.shot{position:relative;aspect-ratio:1/1.2;overflow:hidden;cursor:pointer;background:var(--ivory-2)}
+.shot svg.bg{position:absolute;inset:0;width:100%;height:100%}
+.shot .lab{position:absolute;left:0;right:0;bottom:0;padding:1.5rem;z-index:2;background:linear-gradient(0deg,rgba(36,29,20,.62),transparent);color:var(--ivory);transform:translateY(8px);opacity:0;transition:.5s var(--ease)}
+.shot:hover .lab{transform:none;opacity:1}
+.shot .lab h4{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 18,'wght' 600;font-size:1.3rem}
+.shot .lab span{font-family:var(--sans);font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;opacity:.85}
+
+/* PRICING */
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;align-items:stretch}
+.price{background:var(--paper);border:1px solid var(--hair);padding:2.8rem 2rem;text-align:center;display:flex;flex-direction:column;transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.price:hover{transform:translateY(-6px);box-shadow:0 26px 48px -30px rgba(36,29,20,.3)}
+.price.feature{background:var(--ink);color:var(--ivory);border-color:var(--ink);position:relative}
+.price.feature .tier,.price.feature .desc{color:rgba(244,238,225,.8)}
+.price .tier{font-family:var(--sans);font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;color:var(--soft)}
+.price .amt{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 40,'wght' 600;font-size:3.2rem;line-height:1;margin:.5rem 0}
+.price .amt .frm{display:block;font-family:var(--sans);font-size:.58rem;letter-spacing:.24em;text-transform:uppercase;color:var(--soft);margin-bottom:.3rem}
+.price .desc{color:var(--ink-2);margin-bottom:1.6rem;font-size:1.02rem}
+.price ul{list-style:none;text-align:left;margin:0 auto 1.8rem;display:inline-block}
+.price li{font-size:1.02rem;padding:.42em 0 .42em 1.7em;position:relative}
+.price li::before{content:"";position:absolute;left:0;top:.95em;width:8px;height:8px;border:1px solid currentColor;transform:rotate(45deg);opacity:.6}
+.price .badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ivory);color:var(--ink);font-family:var(--sans);font-size:.56rem;letter-spacing:.22em;text-transform:uppercase;padding:.5em 1em}
+.price .btn{margin-top:auto}
+.price.feature .btn{background:var(--ivory);color:var(--ink);border-color:var(--ivory)}
+.price.feature .btn:hover{background:transparent;color:var(--ivory)}
+.weddings-note{text-align:center;margin-top:2.4rem;font-style:italic;color:var(--soft);font-size:1.12rem}
+
+/* ENQUIRE + CONTACT (dark) */
+.enquire{background:var(--ink);color:var(--ivory)}
+.enquire .eyebrow,.enquire .role{color:var(--line)}
+.enquire h2{color:var(--ivory)}
+.enquire .lead{color:rgba(244,238,225,.78)}
+.enquire .flank::before,.enquire .flank::after{background:rgba(244,238,225,.3)}
+.enq-grid{display:block;max-width:660px;margin:0 auto}
+.enq-grid form.enq{margin-bottom:2.6rem}
+form.enq{border:1px solid rgba(244,238,225,.18);padding:clamp(1.6rem,3vw,2.6rem)}
+.field{margin-bottom:1.2rem}
+.field label{font-family:var(--sans);font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(244,238,225,.7);display:block;margin-bottom:.5rem}
+.field input,.field select,.field textarea{width:100%;font-family:var(--serif);font-size:1.05rem;color:var(--ivory);background:rgba(244,238,225,.06);border:1px solid rgba(244,238,225,.22);padding:.85em 1em;transition:border-color .3s,background .3s}
+.field input::placeholder,.field textarea::placeholder{color:rgba(244,238,225,.4)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--line);background:rgba(244,238,225,.1)}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23CDBBA0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1em center;background-size:18px}
+.field select option{color:#222}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+form.enq .btn{width:100%;justify-content:center;background:var(--ivory);color:var(--ink);border-color:var(--ivory)}
+form.enq .btn:hover{background:transparent;color:var(--ivory)}
+.form-foot{font-family:var(--sans);font-size:.64rem;letter-spacing:.04em;color:rgba(244,238,225,.5);margin-top:1rem;text-align:center}
+.cline{display:flex;flex-direction:column;gap:.5rem;align-items:center;text-align:center;padding:1.3rem 0;border-bottom:1px solid rgba(244,238,225,.16)}
+.cline:last-of-type{border-bottom:0}
+.cline .ci{width:22px;height:22px;flex:none;color:var(--line);margin-top:4px}
+.cline .k{font-family:var(--sans);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(244,238,225,.6)}
+.cline .v{font-size:1.24rem}
+.cline .v a:hover{color:var(--line)}
+.contact-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:1.8rem}
+.contact-cta .btn{background:var(--ivory);color:var(--ink);border-color:var(--ivory)}
+.contact-cta .btn.ghost{background:transparent;color:var(--ivory);border-color:rgba(244,238,225,.5)}
+.contact-cta .btn:hover{background:transparent;color:var(--ivory);border-color:var(--ivory)}
+.map{margin-top:1.8rem;overflow:hidden;border:1px solid rgba(244,238,225,.16);filter:sepia(.3) saturate(.85) brightness(.95)}
+.map iframe{width:100%;height:220px;border:0;display:block}
+
+/* MODAL */
+.modal{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:1.2rem;background:rgba(20,15,10,.6);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .4s}
+.modal.open{opacity:1;pointer-events:auto}
+.modal-card{background:var(--paper);color:var(--ink);max-width:520px;width:100%;padding:clamp(1.8rem,4vw,2.8rem);text-align:center;position:relative;transform:translateY(20px) scale(.97);transition:transform .5s var(--ease)}
+.modal.open .modal-card{transform:none}
+.modal-card .lily{width:60px;margin:0 auto 1rem;color:var(--ink)}
+.modal-card h3{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 22,'wght' 600;font-size:1.9rem;margin-bottom:.4rem}
+.summary{text-align:left;background:var(--ivory);border:1px solid var(--hair);padding:1.1rem 1.3rem;margin:1.2rem 0;font-size:1rem;white-space:pre-wrap;color:var(--ink-2);max-height:180px;overflow:auto}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.modal-actions .btn{width:100%;justify-content:center;font-size:.7rem;padding:.95em 1em}
+.modal-actions .btn.full{grid-column:1/-1}
+.modal-close{position:absolute;top:16px;right:20px;background:none;border:0;color:var(--soft);font-size:1.6rem;cursor:pointer;line-height:1}
+
+/* FOOTER */
+footer.foot{background:var(--ivory-2);padding:clamp(3rem,6vw,4.5rem) 0 2.4rem;text-align:center}
+footer.foot .lily{width:54px;margin:0 auto 1.1rem;color:var(--ink)}
+footer.foot .fname{font-family:var(--display);font-optical-sizing:none;font-variation-settings:'opsz' 40,'wght' 600;font-size:2.1rem;letter-spacing:.12em;text-transform:uppercase}
+footer.foot .ftag{font-family:var(--sans);font-size:.64rem;letter-spacing:.4em;text-transform:uppercase;color:var(--soft);margin-top:.5rem}
+.foot-links{display:flex;gap:1.7rem;justify-content:center;flex-wrap:wrap;margin:2rem 0 1.6rem}
+.foot-links a{font-family:var(--sans);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase}
+.foot-links a:hover{color:var(--soft)}
+.foot-meta{font-family:var(--sans);font-size:.72rem;letter-spacing:.04em;color:var(--soft);line-height:1.9}
+.foot-meta a:hover{color:var(--ink)}
+.foot-fine{font-family:var(--sans);font-size:.6rem;letter-spacing:.1em;color:var(--mute);margin-top:1.5rem}
+
+/* ===================== RESPONSIVE ===================== */
+@media(max-width:980px){
+  nav.links,.nav-call{display:none}
+  .burger{display:flex}
+  .about-grid{grid-template-columns:1fr}
+  .portrait{max-width:420px;margin:0 auto}
+  .occ-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}
+  .flower-grid{grid-template-columns:repeat(2,1fr)}
+  .gal-grid{grid-template-columns:repeat(2,1fr)}
+  .price-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}
+  .enq-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:19px}
+  .hero h1{white-space:normal}
+  .gal-grid{grid-template-columns:1fr;max-width:380px;margin:0 auto}
+  .two{grid-template-columns:1fr}
+  .modal-actions{grid-template-columns:1fr}
+  .hero .toprule .lbl{letter-spacing:.28em;font-size:.62rem}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.reveal{opacity:1!important;transform:none!important}}
+</style>
+</head>
+<body>
+
+<!-- inline lily symbol (referenced via <use>) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lily" viewBox="0 0 400 470"><g transform="translate(200,218) scale(1.0) rotate(-10)">
+<path d="M0,62 C8,104 -2,138 2,166" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+<g transform="translate(-2,138) rotate(-128)" fill="none" stroke="currentColor" stroke-width="2.72" stroke-linejoin="round"><path d="M0,0 C-17.3,-28.8 -7.8,-68.4 0,-72.0 C7.8,-68.4 17.3,-28.8 0,0 Z"/><path d="M0,0 L0,-64.8" stroke-width="1.50" opacity="0.45"/></g>
+<path d="M-9,60 C-13,40 13,40 9,60" fill="none" stroke="currentColor" stroke-width="3.2"/>
+<path d="M-9,58 C-20,30 -22,10 -18,-2" fill="none" stroke="currentColor" stroke-width="3.2"/>
+<path d="M9,58 C20,30 22,10 18,-2" fill="none" stroke="currentColor" stroke-width="3.2"/>
+<g transform="rotate(-15)"><path d="M0,0 C-23.0,-51.0 -12.7,-135.0 0,-150.0 C12.7,-135.0 23.0,-51.0 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-12.0 L0,-123.0" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(15)"><path d="M0,0 C-23.0,-51.0 -12.7,-135.0 0,-150.0 C12.7,-135.0 23.0,-51.0 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-12.0 L0,-123.0" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(-60)"><path d="M0,0 C-26.0,-57.1 -14.3,-151.2 0,-168.0 C14.3,-151.2 26.0,-57.1 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-13.4 L0,-137.8" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(60)"><path d="M0,0 C-26.0,-57.1 -14.3,-151.2 0,-168.0 C14.3,-151.2 26.0,-57.1 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-13.4 L0,-137.8" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(-126)"><path d="M0,0 C-20.0,-41.5 -11.0,-109.8 0,-122.0 C11.0,-109.8 20.0,-41.5 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-9.8 L0,-100.0" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(126)"><path d="M0,0 C-20.0,-41.5 -11.0,-109.8 0,-122.0 C11.0,-109.8 20.0,-41.5 0,0 Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M0,-9.8 L0,-100.0" fill="none" stroke="currentColor" stroke-width="1.60" opacity="0.4"/></g>
+<g transform="rotate(-30)"><path d="M0,0 C7.6,-47.2 18.9,-92.0 0,-118.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-118.0) rotate(26)"><rect x="-4.4" y="-17.7" width="8.7" height="35.4" rx="4.4" fill="currentColor"/></g></g>
+<g transform="rotate(-15)"><path d="M0,0 C8.3,-52.0 20.8,-101.4 0,-130.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-130.0) rotate(26)"><rect x="-4.4" y="-19.5" width="8.7" height="39.0" rx="4.4" fill="currentColor"/></g></g>
+<g transform="rotate(0)"><path d="M0,0 C8.8,-55.2 22.1,-107.6 0,-138.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-138.0) rotate(26)"><rect x="-4.4" y="-20.7" width="8.7" height="41.4" rx="4.4" fill="currentColor"/></g></g>
+<g transform="rotate(16)"><path d="M0,0 C8.2,-51.2 20.5,-99.8 0,-128.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-128.0) rotate(26)"><rect x="-4.4" y="-19.2" width="8.7" height="38.4" rx="4.4" fill="currentColor"/></g></g>
+<g transform="rotate(32)"><path d="M0,0 C7.3,-45.6 18.2,-88.9 0,-114.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-114.0) rotate(26)"><rect x="-4.4" y="-17.1" width="8.7" height="34.2" rx="4.4" fill="currentColor"/></g></g>
+<g transform="rotate(6)"><path d="M0,0 C9.6,-60.0 24.0,-117.0 0,-150.0" fill="none" stroke="currentColor" stroke-width="2.56" stroke-linecap="round"/><g transform="translate(0,-150.0) rotate(26)"><rect x="-4.4" y="-22.5" width="8.7" height="45.0" rx="4.4" fill="currentColor"/></g></g>
+</g></symbol></svg>
+
+<!-- ===================== NAV ===================== -->
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Lily in Bloom home">
+    <svg class="lily" aria-hidden="true"><use href="#lily"/></svg>
+    <span class="bname">Lily in Bloom</span>
+  </a>
+  <nav class="links">
+    <a href="#about">Lily</a>
+    <a href="#occasions">Occasions</a>
+    <a href="#meanings">Meanings</a>
+    <a href="#gallery">Gallery</a>
+    <a href="#pricing">Prices</a>
+    <a href="#enquire">Enquire</a>
+  </nav>
+  <a class="nav-call" id="navCall" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    07456 656182
+  </a>
+  <button class="burger" id="burger" aria-label="Open menu"><span></span><span></span><span></span></button>
+</header>
+
+<div id="mobileMenu">
+  <a href="#about">Lily</a><a href="#occasions">Occasions</a><a href="#meanings">Meanings</a>
+  <a href="#gallery">Gallery</a><a href="#pricing">Prices</a><a href="#enquire">Enquire</a>
+  <a class="mob-call" id="mobCall" href="#">Call 07456 656182</a>
+</div>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="top">
+  <div class="toprule"><span class="l"></span><span class="lbl">Skelton · Teesside</span><span class="l"></span></div>
+  <svg class="lily" aria-hidden="true"><use href="#lily"/></svg>
+  <h1>LILY IN BLOOM</h1>
+  <div class="flank florist" style="margin-top:1.4rem">FLORIST</div>
+  <div class="tagline">Bespoke · Seasonal · Hand-tied</div>
+  <div class="hero-cta">
+    <a class="btn" href="#enquire">Make an Enquiry</a>
+    <a class="btn ghost" id="heroCall" href="#">Order by Phone</a>
+  </div>
+  <a class="scroll-cue" href="#about" aria-label="Scroll"><span>Scroll</span><span class="ln"></span></a>
+</section>
+
+<!-- ===================== ABOUT ===================== -->
+<section class="section about" id="about">
+  <div class="wrap about-grid">
+    <div class="portrait reveal">
+      <span class="fr"></span>
+      <svg class="lily" aria-hidden="true"><use href="#lily"/></svg>
+      <span class="cap">Made by hand</span>
+    </div>
+    <div class="about-copy">
+      <span class="eyebrow reveal">Meet the florist</span>
+      <h2 class="display reveal d1" style="margin-top:1.1rem">Hello, I'm <span class="name">Lily Calvert</span></h2>
+      <p class="lead reveal d2">I have loved flowers for as long as I can remember. What started as buckets of blooms on the kitchen table is now Lily in Bloom, a little studio in Skelton where every arrangement is made around you, never pulled off a shelf.</p>
+      <p class="reveal d2">I work with the freshest seasonal stems I can find, favouring soft, garden-gathered shapes and colours that feel collected rather than arranged. Whether it's a single posy to say <em>thinking of you</em> or the flowers that line a wedding aisle, I pour the same care into every tie.</p>
+      <div class="sig reveal d3">Lily Calvert</div>
+      <div class="role reveal d3">Founder &amp; Florist</div>
+      <div class="stats reveal d3">
+        <div><div class="n">100%</div><div class="k">Hand-tied to order</div></div>
+        <div><div class="n">Local</div><div class="k">Delivery across Teesside</div></div>
+        <div><div class="n">Seasonal</div><div class="k">Fresh, never off-the-shelf</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== OCCASIONS ===================== -->
+<section class="section alt" id="occasions">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow reveal">What I create for</span>
+      <h2 class="display reveal d1">Flowers for every occasion</h2>
+      <div class="flank reveal d1"></div>
+      <p class="lead reveal d2">These are three of the moments I love designing for. If yours isn't here, just ask. There's a flower for everything.</p>
+    </div>
+    <div class="occ-grid">
+      <div class="occ reveal d1">
+        <div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M32 20c4-8 18-7 18 3 0 9-18 19-18 19S14 32 14 23c0-10 14-11 18-3z"/><path d="M32 42v14M26 50l6 3 6-3"/></svg></div>
+        <h3>Weddings &amp; Events</h3>
+        <p>Bridal bouquets, buttonholes, ceremony arches and table flowers, all planned with you over a relaxed consultation and styled to your day.</p>
+        <span class="from">Bespoke · By consultation</span>
+      </div>
+      <div class="occ reveal d2">
+        <div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M20 26h24v22a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4z"/><path d="M16 20h32v6H16zM32 20v32M32 20c-3-6-12-5-12 1 0 4 7 4 12-1zM32 20c3-6 12-5 12 1 0 4-7 4-12-1z"/></svg></div>
+        <h3>Birthdays &amp; Anniversaries</h3>
+        <p>A gift that says it properly. Romantic, vibrant or wonderfully extravagant hand-tied bouquets, wrapped beautifully and ready to delight.</p>
+        <span class="from">From £45</span>
+      </div>
+      <div class="occ reveal d3">
+        <div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="32" cy="30" r="7"/><path d="M32 23v-9M32 37v9M25 30h-9M39 30h9M27 25l-6-6M37 25l6-6M27 35l-6 6M37 35l6 6"/></svg></div>
+        <h3>Seasonal &amp; Everyday</h3>
+        <p>"Just because" posies, new-home blooms, thank-yous and the freshest stems of the season. Small, happy gestures all year round.</p>
+        <span class="from">From £25</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MEANINGS ===================== -->
+<section class="section meanings" id="meanings">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow reveal">The language of flowers</span>
+      <h2 class="display reveal d1">What a bouquet means</h2>
+      <p class="lead reveal d2">For centuries, flowers have carried the words we couldn't quite say. It's called <em>floriography</em>, and I think about it with every bouquet I tie. Tap a flower to see what it means.</p>
+    </div>
+    <div class="flower-grid" id="flowerGrid"></div>
+    <p class="note reveal">Tell me the feeling and I'll choose the flowers to say it.</p>
+  </div>
+</section>
+
+<!-- ===================== GALLERY ===================== -->
+<section class="section alt" id="gallery">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow reveal">The lookbook</span>
+      <h2 class="display reveal d1">A few of my signatures</h2>
+      <p class="lead reveal d2">Every arrangement is one of a kind, but here's a feel for the styles I'm known for across Teesside.</p>
+    </div>
+    <div class="gal-grid" id="galGrid"></div>
+  </div>
+</section>
+
+<!-- ===================== PRICING ===================== -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow reveal">Simple, honest pricing</span>
+      <h2 class="display reveal d1">Choose your bloom</h2>
+      <p class="lead reveal d2">Just a starting point. Every order is made fresh to your colours, flowers and budget, so tell me what you'd like to spend and I'll do my best with it.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price reveal d1">
+        <div class="tier">The Posy</div>
+        <div class="amt"><span class="frm">from</span>£25</div>
+        <div class="desc">A sweet, hand-tied gathering of seasonal stems.</div>
+        <ul><li>Freshest blooms of the week</li><li>Hand-tied &amp; gift-wrapped</li><li>Perfect "thinking of you"</li></ul>
+        <a class="btn ghost" href="#enquire">Enquire</a>
+      </div>
+      <div class="price feature reveal d2">
+        <span class="badge">Most loved</span>
+        <div class="tier">The Bouquet</div>
+        <div class="amt"><span class="frm">from</span>£45</div>
+        <div class="desc">A generous, statement hand-tie for the big moments.</div>
+        <ul><li>Lush, layered seasonal design</li><li>Luxury wrap &amp; ribbon</li><li>Free local delivery in Skelton</li></ul>
+        <a class="btn" href="#enquire">Enquire</a>
+      </div>
+      <div class="price reveal d3">
+        <div class="tier">The Statement</div>
+        <div class="amt"><span class="frm">from</span>£75</div>
+        <div class="desc">Show-stopping luxury blooms, completely bespoke.</div>
+        <ul><li>Premium &amp; specialist flowers</li><li>Designed around your brief</li><li>Delivered across Teesside</li></ul>
+        <a class="btn ghost" href="#enquire">Enquire</a>
+      </div>
+    </div>
+    <p class="weddings-note reveal">Planning a wedding or event? These are planned with you over a relaxed consultation. <a href="#enquire" style="text-decoration:underline">Tell me about your day</a>.</p>
+  </div>
+</section>
+
+<!-- ===================== ENQUIRE + CONTACT ===================== -->
+<section class="section enquire" id="enquire">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow reveal">Let's create something</span>
+      <h2 class="display reveal d1">Order or enquire</h2>
+      <p class="lead reveal d2">Tell me a little about what you have in mind, or just pick up the phone. I'd love to help.</p>
+    </div>
+    <div class="enq-grid">
+      <form class="enq reveal d1" id="enqForm" novalidate>
+        <div class="two">
+          <div class="field"><label for="f-name">Your name</label><input id="f-name" type="text" placeholder="Jane Smith" required /></div>
+          <div class="field"><label for="f-phone">Phone</label><input id="f-phone" type="tel" placeholder="07…" required /></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="f-occasion">Occasion</label>
+            <select id="f-occasion"><option>Birthday</option><option>Anniversary</option><option>Wedding / Event</option><option>New baby</option><option>Thank you</option><option>Just because</option><option>Seasonal / Everyday</option><option>Other</option></select>
+          </div>
+          <div class="field"><label for="f-date">Date needed</label><input id="f-date" type="date" /></div>
+        </div>
+        <div class="field"><label for="f-budget">Rough budget</label>
+          <select id="f-budget"><option>Around £25 (a posy)</option><option>Around £45 (a bouquet)</option><option>£75+ (a statement)</option><option>Wedding / event budget</option><option>Not sure yet</option></select>
+        </div>
+        <div class="field"><label for="f-message">Tell me more (colours, flowers, the feeling…)</label>
+          <textarea id="f-message" rows="3" placeholder="Soft blush &amp; cream tones, lots of roses, to say happy anniversary…"></textarea>
+        </div>
+        <button class="btn" type="submit">Send my enquiry</button>
+        <p class="form-foot">No payment taken online. I'll confirm everything with you personally.</p>
+      </form>
+      <div class="reveal d2">
+        <div class="cline">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <div><div class="k">Find me</div><div class="v">20 Glastonbury Road<br>Skelton, TS12 2YL</div></div>
+        </div>
+        <div class="cline">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+          <div><div class="k">Call or text to order</div><div class="v"><a id="contactCall" href="#">07456 656182</a></div></div>
+        </div>
+        <div class="cline">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <div><div class="k">Studio hours</div><div class="v" style="font-size:1.05rem;line-height:1.7">Tuesday to Saturday, 9am to 5pm<br>Sunday and Monday by appointment</div></div>
+        </div>
+        <div class="contact-cta">
+          <a class="btn" id="contactCallBtn" href="#">Call now</a>
+          <a class="btn ghost" id="contactTextBtn" href="#">Text an order</a>
+        </div>
+        <div class="map">
+          <iframe title="Lily in Bloom location" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+            src="https://maps.google.com/maps?q=20%20Glastonbury%20Road%20Skelton%20TS12%202YL&t=&z=15&ie=UTF8&iwloc=&output=embed"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="foot">
+  <div class="wrap">
+    <svg class="lily" aria-hidden="true"><use href="#lily"/></svg>
+    <div class="fname">Lily in Bloom</div>
+    <div class="ftag">Florist</div>
+    <div class="foot-links">
+      <a href="#about">Lily</a><a href="#occasions">Occasions</a><a href="#meanings">Meanings</a>
+      <a href="#gallery">Gallery</a><a href="#pricing">Prices</a><a href="#enquire">Enquire</a>
+    </div>
+    <div class="foot-meta">
+      20 Glastonbury Road, Skelton, TS12 2YL<br>
+      <a id="footCall" href="#">07456 656182</a> · Delivering across Teesside<br>
+      Saltburn · Guisborough · Marske · Redcar · Brotton
+    </div>
+    <div class="foot-fine">© <span id="year"></span> Lily in Bloom · Florist · Hand-tied with love in East Cleveland</div>
+    <a class="dean-stamp" href="https://dean.id" target="_blank" rel="noopener" title="site by dean.id" style="display:inline-block;margin-top:1.6rem;opacity:.7;transition:opacity .3s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7"><img src="https://dean.id/badge.svg?theme=transparent" alt="site by dean.id" width="92" height="26" loading="lazy"></a>
+  </div>
+</footer>
+
+<!-- ===================== MODAL ===================== -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <button class="modal-close" id="modalClose" aria-label="Close">×</button>
+    <svg class="lily" aria-hidden="true"><use href="#lily"/></svg>
+    <h3>Thank you<span id="modalName"></span></h3>
+    <p style="color:var(--ink-2)">Your enquiry is ready. Send it whichever way suits you and I'll be in touch very soon.</p>
+    <div class="summary" id="modalSummary"></div>
+    <div class="modal-actions">
+      <a class="btn" id="modalText" href="#">Send as text</a>
+      <a class="btn ghost" id="modalCallBtn" href="#" style="border-color:var(--ink);color:var(--ink)">Call Lily</a>
+      <button class="btn full" id="modalCopy">Copy enquiry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== CONFIG: edit to update everywhere ===== */
+const CONFIG = { phoneDisplay:"07456 656182", phoneIntl:"+447456656182" };
+
+const telHref="tel:"+CONFIG.phoneIntl;
+document.querySelectorAll("#navCall,#heroCall,#mobCall,#contactCall,#contactCallBtn,#footCall,#modalCallBtn")
+  .forEach(el=>el.setAttribute("href",telHref));
+document.getElementById("contactTextBtn")
+  .setAttribute("href","sms:"+CONFIG.phoneIntl+"?&body="+encodeURIComponent("Hi Lily, I'd like to order some flowers. "));
+
+/* fine line botanical icons for meaning cards */
+const fIcons={
+  rose:`<circle cx="32" cy="26" r="15"/><path d="M32 15c-7 1-12 7-12 14M44 26c0 8-5 14-12 15M22 26c2-7 6-10 10-11M42 26c-2 7-6 10-10 11M32 20c5 1 8 4 8 8"/><path d="M32 41v18M24 52c4 3 12 3 16 0"/>`,
+  lily:`<path d="M32 8c4 8 4 16 0 24-4-8-4-16 0-24zM32 32c8-4 16-4 24 0-8 5-16 5-24 0zM32 32c-8-4-16-4-24 0 8 5 16 5 24 0zM32 32c5 6 8 14 7 22M32 32c-5 6-8 14-7 22"/><circle cx="32" cy="31" r="2.4"/><path d="M32 32v24"/>`,
+  peony:`<circle cx="32" cy="28" r="16"/><path d="M22 22c4 4 6 10 4 16M42 22c-4 4-6 10-4 16M32 14c-4 5-4 11 0 16 4-5 4-11 0-16zM18 30c5 1 10 4 12 8M46 30c-5 1-10 4-12 8"/><path d="M32 44v15"/>`,
+  tulip:`<path d="M22 24c0 10 4 18 10 20 6-2 10-10 10-20-4 3-7 3-10 0-3 3-6 3-10 0z"/><path d="M32 24v20M22 24c2-2 4-2 5 0M42 24c-2-2-4-2-5 0"/><path d="M32 44v15M32 50c-5-2-9 0-10 4M32 50c5-2 9 0 10 4"/>`,
+  sun:`<circle cx="32" cy="28" r="9"/><path d="M32 11v8M32 37v8M15 28h8M41 28h8M20 16l6 6M44 16l-6 6M20 40l6-6M44 40l-6-6"/><path d="M32 45v14"/>`,
+  lav:`<path d="M32 8c-4 0-6 4-5 8 1-2 3-3 5-3s4 1 5 3c1-4-1-8-5-8z"/><path d="M28 18c2 2 6 2 8 0M28 26c2 2 6 2 8 0M28 34c2 2 6 2 8 0"/><path d="M32 14v45"/>`,
+  free:`<path d="M20 22c4-3 8 0 8 5M32 18c4-3 8 0 8 5M26 32c4-3 8 0 8 5"/><circle cx="22" cy="24" r="3"/><circle cx="34" cy="20" r="3"/><circle cx="30" cy="34" r="3"/><path d="M28 30C24 40 28 52 32 59"/>`,
+  hyd:`<g><circle cx="26" cy="22" r="5"/><circle cx="38" cy="22" r="5"/><circle cx="32" cy="30" r="5"/><circle cx="20" cy="30" r="5"/><circle cx="44" cy="30" r="5"/></g><path d="M32 35v24M32 46c-5-2-9 0-10 4M32 46c5-2 9 0 10 4"/>`
+};
+const flowers=[
+  {name:"Lily",word:"Devotion",desc:"Refined beauty and a pure, devoted heart.",ico:"lily"},
+  {name:"Red Rose",word:"Deep Love",desc:"Passion and romance, love spoken without words.",ico:"rose"},
+  {name:"Peony",word:"Good Fortune",desc:"Prosperity, romance and a happy marriage.",ico:"peony"},
+  {name:"Tulip",word:"Perfect Love",desc:"A declaration of perfect, enduring love.",ico:"tulip"},
+  {name:"Sunflower",word:"Adoration",desc:"Loyalty, warmth and unwavering adoration.",ico:"sun"},
+  {name:"Lavender",word:"Serenity",desc:"Devotion, calm and quiet grace.",ico:"lav"},
+  {name:"Freesia",word:"Trust",desc:"Friendship, trust and lasting thoughtfulness.",ico:"free"},
+  {name:"Hydrangea",word:"Gratitude",desc:"Heartfelt emotion and sincere thanks.",ico:"hyd"}
+];
+const fg=document.getElementById("flowerGrid");
+flowers.forEach((f,i)=>{
+  const el=document.createElement("div");
+  el.className="flower reveal d"+((i%4)+1);
+  el.innerHTML=`<div class="flower-in">
+    <div class="face front"><svg class="ic" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${fIcons[f.ico]}</svg><h4>${f.name}</h4><span class="hint">Tap to reveal</span></div>
+    <div class="face back"><div class="m">${f.word}</div><p>${f.desc}</p></div></div>`;
+  el.addEventListener("click",()=>el.classList.toggle("flip"));
+  fg.appendChild(el);
+});
+
+/* gallery: tonal ivory tiles with fine line botanicals */
+const shots=[
+  {name:"Garden Romance",tag:"Soft & gathered",bg:["#F3ECDC","#E7DCC4"]},
+  {name:"Wild & Seasonal",tag:"Loose & natural",bg:["#EEE6D2","#DFD2B6"]},
+  {name:"Bridal White",tag:"For the day",bg:["#F6F1E6","#EAE0CC"]},
+  {name:"Bold Botanical",tag:"Statement",bg:["#E9DEC6","#D8C8A6"]},
+  {name:"Spring Posy",tag:"Bright & fresh",bg:["#F1E9D6","#E3D6BA"]},
+  {name:"Autumn Ember",tag:"Rich & warm",bg:["#EADdC6","#DBC9A6"]}
+];
+function shotSVG(c){
+  return `<svg class="bg" viewBox="0 0 300 360" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g${c.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.bg[0]}"/><stop offset="1" stop-color="${c.bg[1]}"/></linearGradient></defs>
+    <rect width="300" height="360" fill="url(#g${c.id})"/>
+    <g fill="none" stroke="#3A2F22" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+      <g transform="translate(150,150) rotate(-8)">
+        <path d="M0,40 C6,90 -8,150 2,205"/>
+        ${[-15,15,-58,58,-120,120].map(a=>`<g transform="rotate(${a})"><path d="M0,0 C-16,-34 -9,-92 0,-104 C9,-92 16,-34 0,0 Z"/></g>`).join("")}
+        ${[-26,-10,8,26].map(a=>`<g transform="rotate(${a})"><path d="M0,-4 C6,-40 16,-78 0,-96" stroke-width="1.2"/><circle cx="0" cy="-96" r="3" fill="#3A2F22"/></g>`).join("")}
+        <path d="M-2,120 C-18,150 -22,180 -8,196" stroke-width="1.3"/>
+      </g>
+    </g></svg>`;
+}
+const gg=document.getElementById("galGrid");
+shots.forEach((s,i)=>{
+  s.id=i;
+  const el=document.createElement("div");
+  el.className="shot reveal d"+((i%3)+1);
+  el.innerHTML=`${shotSVG(s)}<div class="lab"><span>${s.tag}</span><h4>${s.name}</h4></div>`;
+  gg.appendChild(el);
+});
+
+/* nav scroll + mobile menu */
+const nav=document.getElementById("nav");
+addEventListener("scroll",()=>nav.classList.toggle("scrolled",scrollY>40),{passive:true});
+const burger=document.getElementById("burger"),mob=document.getElementById("mobileMenu");
+burger.addEventListener("click",()=>{const o=mob.classList.toggle("open");burger.classList.toggle("open",o);document.body.style.overflow=o?"hidden":"";});
+mob.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{mob.classList.remove("open");burger.classList.remove("open");document.body.style.overflow="";}));
+
+/* reveal on scroll */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}}),{threshold:.12,rootMargin:"0px 0px -8% 0px"});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+/* enquiry form -> modal */
+const form=document.getElementById("enqForm"),modal=document.getElementById("modal");
+let lastSummary="";
+function buildSummary(){
+  const v=id=>(document.getElementById(id).value||"").trim();
+  const name=v("f-name")||"(not given)";
+  return {name,text:["New flower enquiry for Lily in Bloom","Name: "+name,"Phone: "+(v("f-phone")||"(not given)"),
+    "Occasion: "+v("f-occasion"),"Date needed: "+(v("f-date")||"flexible"),
+    "Budget: "+v("f-budget"),"Details: "+(v("f-message")||"(none)")].join("\n")};
+}
+form.addEventListener("submit",e=>{
+  e.preventDefault();
+  const name=document.getElementById("f-name").value.trim(),phone=document.getElementById("f-phone").value.trim();
+  if(!name||!phone){[["f-name",name],["f-phone",phone]].forEach(([id,val])=>{document.getElementById(id).style.borderColor=val?"":"#C98B82";});return;}
+  const s=buildSummary();lastSummary=s.text;
+  document.getElementById("modalName").textContent=", "+s.name.split(" ")[0];
+  document.getElementById("modalSummary").textContent=s.text;
+  document.getElementById("modalText").setAttribute("href","sms:"+CONFIG.phoneIntl+"?&body="+encodeURIComponent(s.text));
+  modal.classList.add("open");document.body.style.overflow="hidden";
+});
+function closeModal(){modal.classList.remove("open");document.body.style.overflow="";}
+document.getElementById("modalClose").addEventListener("click",closeModal);
+modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+document.getElementById("modalCopy").addEventListener("click",async function(){
+  try{await navigator.clipboard.writeText(lastSummary);this.textContent="Copied ✓";}
+  catch(err){const t=document.createElement("textarea");t.value=lastSummary;document.body.appendChild(t);t.select();try{document.execCommand("copy");this.textContent="Copied ✓";}catch(e2){this.textContent="Press Ctrl+C";}document.body.removeChild(t);}
+  setTimeout(()=>this.textContent="Copy enquiry",2200);
+});
+["f-name","f-phone"].forEach(id=>document.getElementById(id).addEventListener("input",function(){this.style.borderColor="";}));
+document.getElementById("year").textContent=new Date().getFullYear();
+</script>
+</body>
+</html>
