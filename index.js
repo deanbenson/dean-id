@@ -117,12 +117,15 @@ const HOME = `<!doctype html>
     color: #e6edf3;
     min-height: 285px;
   }
-  #out:not(.human) { overflow-x: auto; }
   #out div {
-    white-space: pre;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding-left: 4ch;
+    text-indent: -4ch;
   }
   #out.human div {
-    white-space: normal;
+    padding-left: 0;
+    text-indent: 0;
     margin-bottom: 10px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 15px;
@@ -332,6 +335,14 @@ const BADGE_PAGE = `<!doctype html>
   .row button.on { color: #fafafa; border-color: #28c840; }
   .hint { font-size: 12.5px; color: #8a8a93; min-height: 18px; text-align: center; }
   .hint a { color: #b8b8c0; }
+  .api { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: #b8b8c0; background: #1a1a1e; border: 1px solid #26262a; border-radius: 8px; padding: 8px 13px; max-width: 340px; word-break: break-all; }
+  .api .m { color: #5DCAA5; }
+  .ctxwrap { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; }
+  .ctxcap { font-size: 11.5px; color: #8a8a93; text-align: center; }
+  .ctx { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 14px; border-radius: 8px; font-size: 11px; }
+  .ctx.d { background: #0d1117; color: #6f7681; border: 1px solid #26262a; }
+  .ctx.l { background: #e9e6df; color: #8a8580; border: 1px solid #d8d4c8; }
+  .ctx img { display: block; flex-shrink: 0; }
   @media (max-width: 480px) {
     .row { flex-wrap: wrap; justify-content: center; }
     .row span { width: 100%; text-align: center; margin: 0 0 2px; }
@@ -345,9 +356,15 @@ const BADGE_PAGE = `<!doctype html>
   <div class="stage" id="stage" onclick="cp()" title="click to copy embed code">
     <img id="pv" src="/badge.svg" alt="dean.id stamp preview" width="92" height="26">
   </div>
+  <div class="api"><span class="m">GET</span> <span id="apiurl">https://dean.id/badge.svg</span></div>
   <div class="row"><span>background</span><button data-k="theme" data-v="dark" class="on">dark</button><button data-k="theme" data-v="light">light</button><button data-k="theme" data-v="transparent-dark">clear &middot; light text</button><button data-k="theme" data-v="transparent">clear &middot; dark text</button></div>
   <div class="row"><span>cursor</span><button data-k="cursor" data-v="block" class="on">block</button><button data-k="cursor" data-v="underscore">_</button></div>
   <div class="row"><span>blink</span><button data-k="blink" data-v="1" class="on">on</button><button data-k="blink" data-v="0">off</button></div>
+  <div class="ctxwrap">
+    <span class="ctxcap">how it sits in a footer</span>
+    <div class="ctx d"><span>&copy; 2026 yoursite.com</span><img id="cd" src="/badge.svg" alt="" width="92" height="26"></div>
+    <div class="ctx l"><span>&copy; 2026 yoursite.com</span><img id="cl" src="/badge.svg" alt="" width="92" height="26"></div>
+  </div>
   <p class="hint" id="hint">click the stamp to copy its embed code &middot; <a href="/">dean.id</a></p>
   </main>
 <script>
@@ -360,7 +377,11 @@ const BADGE_PAGE = `<!doctype html>
     return p.length ? '?' + p.join('&') : '';
   }
   function update() {
-    document.getElementById('pv').src = '/badge.svg' + qs();
+    var src = '/badge.svg' + qs();
+    document.getElementById('pv').src = src;
+    document.getElementById('cd').src = src;
+    document.getElementById('cl').src = src;
+    document.getElementById('apiurl').textContent = 'https://dean.id/badge.svg' + qs();
     var st = document.getElementById('stage');
     st.className = 'stage' + ((s.theme === 'light' || s.theme === 'transparent') ? ' l' : '');
   }
@@ -378,6 +399,7 @@ const BADGE_PAGE = `<!doctype html>
       document.getElementById('hint').innerHTML = 'copied. paste it in your footer &middot; <a href="/">dean.id</a>';
     });
   }
+  update();
 </script>
 </body>
 </html>`;
