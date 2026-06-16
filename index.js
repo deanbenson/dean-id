@@ -117,15 +117,12 @@ const HOME = `<!doctype html>
     color: #e6edf3;
     min-height: 285px;
   }
+  #out:not(.human) { overflow-x: auto; }
   #out div {
-    white-space: pre-wrap;
-    word-break: break-word;
-    padding-left: 4ch;
-    text-indent: -4ch;
+    white-space: pre;
   }
   #out.human div {
-    padding-left: 0;
-    text-indent: 0;
+    white-space: normal;
     margin-bottom: 10px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 15px;
