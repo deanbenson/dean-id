@@ -46,6 +46,8 @@ const HOME = `<!doctype html>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="dean.id">
 <meta property="og:image" content="https://dean.id/og.png">
+<meta property="og:image:secure_url" content="https://dean.id/og.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, tech, automation, web, strategy.">
@@ -398,7 +400,7 @@ const SEC = {
   "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "cross-origin-opener-policy": "same-origin",
   "cross-origin-resource-policy": "cross-origin",
-  "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  "content-security-policy": "default-src 'none'; script-src 'unsafe-inline' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 };
 
 function respond(body, status, headers) {
