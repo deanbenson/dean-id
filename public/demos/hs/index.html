@@ -102,7 +102,7 @@ h1,h2,h3,h4{font-family:var(--display);font-weight:800;letter-spacing:-.02em;lin
 .topbar a svg{width:14px;height:14px;opacity:.7}
 
 /* Nav (dark chrome, logo on black) */
-header.nav{position:sticky;top:0;z-index:60;background:rgba(14,17,23,.86);backdrop-filter:saturate(140%) blur(12px);border-bottom:1px solid rgba(255,255,255,.07);transition:background .2s,border-color .2s}
+header.nav{position:sticky;top:0;z-index:60;background:#0e1117;border-bottom:1px solid rgba(255,255,255,.07);transition:background .2s,border-color .2s}
 header.nav.scrolled{background:rgba(12,15,20,.95)}
 .nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 24px}
 .nav .logo img{height:46px;width:auto;display:block}
@@ -166,13 +166,14 @@ header.nav.scrolled{background:rgba(12,15,20,.95)}
 .foot-legal{display:flex;gap:16px;flex-wrap:wrap}
 .foot-legal a{color:#9aa2ae;font-size:12.5px}
 .foot-legal a:hover{color:var(--lime)}
-.cookie-bar{position:fixed;left:16px;right:16px;bottom:16px;z-index:85;max-width:740px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 60px -18px rgba(16,20,26,.45);padding:16px 18px;display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap}
+.cookie-bar{position:fixed;left:16px;right:16px;bottom:16px;z-index:85;max-width:740px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 60px -18px rgba(16,20,26,.45);padding:16px 18px;display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap;animation:cbup .35s ease}
 .cookie-bar[hidden]{display:none}
+@keyframes cbup{from{transform:translateY(110%);opacity:0}to{transform:none;opacity:1}}
 .cookie-bar p{font-size:13px;color:var(--muted);flex:1;min-width:240px;margin:0;line-height:1.5}
 .cookie-bar p a{color:var(--text);font-weight:600;border-bottom:1px solid var(--lime)}
 .cb-actions{display:flex;gap:10px}
 .cb-actions .btn{padding:11px 18px;font-size:14px}
-@media(max-width:760px){.cookie-bar{left:9px;right:9px;bottom:84px;flex-direction:column;align-items:stretch;gap:12px}.cb-actions{display:grid;grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.cookie-bar{left:9px;right:9px;bottom:12px;padding:14px 16px;flex-direction:column;align-items:stretch;gap:11px}.cb-actions{display:grid;grid-template-columns:1fr 1fr}}
 
 /* Stats row */
 .stats{border-bottom:1px solid var(--line)}
@@ -655,7 +656,7 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
 
 <!-- COOKIE CONSENT -->
 <div class="cookie-bar" id="cookieBar" role="dialog" aria-label="Cookie consent" hidden>
-  <p>We use cookies to measure traffic and our advertising. Accept to help us improve, or reject. See our <a href="privacy/">Privacy &amp; Cookie Policy</a>.</p>
+  <p>We use cookies to measure traffic and our ads. See our <a href="privacy/">Privacy &amp; Cookie Policy</a>.</p>
   <div class="cb-actions">
     <button class="btn btn-line" id="cbReject" type="button">Reject</button>
     <button class="btn btn-accent" id="cbAccept" type="button">Accept all</button>
@@ -691,11 +692,11 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
 const CONFIG = { phone:"07869 572503", phoneIntl:"+447869572503", wa:"447869572503", email:"info@hsmobiletyres.co.uk" };
 document.getElementById('yr').textContent = new Date().getFullYear();
 (function(){var bar=document.getElementById('cookieBar');if(!bar)return;
-  var fab=document.querySelector('.fab-call');
-  function showBar(v){bar.hidden=!v;if(fab)fab.style.display=v?'none':'';}
+  var fab=document.querySelector('.fab-call'),mob=document.querySelector('.mobicall');
+  function showBar(v){bar.hidden=!v;if(fab)fab.style.display=v?'none':'';if(mob)mob.style.display=v?'none':'';}
   function store(v){try{localStorage.setItem('hs_consent',v);}catch(e){}}
   var c=null;try{c=localStorage.getItem('hs_consent');}catch(e){}
-  if(!c)showBar(true);
+  if(!c)setTimeout(function(){showBar(true);},700);
   document.getElementById('cbAccept').addEventListener('click',function(){store('granted');if(window.gtag)gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});showBar(false);});
   document.getElementById('cbReject').addEventListener('click',function(){store('denied');showBar(false);});
   var s=document.getElementById('cookieSettings');if(s)s.addEventListener('click',function(e){e.preventDefault();showBar(true);});
