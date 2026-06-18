@@ -690,12 +690,14 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
 const CONFIG = { phone:"07869 572503", phoneIntl:"+447869572503", wa:"447869572503", email:"info@hsmobiletyres.co.uk" };
 document.getElementById('yr').textContent = new Date().getFullYear();
 (function(){var bar=document.getElementById('cookieBar');if(!bar)return;
+  var fab=document.querySelector('.fab-call');
+  function showBar(v){bar.hidden=!v;if(fab)fab.style.display=v?'none':'';}
   function store(v){try{localStorage.setItem('hs_consent',v);}catch(e){}}
   var c=null;try{c=localStorage.getItem('hs_consent');}catch(e){}
-  if(!c)bar.hidden=false;
-  document.getElementById('cbAccept').addEventListener('click',function(){store('granted');if(window.gtag)gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});bar.hidden=true;});
-  document.getElementById('cbReject').addEventListener('click',function(){store('denied');bar.hidden=true;});
-  var s=document.getElementById('cookieSettings');if(s)s.addEventListener('click',function(e){e.preventDefault();bar.hidden=false;});
+  if(!c)showBar(true);
+  document.getElementById('cbAccept').addEventListener('click',function(){store('granted');if(window.gtag)gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});showBar(false);});
+  document.getElementById('cbReject').addEventListener('click',function(){store('denied');showBar(false);});
+  var s=document.getElementById('cookieSettings');if(s)s.addEventListener('click',function(e){e.preventDefault();showBar(true);});
 })();
 const nav = document.getElementById('nav');
 addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8));
