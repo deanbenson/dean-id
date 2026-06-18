@@ -112,6 +112,8 @@ header.nav.scrolled{background:rgba(12,15,20,.95)}
 .nav .actions{display:flex;align-items:center;gap:14px}
 .nav .phone{display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:15px}
 .nav .phone svg{width:16px;height:16px;color:var(--lime)}
+.nav-call .nc-num{white-space:nowrap}
+@media(max-width:560px){.nav-call .nc-num{display:none}}
 .burger{display:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:10px;width:44px;height:42px;cursor:pointer;padding:0}
 .burger span{display:block;width:20px;height:2px;background:#fff;margin:4px auto;border-radius:2px;transition:.25s}
 .burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
@@ -387,8 +389,7 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
       <a href="#contact">Contact</a>
     </nav>
     <div class="actions">
-      <a class="phone" href="tel:+447869572503"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>07869 572503</a>
-      <a class="btn btn-accent" href="#quote">Get help</a>
+      <a class="btn btn-accent nav-call" href="tel:+447869572503"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call<span class="nc-num">&nbsp;07869 572503</span></a>
       <button class="burger" id="burger" aria-label="Open menu"><span></span><span></span><span></span></button>
     </div>
   </div>
@@ -405,8 +406,8 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
       <h1>Flat tyre?<br>We come to you.</h1>
       <p class="sub">Stuck at home, at work or the side of the road? Don't panic. Stay put, stay safe, and we'll come to you. Friendly local fitters, usually with you in 30-60 minutes, 24 hours a day.</p>
       <div class="cta-row">
-        <a class="btn btn-accent" href="#quote">Get help now</a>
-        <a class="btn btn-line" href="tel:+447869572503"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call 07869 572503</a>
+        <a class="btn btn-accent" href="tel:+447869572503"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call 07869 572503</a>
+        <a class="btn btn-wa" href="https://wa.me/447869572503" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.1-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 .9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .5l-.4.6c-.2.2-.3.4-.1.7.5.8 1 1.4 1.7 1.9.4.3.8.5 1 .6.2.1.4.1.5-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.3.1.2.1.6-.1 1z"/></svg>WhatsApp</a>
       </div>
       <div class="hero-rating"><span class="rs">★★★★★</span> Rated <strong>5.0</strong> from <strong>267</strong> Google reviews</div>
       <div class="ticks">
