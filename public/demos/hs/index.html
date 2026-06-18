@@ -263,8 +263,9 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
 .mobicall .m{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.16)}
 
 /* Floating always-on call button (desktop) */
-.fab-call{position:fixed;right:26px;bottom:26px;z-index:75;display:inline-flex;align-items:center;gap:11px;background:var(--lime);color:var(--lime-ink);font-family:var(--body);font-weight:700;font-size:16px;letter-spacing:-.01em;padding:15px 22px;border-radius:40px;box-shadow:0 14px 34px -10px rgba(16,20,26,.42);transition:transform .15s ease,box-shadow .15s ease;animation:fabpulse 2.8s ease-out infinite}
+.fab-call{position:fixed;right:26px;bottom:26px;z-index:75;display:inline-flex;align-items:center;gap:11px;background:var(--lime);color:var(--lime-ink);font-family:var(--body);font-weight:700;font-size:16px;letter-spacing:-.01em;padding:15px 22px;border-radius:40px;box-shadow:0 14px 34px -10px rgba(16,20,26,.42);transition:transform .2s ease,box-shadow .15s ease,opacity .2s ease,visibility .2s;animation:fabpulse 2.8s ease-out infinite}
 .fab-call:hover{transform:translateY(-2px);box-shadow:0 18px 40px -10px rgba(16,20,26,.5)}
+.fab-call.hide{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(12px) scale(.96);animation:none}
 .fab-call .ic{width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 .fab-call svg{width:16px;height:16px}
 .fab-call small{display:block;font-size:11px;font-weight:600;opacity:.75;letter-spacing:.02em;line-height:1}
@@ -650,6 +651,8 @@ burger.addEventListener('click', () => { burger.classList.toggle('open'); menu.c
 menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { burger.classList.remove('open'); menu.classList.remove('open'); document.body.style.overflow = ''; }));
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold:.1, rootMargin:"0px 0px -6% 0px" });
 document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+const fab=document.querySelector('.fab-call'), foot=document.querySelector('footer');
+if(fab&&foot){new IntersectionObserver(es=>es.forEach(e=>fab.classList.toggle('hide',e.isIntersecting)),{rootMargin:"0px 0px -8% 0px"}).observe(foot);}
 const form = document.getElementById('quoteForm'), modal = document.getElementById('modal');
 let lastSummary = "";
 function val(id){ return (document.getElementById(id).value || "").trim(); }
