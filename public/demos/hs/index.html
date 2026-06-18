@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.classList.add('js')</script>
+<!-- Google Tag Manager (their existing container GTM-5G3H27NJ), loaded on first interaction to protect performance -->
+<script>window.dataLayer=window.dataLayer||[];(function(w,d){var f=false,L=function(){if(f)return;f=true;w.dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});var s=d.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id=GTM-5G3H27NJ';d.head.appendChild(s);};['pointerdown','keydown','scroll','touchstart','mousemove'].forEach(function(e){w.addEventListener(e,L,{once:true,passive:true});});})(window,document);</script>
 <title>HS Mobile Tyres | 24/7 Mobile Tyre Fitting in Middlesbrough &amp; Teesside</title>
 <meta name="description" content="Flat tyre? HS Mobile Tyres come to you. Fast, reliable mobile tyre fitting, repairs and emergency call-outs across Middlesbrough, Teesside and the North East. Open 24/7. Call, WhatsApp or text 07869 572503.">
 <meta name="theme-color" content="#0e1117">
@@ -19,6 +21,8 @@
 <meta property="og:image" content="https://dean.id/demos/hs/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:secure_url" content="https://dean.id/demos/hs/og.jpg">
 <meta property="og:image:alt" content="HS Mobile Tyres: 24/7 mobile tyre fitting across the North East">
 <meta property="og:url" content="https://dean.id/demos/hs/">
 <meta property="og:site_name" content="HS Mobile Tyres">
@@ -28,7 +32,9 @@
 <meta name="twitter:description" content="We come to you at home, work or roadside. Fast mobile tyre fitting across Middlesbrough &amp; Teesside.">
 <meta name="twitter:image" content="https://dean.id/demos/hs/og.jpg">
 <meta name="twitter:image:alt" content="HS Mobile Tyres branded van">
-<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="img/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;450;500;600&display=swap">
@@ -134,6 +140,14 @@ header.nav.scrolled{background:rgba(12,15,20,.95)}
 .quote-card .btn{width:100%;margin-top:6px}
 .quote-card .fineprint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:12px}
 .quote-card .fineprint a{color:var(--text);font-weight:600;border-bottom:1px solid var(--lime)}
+.geo-btn{margin-top:8px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px dashed #cfd3d8;color:var(--text);font-family:var(--body);font-size:13px;font-weight:600;padding:10px 13px;border-radius:10px;cursor:pointer;transition:.15s}
+.geo-btn:hover{border-color:var(--lime-d);background:#fcfdf6}
+.geo-btn svg{width:15px;height:15px;color:var(--lime-d)}
+.geo-btn.ok{border-style:solid;border-color:var(--lime-d);color:#5c6a07;background:#fafdf0}
+.geo-btn:disabled{opacity:.65;cursor:default}
+.qtrust{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;justify-content:center}
+.qtrust span{font-size:12px;color:var(--muted);font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.qtrust span::before{content:"\2713";color:var(--lime-d);font-weight:800}
 
 /* Stats row */
 .stats{border-bottom:1px solid var(--line)}
@@ -324,6 +338,7 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
 </style>
 </head>
 <body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5G3H27NJ" height="0" width="0" style="display:none;visibility:hidden" title="gtm"></iframe></noscript>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -402,7 +417,9 @@ footer .socials svg{width:17px;height:17px;color:#c2c8d0}
           <div class="field"><label for="location">Postcode / location</label><input id="location" type="text" placeholder="e.g. TS5 5JU"></div>
           <div class="field"><label for="tyre">Tyre size (if known)</label><input id="tyre" type="text" placeholder="e.g. 205/55 R16"></div>
         </div>
+        <button type="button" id="geoBtn" class="geo-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>Use my current location</button>
         <button class="btn btn-accent" type="submit">Send my request</button>
+        <div class="qtrust"><span>BS AU 159 repairs</span><span>Card &amp; cash</span><span>All major brands</span></div>
         <p class="fineprint">In a hurry? Call <a href="tel:+447869572503">07869 572503</a>, 24/7.</p>
       </form>
     </div>
@@ -654,14 +671,14 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 const fab=document.querySelector('.fab-call'), foot=document.querySelector('footer');
 if(fab&&foot){new IntersectionObserver(es=>es.forEach(e=>fab.classList.toggle('hide',e.isIntersecting)),{rootMargin:"0px 0px -8% 0px"}).observe(foot);}
 const form = document.getElementById('quoteForm'), modal = document.getElementById('modal');
-let lastSummary = "";
+let lastSummary = "", geoMap = "";
 function val(id){ return (document.getElementById(id).value || "").trim(); }
 function buildSummary(){
   return ["New quote request for HS Mobile Tyres",
     "Service: " + (val('service') || "(not selected)"),
     "Name: " + (val('name') || "(not given)"),
     "Phone: " + (val('phone') || "(not given)"),
-    "Location: " + (val('location') || "(not given)"),
+    "Location: " + (val('location') || "(not given)") + (geoMap ? "  (pin: " + geoMap + ")" : ""),
     "Tyre size: " + (val('tyre') || "(not given)")].join("\n");
 }
 form.addEventListener('submit', e => {
@@ -678,8 +695,21 @@ form.addEventListener('submit', e => {
   document.getElementById('mWhats').href = "https://wa.me/" + CONFIG.wa + "?text=" + enc;
   document.getElementById('mText').href = "sms:" + CONFIG.phoneIntl + "?&body=" + enc;
   modal.classList.add('open'); document.body.style.overflow = 'hidden';
+  dataLayer.push({event:'quote_request', service: val('service')});
 });
 ["name","phone","service"].forEach(id => document.getElementById(id).addEventListener('input', function(){ this.style.borderColor = ""; }));
+const geoBtn=document.getElementById('geoBtn');
+if(geoBtn){geoBtn.addEventListener('click',function(){
+  if(!navigator.geolocation){geoBtn.textContent="Type your postcode instead";return;}
+  geoBtn.textContent="Locating…";geoBtn.disabled=true;
+  navigator.geolocation.getCurrentPosition(function(p){
+    var la=p.coords.latitude.toFixed(5),lo=p.coords.longitude.toFixed(5);
+    geoMap="https://maps.google.com/?q="+la+","+lo;
+    document.getElementById('location').value=la+", "+lo;
+    geoBtn.innerHTML="✓ Location added";geoBtn.classList.add('ok');geoBtn.disabled=false;
+  },function(){geoBtn.textContent="Couldn't get location, type it in";geoBtn.disabled=false;},{enableHighAccuracy:true,timeout:10000});
+});}
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';if(/^tel:/.test(h))dataLayer.push({event:'call_click'});else if(/wa\.me|whatsapp/.test(h))dataLayer.push({event:'whatsapp_click'});else if(/^sms:/.test(h))dataLayer.push({event:'sms_click'});},true);
 function closeModal(){ modal.classList.remove('open'); document.body.style.overflow = ''; }
 document.getElementById('modalClose').addEventListener('click', closeModal);
 modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
