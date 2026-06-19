@@ -54,7 +54,21 @@
   .book .btn{width:100%;justify-content:center;margin-top:16px}
   .book .call{display:block;text-align:center;margin-top:10px;font-size:.9rem;color:var(--muted)}
   footer{background:var(--ink);color:#aab2bd;padding:28px 0;font-size:.85rem;text-align:center;margin-top:20px}
-  @media(max-width:820px){.pgrid{grid-template-columns:1fr}.gmain{height:300px}.book{position:static}.features{grid-template-columns:1fr}}
+  .actions{display:flex;gap:10px;margin:14px 0 4px;flex-wrap:wrap}
+  .abtn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:.55rem 1rem;font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;color:var(--ink)}
+  .abtn:hover{border-color:var(--orange)}.abtn.on{border-color:var(--orange);color:var(--orange-deep)}
+  .mort{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:8px 0;font-size:.92rem;color:var(--ink-soft)}
+  .mort b{font-weight:800}.mort span{color:var(--muted);font-size:.85em}.mort a{color:var(--orange-deep);font-weight:600}
+  .simh{font-family:var(--serif);font-size:1.5rem;margin:42px 0 16px}
+  .similar{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .scard{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);transition:.2s;display:block}
+  .scard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+  .sph{height:160px;background:#2b3645}
+  .sbody{padding:14px}.sprice{font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums}.saddr{color:var(--muted);font-size:.88rem;margin:.2rem 0}.smeta{font-size:.82rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:.5rem;margin-top:.4rem}
+  .xsell{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:36px 0 50px}
+  .xs{background:linear-gradient(140deg,#1b2430,#2b3645);color:#fff;border-radius:14px;padding:22px;display:block;transition:.2s}
+  .xs:hover{transform:translateY(-2px)}.xs b{display:block;font-family:var(--serif);font-size:1.2rem;margin-bottom:3px}.xs span{color:#aab2bd;font-size:.9rem}
+  @media(max-width:820px){.pgrid{grid-template-columns:1fr}.gmain{height:300px}.book{position:static}.features{grid-template-columns:1fr}.similar,.xsell{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -83,7 +97,7 @@
 
   function render(d){
     var isLet=d.kind==='let';
-    var imgs=d.images||[];
+    window.CUR=d; var imgs=d.images||[];
     var chip=d.status||(isLet?'To Let':'For Sale');
     var price=money(d.price)+(isLet&&d.price?'<span class="pcm"> pcm</span>':'');
     var facts=[];
@@ -105,7 +119,9 @@
       '<div class="pgrid"><div>'+
         '<h1 class="ptitle">'+esc(d.address)+'</h1>'+
         '<div class="pprice">'+price+'</div>'+
+        '<div class="actions"><button class="abtn" id="saveBtn" onclick="toggleSave()"><span class="hh">♡</span> <span class="lbl">Save</span></button><button class="abtn" onclick="shareProp()">↗ Share</button><a class="abtn" href="tel:01642378022">📞 Call</a></div>'+
         (facts.length?'<div class="facts">'+facts.join('')+'</div>':'')+
+        (!isLet && d.price?'<div class="mort">Mortgage from approx <b>'+mortgageMonthly(d.price)+'/mo</b> <span>(10% deposit · 25 yrs · 4.5%, illustrative only)</span> · <a href="/demos/gr-estates/#services">Get mortgage advice</a></div>':'')+
         '<div class="sec"><h2>About this property</h2><div class="desc">'+esc(desc)+'</div></div>'+
         (feats?'<div class="sec"><h2>Key features</h2><ul class="features">'+feats+'</ul></div>':'')+
         (specs.length?'<div class="sec"><h2>The details</h2><div class="specs">'+specs.join('')+'</div></div>':'')+
@@ -122,6 +138,12 @@
         '<span class="call">or call <b>01642 378022</b></span>'+
         '</form><div id="enqok" style="display:none;text-align:center;padding:14px 6px;color:var(--orange-deep);font-weight:600">Thanks! The team will be in touch shortly. ✓</div>'+
       '</div></aside>'+
+      '</div>'+
+      '<div id="similar"></div>'+
+      '<div class="xsell">'+
+        '<a class="xs" href="/demos/gr-estates/#valuation"><b>Thinking of selling?</b><span>Book a free, no-obligation valuation</span></a>'+
+        '<a class="xs" href="/demos/gr-estates/#services"><b>Need a mortgage?</b><span>Whole-of-market advice</span></a>'+
+        '<a class="xs" href="https://gr-estatesremovals.co.uk/" target="_blank" rel="noopener"><b>Moving home?</b><span>G.R. Removals can help</span></a>'+
       '</div>';
     document.title=d.address+' · '+price.replace(/<[^>]+>/g,'')+' · G.R. Estates';
     var md=document.getElementById('meta-desc'); if(md) md.setAttribute('content',(desc||'').slice(0,150));
@@ -131,7 +153,15 @@
       if(imgs[0])ld.image=imgs[0];
       var s=document.createElement('script');s.type='application/ld+json';s.textContent=JSON.stringify(ld);document.head.appendChild(s);
     }catch(e){}
+    syncSaveBtn(); loadSimilar(d);
   }
+  function mortgageMonthly(p){ var loan=p*0.9, r=0.045/12, n=300; var M=loan*r/(1-Math.pow(1+r,-n)); return money(Math.round(M)); }
+  function savedMap(){ try{ return JSON.parse(localStorage.getItem('grSaved')||'{}'); }catch(e){ return {}; } }
+  window.toggleSave=function(){ if(!window.CUR) return; var m=savedMap(), d=window.CUR; if(m[d.id]){ delete m[d.id]; } else { m[d.id]={id:d.id,kind:d.kind,status:d.status,price:d.price,address:d.address,beds:d.beds,baths:d.baths,type:d.type,image:(d.images&&d.images[0])||null}; } localStorage.setItem('grSaved',JSON.stringify(m)); syncSaveBtn(); };
+  function syncSaveBtn(){ var btn=document.getElementById('saveBtn'); if(!btn||!window.CUR) return; var on=!!savedMap()[window.CUR.id]; btn.classList.toggle('on',on); var hh=btn.querySelector('.hh'); if(hh)hh.textContent=on?'♥':'♡'; var lbl=btn.querySelector('.lbl'); if(lbl)lbl.textContent=on?'Saved':'Save'; }
+  window.shareProp=function(){ var url=location.href; if(navigator.share){ navigator.share({title:document.title,url:url}).catch(function(){}); } else if(navigator.clipboard){ navigator.clipboard.writeText(url); var b=event&&event.currentTarget; if(b){ var o=b.innerHTML; b.innerHTML='✓ Copied'; setTimeout(function(){ b.innerHTML=o; },1500); } } };
+  function scard(L){ var isLet=L.kind==='let'; var pr=(!L.price)?'POA':(money(L.price)+(isLet?' pcm':'')); var ph=L.image?'<div class="sph" style="background:#2b3645 url(\''+L.image+'\') center/cover no-repeat"></div>':'<div class="sph"></div>'; return '<a class="scard" href="property.html?id='+encodeURIComponent(L.id)+'">'+ph+'<div class="sbody"><div class="sprice">'+pr+'</div><div class="saddr">'+esc((L.address||'').split(',').slice(0,2).join(', '))+'</div><div class="smeta">'+(L.beds?L.beds+' bed · ':'')+esc(L.type||'')+'</div></div></a>'; }
+  function loadSimilar(d){ var el=document.getElementById('similar'); if(!el) return; var qs='kind='+(d.kind||'sale')+'&pageSize=7'; if(d.beds) qs+='&beds='+Math.max(1,(Number(d.beds)||1)-1); fetch('/api/search?'+qs).then(function(r){return r.json();}).then(function(res){ var list=(((res&&res.results)||[]).filter(function(x){return x.id!==d.id;})).slice(0,3); if(!list.length) return; el.innerHTML='<h2 class="simh">More properties like this</h2><div class="similar">'+list.map(scard).join('')+'</div>'; }).catch(function(){}); }
   window.setMain=function(el,u){ var m=document.getElementById('mainimg'); if(m)m.src=u; var ts=document.querySelectorAll('.thumbs img'); for(var i=0;i<ts.length;i++)ts[i].classList.remove('active'); el.classList.add('active'); };
   window.sendEnq=function(e){ e.preventDefault(); e.target.style.display='none'; var ok=document.getElementById('enqok'); if(ok)ok.style.display='block'; return false; };
 })();
