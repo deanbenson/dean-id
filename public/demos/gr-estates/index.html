@@ -172,12 +172,25 @@
   .member .nm{font-weight:700;font-size:.94rem;line-height:1.2}
   .member .ti{color:var(--muted);font-size:.8rem;margin-top:3px}
 
+  /* Removals (sister company) */
+  .removals{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center;background:linear-gradient(150deg,#fff,#fbf1e9);border:1px solid var(--line);border-radius:24px;padding:42px;box-shadow:var(--shadow)}
+  .removals h2{font-size:clamp(1.6rem,3vw,2.3rem);margin:.4rem 0 .7rem}
+  .removals p{color:var(--muted);max-width:46ch}
+  .rem-list{list-style:none;margin:18px 0 22px;display:grid;gap:10px}
+  .rem-list li{font-size:.95rem;color:var(--ink-soft);padding-left:28px;position:relative}
+  .rem-list li:before{content:"📦";position:absolute;left:0}
+  .rem-cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .rem-cta span{font-size:.85rem;color:var(--muted)}
+  .rem-visual{height:300px;border-radius:16px;background:linear-gradient(135deg,#1b2430,#2b3645);position:relative;display:grid;place-items:end start;overflow:hidden}
+  .rem-visual svg{position:absolute;inset:0;width:100%;height:100%;opacity:.8}
+  .rem-tag{margin:14px;background:rgba(255,255,255,.14);color:#fff;font-size:.78rem;font-weight:600;padding:.4rem .8rem;border-radius:999px;position:relative;z-index:2}
+
   @media(max-width:900px){
     nav.links{display:none}.menu-btn{display:block}
     .hero-grid{grid-template-columns:1fr}.hero-card{display:none}
     .search{grid-template-columns:1fr 1fr;gap:14px}.search .toggle{grid-column:1/-1}.search .go{grid-column:1/-1;justify-self:stretch}
     .listings,.svc-grid{grid-template-columns:1fr}.why{grid-template-columns:1fr 1fr}
-    .ai,.offices,.foot-grid{grid-template-columns:1fr}.ai{padding:32px}
+    .ai,.offices,.foot-grid,.removals{grid-template-columns:1fr}.ai{padding:32px}.removals{padding:30px}
     .team-grid{grid-template-columns:repeat(3,1fr)}
   }
   @media(max-width:560px){.why{grid-template-columns:1fr}.team-grid{grid-template-columns:repeat(2,1fr)}}
@@ -225,9 +238,9 @@
       </div>
     </div>
     <div class="hero-card">
-      <div class="hero-photo">
+      <div class="hero-photo" id="heroPhoto">
         <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2" opacity=".6"><path d="M60 230 L200 120 L340 230 Z"/><rect x="110" y="190" width="180" height="90"/><rect x="150" y="220" width="40" height="60"/><rect x="215" y="215" width="45" height="35"/></g></svg>
-        <span class="tag">📍 Yarm · 4 bed detached</span>
+        <span class="tag" id="heroTag">📍 Featured property</span>
       </div>
     </div>
   </div>
@@ -255,11 +268,11 @@
     <div class="sec-head">
       <span class="eyebrow" id="buy-eyebrow">Featured</span>
       <h2 id="buy-title">Properties across Teesside</h2>
-      <p>A taste of what we list. On the live site these pull straight from the CRM, so they're never out of date.</p>
+      <p>A few of the homes we're selling and letting right now — updated the moment anything changes, so you're never chasing something that's already gone.</p>
     </div>
     <div class="listings" id="listings"></div>
     <div id="more-wrap" style="text-align:center;margin-top:22px"></div>
-    <p class="demo-note" id="listings-note">Loading live listings from Street…</p>
+    <p class="demo-note" id="listings-note">Finding our latest homes…</p>
     <div id="browse-all" style="text-align:center;margin-top:10px"></div>
   </div>
 </section>
@@ -282,6 +295,31 @@
   </div>
 </section>
 
+<section id="removals">
+  <div class="wrap">
+    <div class="removals">
+      <div>
+        <span class="eyebrow" style="color:var(--orange-deep)">G.R. Removals · our sister company</span>
+        <h2>The whole move, handled by people you trust</h2>
+        <p>Buying or selling with us? Our own removals team picks up where the keys leave off — making every move smooth, simple and stress-free.</p>
+        <ul class="rem-list">
+          <li><b>Home &amp; business removals</b> — single rooms to full offices, local to worldwide</li>
+          <li><b>Packing &amp; man-and-van</b> — professional materials, or a quick single-item move</li>
+          <li><b>Clearances &amp; rubbish removal</b> — downsizing, probate, or prepping a sale</li>
+        </ul>
+        <div class="rem-cta">
+          <a class="btn btn-primary" href="tel:07340482560">Free quote · 07340 482560</a>
+          <span>Free home visit · no obligation</span>
+        </div>
+      </div>
+      <div class="rem-visual">
+        <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2" opacity=".6"><rect x="34" y="120" width="180" height="98" rx="6"/><path d="M214 150 h70 l44 40 v28 h-114 z"/><circle cx="92" cy="228" r="17"/><circle cx="286" cy="228" r="17"/><rect x="250" y="162" width="42" height="28"/><path d="M54 142 h140 M54 162 h96 M54 182 h70"/></g></svg>
+        <span class="rem-tag">📦 From A to B, covered</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section>
   <div class="wrap">
     <div class="sec-head"><span class="eyebrow">Why we're loved</span><h2>The personal touch, the modern tools</h2></div>
@@ -299,7 +337,7 @@
     <div class="sec-head" style="max-width:660px">
       <span class="eyebrow">The team</span>
       <h2>The people behind G.R. Estates</h2>
-      <p>Local, straight-talking property people across sales, lettings, valuations and management. This line-up is pulled live from our CRM — so it's always who's actually here today.</p>
+      <p>Local, straight-talking property people across sales, lettings, valuations and management — the friendly faces you'll actually deal with.</p>
     </div>
     <div class="team-grid" id="team-grid"></div>
     <p class="demo-note" id="team-note" style="margin-top:28px">Loading the team…</p>
@@ -417,12 +455,32 @@
       '<div class="addr">'+shortAddr(L.address)+'</div>'+
       '<div class="meta">'+meta.join('')+'</div></div></article>';
   }
+  function setHero(list){
+    var good=['house','bungalow','detached','semi','flat','apartment','cottage','terrace'];
+    function nice(L){ var t=(L.type||'').toLowerCase(); return good.some(function(g){return t.indexOf(g)>=0;}) && (Number(L.beds)||0)<=6; }
+    var pick=null;
+    (list||[]).forEach(function(L){ if(L.image && nice(L) && (!pick || (Number(L.price)||0)>(Number(pick.price)||0))) pick=L; });
+    if(!pick)(list||[]).forEach(function(L){ if(L.image && (!pick || (Number(L.price)||0)>(Number(pick.price)||0))) pick=L; });
+    var hp=document.getElementById('heroPhoto'); if(!hp||!pick) return;
+    hp.style.background="#2b3645 url('"+pick.image+"') center/cover no-repeat";
+    var svg=hp.querySelector('svg'); if(svg) svg.style.display='none';
+    var tag=document.getElementById('heroTag');
+    if(tag){
+      var parts=(pick.address||'').split(',').map(function(s){return s.trim();});
+      var town=parts.length>=2?parts[parts.length-2]:'';
+      var bits='📍 '+(town||'Teesside');
+      if(pick.beds) bits+=' · '+pick.beds+' bed';
+      if(pick.type) bits+=' '+pick.type;
+      tag.textContent=bits;
+    }
+  }
   function render(list, live){
     var withImg = (list||[]).filter(function(L){return L.image;});
     var use = (withImg.length ? withImg : (list||[])).slice(0,9);
+    setHero(list);
     if(!use.length){ note.textContent = 'No current listings to show.'; return; }
     grid.innerHTML = use.map(card).join('');
-    note.innerHTML = (live ? '🟢 Live from your Street CRM' : 'From your Street CRM') + ' · ' + use.length + ' featured';
+    note.innerHTML = (live ? '🟢 Updated live' : 'Updated regularly') + ' · ' + use.length + ' featured homes';
   }
   var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
   function runSearch(append){
@@ -498,7 +556,8 @@
     {name:"Olivia Rich",title:"Lettings Negotiator"},{name:"Violet Yendall",title:"Lettings Negotiator"},
     {name:"Noah Foster",title:"Team Lettings"},{name:"Lea Finegan",title:"Trainee Valuer"},
     {name:"Emma Wild",title:"Maintenance Coordinator"},{name:"Nicole Purvis",title:"Maintenance Coordinator"},
-    {name:"Arelly Camacho",title:"Admin"},{name:"Rosie Turner",title:"Accounts"}
+    {name:"Arelly Camacho",title:"Admin"},{name:"Rosie Turner",title:"Accounts"},
+    {name:"Dean Benson",title:"Techie"}
   ];
   function initials(n){return (n||'').split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();}
   function mcard(m){
@@ -509,7 +568,7 @@
   function render(list,live){
     if(!list||!list.length){ note.textContent='Team unavailable right now.'; return; }
     grid.innerHTML=list.map(mcard).join('');
-    note.innerHTML=(live?'🟢 Live from the Street CRM':'From the Street CRM')+' · '+list.length+' people';
+    note.innerHTML=(live?'🟢 Our team today':'Our team')+' · '+list.length+' people';
   }
   fetch('/api/team').then(function(r){return r.json();}).then(function(d){
     if(d&&d.members&&d.members.length){ render(d.members,true); } else { throw 0; }

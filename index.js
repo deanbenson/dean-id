@@ -784,7 +784,7 @@ export default {
       try {
         const r = await streetGet(env, "/users?page%5Bsize%5D=100");
         if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
-        const exclude = new Set(["dean benson"]);
+        const exclude = new Set([]);
         const rankOf = function (t) {
           t = (t || "").toLowerCase();
           if (t.indexOf("director") >= 0) return 0;
@@ -796,6 +796,7 @@ export default {
           if (t.indexOf("valuer") >= 0) return 5;
           if (t.indexOf("maintenance") >= 0) return 6;
           if (t.indexOf("admin") >= 0 || t.indexOf("accounts") >= 0) return 7;
+          if (t.indexOf("techie") >= 0) return 9;
           return 5;
         };
         const members = r.body.data
@@ -804,7 +805,6 @@ export default {
             if (a.deactivated_at || a.deleted_at) return false;
             const nm = ((a.first_name || "") + " " + (a.last_name || "")).toLowerCase().trim();
             if (!nm || exclude.has(nm)) return false;
-            if ((a.job_title || "").toLowerCase().indexOf("techie") >= 0) return false;
             return true;
           })
           .map(function (a) { return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: a.job_title || "" }; });
