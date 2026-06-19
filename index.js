@@ -449,7 +449,10 @@ async function collectInstructions(env, ep, priceKey, kind, onset, pages) {
         found.set(pid, {
           id: pid, kind: kind, status: p.status, price: a[priceKey],
           address: (p.address && p.address.single_line) || p.inline_address || null,
-          beds: p.bedrooms, baths: p.bathrooms, type: p.property_type
+          town: (p.address && p.address.town) || null,
+          postcode: (p.address && p.address.postcode) || null,
+          beds: p.bedrooms, baths: p.bathrooms, type: p.property_type,
+          style: p.property_style || null
         });
       }
     }
@@ -488,6 +491,50 @@ async function refreshListings(env) {
     generated_at: new Date().toISOString(), count: listings.length, listings
   }), { expirationTtl: 172800 });
   return listings.length;
+}
+
+// Refresh job: keep the D1 search database in sync with Street.
+// Pulls the current on-market set, upserts prices/status, drops anything no
+// longer listed, and backfills photos for new listings. The seed is only the
+// initial fill; this keeps it current automatically.
+async function refreshD1(env) {
+  if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
+  const sale = await collectInstructions(env, "/sales-instructions", "marketing_price", "sale", ON_SALE, 8);
+  const lett = await collectInstructions(env, "/lettings-instructions", "marketing_price_pcm", "let", ON_LET, 5);
+  const all = [...sale, ...lett];
+  if (!all.length) return 0;
+  const db = env.gr_estates;
+  const ups = all.map((L) => {
+    const pr = (L.price == null || isNaN(Number(L.price))) ? null : Math.round(Number(L.price));
+    return db.prepare(
+      "INSERT INTO listings (id,kind,status,price,address,town,postcode,beds,baths,type,style,updated_at) " +
+      "VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now')) " +
+      "ON CONFLICT(id) DO UPDATE SET kind=excluded.kind,status=excluded.status,price=excluded.price,address=excluded.address,town=excluded.town,postcode=excluded.postcode,beds=excluded.beds,baths=excluded.baths,type=excluded.type,style=excluded.style,updated_at=datetime('now')"
+    ).bind(L.id, L.kind, L.status || null, pr, L.address || null, L.town || null, L.postcode || null, L.beds || null, L.baths || null, L.type || null, L.style || null);
+  });
+  for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
+  // Drop anything no longer on-market — only when the scan looks complete,
+  // so a partial/failed scan can never wrongly wipe live listings.
+  try {
+    const cur = await db.prepare("SELECT COUNT(*) AS n FROM listings").first();
+    const curN = (cur && cur.n) || 0;
+    if (all.length >= 100 && all.length >= curN * 0.7) {
+      const ph = all.map(() => "?").join(",");
+      await db.prepare("DELETE FROM listings WHERE id NOT IN (" + ph + ")").bind(...all.map((L) => L.id)).run();
+    }
+  } catch (e) {}
+  // Backfill photos for new listings (cheap once seeded)
+  try {
+    const miss = await db.prepare("SELECT id FROM listings WHERE image IS NULL OR image = '' LIMIT 25").all();
+    const rows = (miss && miss.results) || [];
+    if (rows.length) {
+      await attachImages(env, rows);
+      for (const row of rows) {
+        if (row.image) { try { await db.prepare("UPDATE listings SET image = ? WHERE id = ?").bind(row.image, row.id).run(); } catch (e) {} }
+      }
+    }
+  } catch (e) {}
+  return all.length;
 }
 
 // --- Error rendering -------------------------------------------------------
@@ -671,6 +718,7 @@ function errorResponse(request, url, code) {
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
+    ctx.waitUntil(refreshD1(env).catch(() => {}));
   },
   async fetch(request, env) {
    try {
@@ -823,6 +871,10 @@ export default {
     if (path === "/api/property") {
       const id = url.searchParams.get("id") || "";
       if (!id) return respond(JSON.stringify({ ok: false }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" });
+      const PJSON = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=600" };
+      if (env && env.LISTINGS) {
+        try { const cached = await env.LISTINGS.get("prop:" + id); if (cached) return respond(cached, 200, PJSON); } catch (e) {}
+      }
       try {
         const r = await streetGet(env, "/properties/" + encodeURIComponent(id) + "?include=media");
         if (!r.ok || !r.body || !r.body.data) throw new Error("not found");
@@ -853,7 +905,9 @@ export default {
           images: images.slice(0, 30),
           virtualTour: a.virtual_tour || ""
         };
-        return respond(JSON.stringify(out), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=600" });
+        const body = JSON.stringify(out);
+        if (env && env.LISTINGS) { try { await env.LISTINGS.put("prop:" + id, body, { expirationTtl: 3600 }); } catch (e) {} }
+        return respond(body, 200, PJSON);
       } catch (e) {
         return respond(JSON.stringify({ ok: false }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" });
       }
