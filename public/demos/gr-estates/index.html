@@ -7,7 +7,7 @@
 <title>G.R. Estates · Teesside Sales &amp; Lettings — prototype</title>
 <meta name="description" content="Prototype concept for G.R. Estates — independent estate &amp; letting agents in Teesside." />
 <meta name="theme-color" content="#1b2430" />
-<link rel="canonical" href="https://dean.id/demos/bishop/" />
+<link rel="canonical" href="https://dean.id/demos/gr-estates/" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -321,7 +321,7 @@
     </div>
     <div class="foot-bottom">
       <span>© 2026 G.R. Estates · prototype concept</span>
-      <span>Designed &amp; built by dean.id</span>
+      <a href="https://dean.id" title="site by dean.id" style="line-height:0"><img src="https://dean.id/badge.svg?theme=transparent-dark" alt="site by dean.id" width="92" height="26" loading="lazy" style="display:block"></a>
     </div>
   </div>
 </footer>
@@ -366,10 +366,10 @@
     var use = (withImg.length ? withImg : (list||[])).slice(0,9);
     if(!use.length){ note.textContent = 'No current listings to show.'; return; }
     grid.innerHTML = use.map(card).join('');
-    note.innerHTML = (live ? '🟢 Live from Street' : 'Latest snapshot from Street') + ' · ' + use.length + ' current listings';
+    note.innerHTML = (live ? '🟢 Live from your Street CRM' : 'From your Street CRM') + ' · ' + use.length + ' current listings';
   }
   fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
-    if(d && d.ok && d.listings && d.listings.length){ render(d.listings, true); } else { throw new Error('empty'); }
+    if(d && d.listings && d.listings.length){ render(d.listings, true); } else { throw 0; }
   }).catch(function(){
     fetch('listings-snapshot.json').then(function(r){return r.json();}).then(function(d){
       render((d && d.listings) || [], false);

@@ -427,14 +427,12 @@ const ON_SALE = new Set(["For Sale", "Under Offer", "Sold STC"]);
 const ON_LET = new Set(["To Let", "Let Agreed"]);
 
 async function collectInstructions(env, ep, priceKey, kind, onset, pages) {
-  const reqs = [];
-  for (let pn = 1; pn <= pages; pn++) {
-    reqs.push(streetGet(env, ep + "?include=property&sort=-instructed_at&page%5Bnumber%5D=" + pn + "&page%5Bsize%5D=100"));
-  }
-  const results = await Promise.all(reqs);
   const found = new Map();
-  for (const r of results) {
-    if (!r.ok || !r.body) continue;
+  for (let pn = 1; pn <= pages; pn++) {
+    let r;
+    try { r = await streetGet(env, ep + "?include=property&sort=-instructed_at&page%5Bnumber%5D=" + pn + "&page%5Bsize%5D=100"); }
+    catch (_) { continue; }
+    if (!r || !r.ok || !r.body) continue;
     const props = {};
     for (const inc of (r.body.included || [])) {
       if (inc.type === "property") props[inc.id] = inc.attributes || {};
@@ -458,10 +456,10 @@ async function collectInstructions(env, ep, priceKey, kind, onset, pages) {
 }
 
 async function attachImages(env, listings) {
-  await Promise.all(listings.map(async (L) => {
+  for (const L of listings) {
     try {
       const r = await streetGet(env, "/properties/" + L.id + "?include=media");
-      let imgs = ((r.body && r.body.included) || [])
+      let imgs = ((r && r.body && r.body.included) || [])
         .filter((i) => i.type === "media").map((i) => i.attributes || {})
         .filter((m) => String(m.media_type || "").toLowerCase() === "image" && m.include_in_listing && !m.deleted_at);
       imgs.sort((x, y) =>
@@ -469,18 +467,31 @@ async function attachImages(env, listings) {
         ((x.feature_index == null ? 999 : x.feature_index) - (y.feature_index == null ? 999 : y.feature_index)));
       L.image = imgs.length ? imgs[0].url : null;
     } catch (_) { L.image = null; }
-  }));
+  }
 }
 
 async function fetchStreetListings(env) {
-  const sale = await collectInstructions(env, "/sales-instructions", "marketing_price", "sale", ON_SALE, 3);
-  const lett = await collectInstructions(env, "/lettings-instructions", "marketing_price_pcm", "let", ON_LET, 3);
-  let all = [...sale, ...lett].slice(0, 12);
+  const sale = await collectInstructions(env, "/sales-instructions", "marketing_price", "sale", ON_SALE, 2);
+  const lett = await collectInstructions(env, "/lettings-instructions", "marketing_price_pcm", "let", ON_LET, 2);
+  let all = [...sale, ...lett].slice(0, 9);
   await attachImages(env, all);
   return all.map(({ id, ...rest }) => rest);
 }
 
+// Refresh job: pull current listings from Street and store the JSON in KV.
+async function refreshListings(env) {
+  if (!env || !env.STREET_API_TOKEN || !env.LISTINGS) return 0;
+  const listings = await fetchStreetListings(env);
+  await env.LISTINGS.put("current", JSON.stringify({
+    generated_at: new Date().toISOString(), count: listings.length, listings
+  }), { expirationTtl: 172800 });
+  return listings.length;
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshListings(env).catch(() => {}));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -536,26 +547,18 @@ export default {
       });
     }
 
-    // Live on-market listings for the website (cached 15 min). Inert if no token configured.
+    // On-market listings, served fast from KV (refreshed hourly by the scheduled job).
     if (path === "/api/listings") {
-      if (!env || !env.STREET_API_TOKEN) {
-        return respond(JSON.stringify({ ok: false, listings: [] }), 200, {
-          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
-        });
+      let data = null;
+      if (env && env.LISTINGS) {
+        try { const kv = await env.LISTINGS.get("current"); if (kv) data = JSON.parse(kv); } catch (_) {}
       }
-      const cache = caches.default;
-      const cacheKey = new Request(url.origin + "/api/listings?cv=1");
-      const hit = await cache.match(cacheKey);
-      if (hit) return hit;
-      let listings = [];
-      try { listings = await fetchStreetListings(env); } catch (_) { listings = []; }
-      const res = respond(JSON.stringify({ ok: true, count: listings.length, listings }), 200, {
+      const listings = (data && data.listings) || [];
+      return respond(JSON.stringify({ ok: true, count: listings.length, listings, generated_at: (data && data.generated_at) || null }), 200, {
         "content-type": "application/json; charset=utf-8",
         "access-control-allow-origin": "*",
-        "cache-control": "public, max-age=900"
+        "cache-control": "public, max-age=300"
       });
-      try { await cache.put(cacheKey, res.clone()); } catch (_) {}
-      return res;
     }
 
     if (path === "/badge.svg") {

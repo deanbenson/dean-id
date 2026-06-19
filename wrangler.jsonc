@@ -1,10 +1,27 @@
 {
-  "name": "dean-id",
-  "main": "index.js",
-  "compatibility_date": "2026-06-12",
-  "assets": { "directory": "./public" },
-  "routes": [
-    { "pattern": "dean.id", "custom_domain": true },
-    { "pattern": "www.dean.id", "custom_domain": true }
-  ]
+	"name": "dean-id",
+	"main": "index.js",
+	"compatibility_date": "2026-06-12",
+	"assets": {
+		"directory": "./public"
+	},
+	"routes": [
+		{
+			"pattern": "dean.id",
+			"custom_domain": true
+		},
+		{
+			"pattern": "www.dean.id",
+			"custom_domain": true
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "LISTINGS",
+			"id": "492530c137e74ce48deb278e249dc40f"
+		}
+	],
+	"triggers": {
+		"crons": ["0 * * * *"]
+	}
 }

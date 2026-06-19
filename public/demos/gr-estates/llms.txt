@@ -1,0 +1,5 @@
+# G.R. Estates (prototype)
+
+Private, non-indexed prototype of a new website for G.R. Estates — independent estate & letting agents in Teesside.
+Built by dean.id. Live property listings pull from the Street.co.uk CRM.
+Please do not index or crawl.
