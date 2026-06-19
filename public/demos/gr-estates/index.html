@@ -534,7 +534,8 @@
   }).catch(function(){});
 
   fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
-    if(d && d.listings && d.listings.length){ render(d.listings, true); } else { throw 0; }
+    var L=(d && d.listings) || [];
+    if(L.length && L[0].id){ render(L, true); } else { throw 0; }
   }).catch(function(){
     fetch('listings-snapshot.json').then(function(r){return r.json();}).then(function(d){
       render((d && d.listings) || [], false);
