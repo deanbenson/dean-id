@@ -88,7 +88,7 @@
 
   /* Listings */
   .listings{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-  .card{background:var(--paper);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);transition:.2s}
+  .card{display:block;background:var(--paper);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);transition:.2s}
   .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
   .card .ph{height:190px;position:relative;display:grid;place-items:end start}
   .ph.a{background:linear-gradient(135deg,#516a86,#8aa2bd)}
@@ -309,8 +309,9 @@
         </ul>
         <div class="rem-cta">
           <a class="btn btn-primary" href="tel:07340482560">Free quote · 07340 482560</a>
-          <span>Free home visit · no obligation</span>
+          <a class="btn btn-dark" href="https://gr-estatesremovals.co.uk/" target="_blank" rel="noopener">Visit G.R. Removals →</a>
         </div>
+        <p style="font-size:.85rem;color:var(--muted);margin-top:12px">Free home visit · no obligation</p>
       </div>
       <div class="rem-visual">
         <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2" opacity=".6"><rect x="34" y="120" width="180" height="98" rx="6"/><path d="M214 150 h70 l44 40 v28 h-114 z"/><circle cx="92" cy="228" r="17"/><circle cx="286" cy="228" r="17"/><rect x="250" y="162" width="42" height="28"/><path d="M54 142 h140 M54 162 h96 M54 182 h70"/></g></svg>
@@ -409,7 +410,7 @@
       <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton &amp; Normanby offices</a><span style="display:block;padding-top:10px;color:#8b94a0;font-size:.78rem">Company No. 15494951 · VAT 463 2650 95</span></div>
     </div>
     <div class="foot-bottom">
-      <span>© 2026 G.R. Estates · prototype concept</span>
+      <span>© 2026 G.R. Estates · prototype concept <span style="opacity:.45">· v0.4</span></span>
       <a href="https://dean.id" title="site by dean.id" style="line-height:0"><img src="https://dean.id/badge.svg?theme=transparent-dark" alt="site by dean.id" width="92" height="26" loading="lazy" style="display:block"></a>
     </div>
   </div>
@@ -450,10 +451,13 @@
     var ph = L.image
       ? '<div class="ph" style="background:#2b3645 url(\''+L.image+'\') center/cover no-repeat">'
       : '<div class="ph a">';
-    return '<article class="card">'+ph+'<span class="chip'+(isLet?' let':'')+'">'+chip(L)+'</span></div>'+
+    var inner = ph+'<span class="chip'+(isLet?' let':'')+'">'+chip(L)+'</span></div>'+
       '<div class="body"><div class="price">'+price+'</div>'+
       '<div class="addr">'+shortAddr(L.address)+'</div>'+
-      '<div class="meta">'+meta.join('')+'</div></div></article>';
+      '<div class="meta">'+meta.join('')+'</div></div>';
+    return L.id
+      ? '<a class="card" href="property.html?id='+encodeURIComponent(L.id)+'">'+inner+'</a>'
+      : '<article class="card">'+inner+'</article>';
   }
   function setHero(list){
     var good=['house','bungalow','detached','semi','flat','apartment','cottage','terrace'];
@@ -464,6 +468,7 @@
     var hp=document.getElementById('heroPhoto'); if(!hp||!pick) return;
     hp.style.background="#2b3645 url('"+pick.image+"') center/cover no-repeat";
     var svg=hp.querySelector('svg'); if(svg) svg.style.display='none';
+    if(pick.id){ hp.style.cursor='pointer'; hp.onclick=function(){ location.href='property.html?id='+encodeURIComponent(pick.id); }; }
     var tag=document.getElementById('heroTag');
     if(tag){
       var parts=(pick.address||'').split(',').map(function(s){return s.trim();});

@@ -477,7 +477,7 @@ async function fetchStreetListings(env) {
   const lett = await collectInstructions(env, "/lettings-instructions", "marketing_price_pcm", "let", ON_LET, 2);
   let all = [...sale, ...lett].slice(0, 9);
   await attachImages(env, all);
-  return all.map(({ id, ...rest }) => rest);
+  return all;
 }
 
 // Refresh job: pull current listings from Street and store the JSON in KV.
@@ -816,6 +816,46 @@ export default {
         return respond(JSON.stringify({ ok: false, members: [] }), 200, {
           "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
         });
+      }
+    }
+
+    // Full detail for one property (for the detail page) — Street property + media + D1 price.
+    if (path === "/api/property") {
+      const id = url.searchParams.get("id") || "";
+      if (!id) return respond(JSON.stringify({ ok: false }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" });
+      try {
+        const r = await streetGet(env, "/properties/" + encodeURIComponent(id) + "?include=media");
+        if (!r.ok || !r.body || !r.body.data) throw new Error("not found");
+        const a = r.body.data.attributes || {};
+        const inc = r.body.included || [];
+        let images = inc.filter(function (x) { return x.type === "media" && ((x.attributes || {}).media_type || (x.attributes || {}).type || "").toLowerCase() === "image"; }).map(function (x) { return (x.attributes || {}).url; }).filter(Boolean);
+        if (!images.length) images = inc.filter(function (x) { return x.type === "media" && (x.attributes || {}).url; }).map(function (x) { return x.attributes.url; });
+        let price = null, kind = null, status = a.status || null;
+        if (env && env.gr_estates) {
+          try { const row = await env.gr_estates.prepare("SELECT price,kind,status FROM listings WHERE id = ?").bind(id).first(); if (row) { price = row.price; kind = row.kind; status = row.status || status; } } catch (e) {}
+        }
+        const isLet = kind === "let" || (a.is_lettings && !a.is_sales);
+        const features = (a.features || []).filter(function (f) { return f && f.name; }).sort(function (x, y) { return (x.order || 0) - (y.order || 0); }).map(function (f) { return f.name; });
+        const out = {
+          ok: true, id: id,
+          address: a.public_address || a.inline_address || "",
+          kind: isLet ? "let" : "sale",
+          status: status,
+          price: price,
+          beds: a.bedrooms, baths: a.bathrooms, receptions: a.receptions,
+          type: a.display_property_style || a.property_type || "",
+          tenure: a.tenure || "",
+          councilTaxBand: a.council_tax_band || "",
+          heating: a.heating_system || "",
+          description: isLet ? (a.full_description_lettings || a.full_description || "") : (a.full_description || a.full_description_lettings || ""),
+          location: isLet ? (a.location_summary_lettings || a.location_summary || "") : (a.location_summary || a.location_summary_lettings || ""),
+          features: features,
+          images: images.slice(0, 30),
+          virtualTour: a.virtual_tour || ""
+        };
+        return respond(JSON.stringify(out), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=600" });
+      } catch (e) {
+        return respond(JSON.stringify({ ok: false }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" });
       }
     }
 
