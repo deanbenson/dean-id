@@ -499,7 +499,7 @@
       <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton &amp; Normanby offices</a><span style="display:block;padding-top:10px;color:#8b94a0;font-size:.78rem">Company No. 15494951 · VAT 463 2650 95</span></div>
     </div>
     <div class="foot-bottom">
-      <span>© 2026 G.R. Estates <span style="font-size:.7rem;opacity:.3;font-weight:500;margin-left:5px">v0.4</span></span>
+      <span>© 2026 G.R. Estates · <a href="legal.html#privacy" style="color:inherit">Privacy</a> · <a href="legal.html#cookies" style="color:inherit">Cookies</a> · <a href="legal.html#terms" style="color:inherit">Terms</a> · <a href="legal.html#complaints" style="color:inherit">Complaints</a> <span style="font-size:.7rem;opacity:.3;font-weight:500;margin-left:5px">v0.4</span></span>
       <a href="https://dean.id" title="site by dean.id" style="line-height:0"><img src="https://dean.id/badge.svg?theme=transparent-dark" alt="site by dean.id" width="92" height="26" loading="lazy" style="display:block"></a>
     </div>
   </div>
@@ -688,8 +688,9 @@
     if(/\b(rent|renting|to let|letting|tenant|pcm|landlord)\b/.test(t)) q.kind='let'; else if(/\b(buy|for sale|sale|sell|selling|purchase|buying)\b/.test(t)) q.kind='sale';
     var b=t.match(/(\d+)\s*(?:\+|or more)?\s*(?:bed|bedroom)/); if(b){ q.beds=b[1]; } else { for(var w in W2N){ if(new RegExp('\\b'+w+'\\s*(?:bed|bedroom)').test(t)){ q.beds=W2N[w]; } } }
     if(/\bstudio\b/.test(t)) q.beds='0';
-    var mx=t.match(/(?:under|below|up to|max|less than|cheaper than)\s*£?\s*([\d,]+)\s*(k)?/); if(mx){ var v=parseInt(mx[1].replace(/,/g,''),10); if(mx[2]==='k'||v<1000) v*=1000; q.max=v; }
-    var mn=t.match(/(?:over|above|from|min|more than|at least)\s*£?\s*([\d,]+)\s*(k)?/); if(mn){ var v2=parseInt(mn[1].replace(/,/g,''),10); if(mn[2]==='k'||v2<1000) v2*=1000; q.min=v2; }
+    var mx=t.match(/(?:under|below|up to|max|less than|cheaper than)\s*£?\s*([\d,]+)\s*(k)?/); if(mx){ var v=parseInt(mx[1].replace(/,/g,''),10); if(mx[2]==='k') v*=1000; q.max=v; }
+    var mn=t.match(/(?:over|above|from|min|more than|at least)\s*£?\s*([\d,]+)\s*(k)?/); if(mn){ var v2=parseInt(mn[1].replace(/,/g,''),10); if(mn[2]==='k') v2*=1000; q.min=v2; }
+    if(!q.kind){ var pv=q.max||q.min; if(pv) q.kind = pv>=10000 ? 'sale' : 'let'; }
     if(/\bbungalow/.test(t)) q.type='Bungalow'; else if(/\b(flat|apartment)/.test(t)) q.type='Flat'; else if(/\bhouse/.test(t)) q.type='House';
     for(var i=0;i<TOWNS.length;i++){ if(t.indexOf(TOWNS[i])>=0){ q.q=TOWNS[i]; break; } }
     q.valuation=/\b(worth|valuation|value my|how much.*(home|house|property))\b/.test(t);
@@ -719,6 +720,19 @@
     },650);
   }
 })();
+</script>
+<div id="cookieBanner" style="display:none;position:fixed;bottom:16px;left:16px;right:16px;max-width:680px;margin:0 auto;background:var(--ink);color:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 20px 50px rgba(0,0,0,.3);z-index:200;font-size:.9rem">
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+    <span style="flex:1;min-width:240px">We use cookies to make the site work and, with your consent, to improve it. <a href="legal.html#cookies" style="color:#fff;text-decoration:underline">Learn more</a>.</span>
+    <span style="display:flex;gap:8px">
+      <button type="button" onclick="cookieChoice('declined')" style="background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:999px;padding:.5rem 1rem;cursor:pointer;font:inherit">Decline</button>
+      <button type="button" onclick="cookieChoice('accepted')" style="background:var(--orange);border:0;color:#fff;border-radius:999px;padding:.5rem 1.1rem;cursor:pointer;font:inherit;font-weight:600">Accept</button>
+    </span>
+  </div>
+</div>
+<script>
+  (function(){ try{ if(!localStorage.getItem('grCookies')){ var b=document.getElementById('cookieBanner'); if(b) b.style.display='block'; } }catch(e){} })();
+  window.cookieChoice=function(c){ try{ localStorage.setItem('grCookies',c); }catch(e){} var b=document.getElementById('cookieBanner'); if(b) b.style.display='none'; };
 </script>
 </body>
 </html>
