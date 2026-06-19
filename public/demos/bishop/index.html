@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>G.R. Estates · Teesside Sales &amp; Lettings — prototype</title>
+<meta name="description" content="Prototype concept for G.R. Estates — independent estate &amp; letting agents in Teesside." />
+<meta name="theme-color" content="#1b2430" />
+<link rel="canonical" href="https://dean.id/demos/bishop/" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#1b2430; --ink-soft:#2b3645; --orange:#e2672a; --orange-deep:#c2541d;
+    --cream:#fbf7f2; --paper:#ffffff; --line:#e7ded3; --muted:#6c7686; --gold:#caa75a;
+    --shadow:0 10px 30px rgba(27,36,48,.08); --shadow-lg:0 24px 60px rgba(27,36,48,.16);
+    --r:16px; --maxw:1180px;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.1;letter-spacing:-.01em}
+  .eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
+  .btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;font-size:.95rem;padding:.85rem 1.4rem;border-radius:999px;border:1.5px solid transparent;cursor:pointer;transition:.18s}
+  .btn-primary{background:var(--orange);color:#fff}
+  .btn-primary:hover{background:var(--orange-deep);transform:translateY(-1px)}
+  .btn-ghost{border-color:rgba(255,255,255,.4);color:#fff}
+  .btn-ghost:hover{background:rgba(255,255,255,.1)}
+  .btn-dark{background:var(--ink);color:#fff}
+  .btn-dark:hover{background:var(--ink-soft);transform:translateY(-1px)}
+
+  /* Banner */
+  .proto-banner{background:var(--ink);color:#fff;text-align:center;font-size:.8rem;padding:.5rem 1rem;letter-spacing:.02em}
+  .proto-banner b{color:var(--gold)}
+
+  /* Nav */
+  header.nav{position:sticky;top:0;z-index:50;background:rgba(251,247,242,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px}
+  .logo{display:flex;align-items:center;gap:.6rem;font-family:var(--serif);font-weight:700;font-size:1.3rem;color:var(--ink)}
+  .logo .mark{width:34px;height:34px;border-radius:9px;background:var(--orange);display:grid;place-items:center;color:#fff;font-size:.95rem;font-weight:700;font-family:var(--sans)}
+  nav.links{display:flex;gap:1.6rem;align-items:center;font-weight:500;font-size:.95rem}
+  nav.links a:hover{color:var(--orange)}
+  .nav-cta{display:flex;gap:.6rem;align-items:center}
+  .menu-btn{display:none;background:none;border:0;cursor:pointer}
+
+  /* Hero */
+  .hero{position:relative;color:#fff;padding:72px 0 0;background:
+     radial-gradient(1100px 500px at 75% -10%, rgba(226,103,42,.45), transparent 60%),
+     linear-gradient(160deg,#1b2430 0%, #232f3f 55%, #1b2430 100%);overflow:hidden}
+  .hero:after{content:"";position:absolute;inset:0;background-image:
+     linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+     linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+     background-size:42px 42px;mask-image:linear-gradient(180deg,#000,transparent 70%);pointer-events:none}
+  .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding-bottom:64px}
+  .hero h1{font-size:clamp(2.6rem,5.2vw,4.2rem);margin:.4rem 0 1rem}
+  .hero h1 em{font-style:normal;color:var(--orange)}
+  .hero p.lead{font-size:1.12rem;color:#d9dde4;max-width:34ch}
+  .hero-stats{display:flex;gap:2rem;margin-top:2rem}
+  .hero-stats div{font-family:var(--serif);font-size:1.7rem;font-weight:700}
+  .hero-stats span{display:block;font-family:var(--sans);font-size:.78rem;font-weight:500;color:#aab2bd;letter-spacing:.04em}
+  .hero-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:10px;backdrop-filter:blur(6px)}
+  .hero-photo{height:320px;border-radius:14px;background:
+     linear-gradient(135deg,#3a4636,#586b4a 60%,#7d9466);position:relative;overflow:hidden;display:grid;place-items:end start}
+  .hero-photo .tag{margin:14px;background:rgba(27,36,48,.78);color:#fff;font-size:.74rem;font-weight:600;padding:.35rem .7rem;border-radius:999px}
+  .hero-photo svg{position:absolute;inset:0;width:100%;height:100%;opacity:.5}
+
+  /* Search bar */
+  .search{position:relative;z-index:3;margin:-36px auto 0;max-width:920px;background:var(--paper);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:12px;align-items:center}
+  .toggle{display:inline-flex;background:var(--cream);border-radius:999px;padding:4px}
+  .toggle button{border:0;background:none;padding:.5rem .95rem;border-radius:999px;font-weight:600;font-size:.9rem;cursor:pointer;color:var(--muted)}
+  .toggle button.active{background:var(--ink);color:#fff}
+  .field{display:flex;flex-direction:column;gap:2px}
+  .field label{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .field select,.field input{border:0;background:none;font-size:.95rem;font-family:var(--sans);color:var(--ink);font-weight:500;padding:2px 0;outline:none}
+  .search .go{justify-self:end}
+
+  section{padding:76px 0}
+  .sec-head{max-width:560px;margin-bottom:40px}
+  .sec-head h2{font-size:clamp(1.8rem,3.4vw,2.6rem);margin:.5rem 0 .6rem}
+  .sec-head p{color:var(--muted)}
+
+  /* Listings */
+  .listings{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .card{background:var(--paper);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);transition:.2s}
+  .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+  .card .ph{height:190px;position:relative;display:grid;place-items:end start}
+  .ph.a{background:linear-gradient(135deg,#516a86,#8aa2bd)}
+  .ph.b{background:linear-gradient(135deg,#7d6a55,#b49a78)}
+  .ph.c{background:linear-gradient(135deg,#5e7d6f,#93b3a0)}
+  .ph .chip{margin:12px;background:var(--orange);color:#fff;font-size:.72rem;font-weight:700;padding:.3rem .65rem;border-radius:6px;letter-spacing:.02em}
+  .ph .chip.let{background:var(--ink)}
+  .card .body{padding:18px 18px 20px}
+  .card .price{font-family:var(--serif);font-size:1.4rem;font-weight:700}
+  .card .addr{color:var(--muted);font-size:.92rem;margin:.2rem 0 .9rem}
+  .card .meta{display:flex;gap:1rem;font-size:.84rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:.8rem}
+  .card .meta b{font-weight:600}
+  .demo-note{font-size:.78rem;color:var(--muted);margin-top:16px;text-align:center}
+
+  /* Services */
+  .services{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .svc{padding:26px;border:1px solid var(--line);border-radius:var(--r);background:var(--cream);transition:.2s}
+  .svc:hover{border-color:var(--orange);background:#fff;transform:translateY(-3px)}
+  .svc .ic{width:46px;height:46px;border-radius:12px;background:rgba(226,103,42,.12);display:grid;place-items:center;margin-bottom:14px;color:var(--orange)}
+  .svc h3{font-size:1.18rem;margin-bottom:.35rem}
+  .svc p{font-size:.92rem;color:var(--muted)}
+
+  /* Why strip */
+  .why{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+  .why .item h3{font-family:var(--sans);font-weight:700;font-size:1rem;display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem}
+  .why .item h3 .dot{width:9px;height:9px;border-radius:50%;background:var(--orange);flex:none}
+  .why .item p{font-size:.9rem;color:var(--muted)}
+
+  /* AI teaser */
+  .ai{background:linear-gradient(160deg,#1b2430,#26323f);color:#fff;border-radius:24px;padding:48px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;position:relative;overflow:hidden}
+  .ai .eyebrow{color:var(--gold)}
+  .ai h2{color:#fff;font-size:2rem;margin:.5rem 0 .8rem}
+  .ai p{color:#cdd3db;max-width:42ch}
+  .chatbox{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px;font-size:.9rem}
+  .bubble{padding:.7rem .9rem;border-radius:12px;margin-bottom:10px;max-width:85%}
+  .bubble.u{background:var(--orange);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+  .bubble.a{background:rgba(255,255,255,.1);border-bottom-left-radius:4px}
+  .bubble small{opacity:.7}
+
+  /* Valuation CTA */
+  .val{background:var(--orange);color:#fff;border-radius:24px;padding:52px;text-align:center}
+  .val h2{color:#fff;font-size:clamp(1.8rem,3.4vw,2.6rem);margin-bottom:.6rem}
+  .val p{max-width:48ch;margin:0 auto 1.6rem;color:#ffe9dc}
+
+  /* Offices */
+  .offices{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .office{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:26px;box-shadow:var(--shadow)}
+  .office h3{font-family:var(--sans);font-weight:700;font-size:1.05rem;margin-bottom:.3rem}
+  .office p{color:var(--muted);font-size:.92rem}
+  .office a{color:var(--orange);font-weight:600}
+
+  /* Footer */
+  footer{background:var(--ink);color:#c4cbd4;padding:56px 0 28px;font-size:.9rem}
+  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;padding-bottom:36px;border-bottom:1px solid rgba(255,255,255,.1)}
+  footer h4{color:#fff;font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+  footer a{display:block;padding:.25rem 0}footer a:hover{color:#fff}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .badges span{border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:.3rem .6rem;font-size:.72rem;color:#aab2bd}
+  .foot-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:22px;flex-wrap:wrap;gap:10px;color:#8b94a0;font-size:.82rem}
+
+  @media(max-width:900px){
+    nav.links{display:none}.menu-btn{display:block}
+    .hero-grid{grid-template-columns:1fr}.hero-card{display:none}
+    .search{grid-template-columns:1fr 1fr;gap:14px}.search .toggle{grid-column:1/-1}.search .go{grid-column:1/-1;justify-self:stretch}
+    .listings,.svc-grid{grid-template-columns:1fr}.why{grid-template-columns:1fr 1fr}
+    .ai,.offices,.foot-grid{grid-template-columns:1fr}.ai{padding:32px}
+  }
+  @media(max-width:560px){.why{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">Private prototype concept · <b>not live</b> · built by dean.id for review</div>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="logo" href="#top"><span class="mark">GR</span> G.R. Estates</a>
+    <nav class="links">
+      <a href="#buy">Buy</a>
+      <a href="#buy">Rent</a>
+      <a href="#services">Services</a>
+      <a href="#ai">Ask G.R.</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-dark" href="#valuation">Free valuation</a>
+      <button class="menu-btn" aria-label="Menu" onclick="document.querySelector('nav.links').style.display='flex'">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1b2430" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<a id="top"></a>
+<section class="hero" style="padding-bottom:0">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Independent agents · Teesside</span>
+      <h1>Teesside property, <em>done properly.</em></h1>
+      <p class="lead">Straight-talking sales &amp; lettings across Stockton, Norton, Yarm and the wider area — from people who actually know the place.</p>
+      <div style="display:flex;gap:.7rem;margin-top:1.6rem;flex-wrap:wrap">
+        <a class="btn btn-primary" href="#buy">Browse properties</a>
+        <a class="btn btn-ghost" href="#valuation">What's my home worth?</a>
+      </div>
+      <div class="hero-stats">
+        <div>2<span>Local offices</span></div>
+        <div>#1<span>On Rightmove &amp; OTM</span></div>
+        <div>100%<span>Independent</span></div>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-photo">
+        <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2" opacity=".6"><path d="M60 230 L200 120 L340 230 Z"/><rect x="110" y="190" width="180" height="90"/><rect x="150" y="220" width="40" height="60"/><rect x="215" y="215" width="45" height="35"/></g></svg>
+        <span class="tag">📍 Yarm · 4 bed detached</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="search">
+    <div class="toggle" role="tablist">
+      <button class="active" onclick="setMode(this,'Buy')">Buy</button>
+      <button onclick="setMode(this,'Rent')">Rent</button>
+    </div>
+    <div class="field"><label>Location</label><input value="Teesside" /></div>
+    <div class="field"><label>Type</label>
+      <select><option>Any type</option><option>House</option><option>Bungalow</option><option>Flat / Apartment</option></select>
+    </div>
+    <div class="field"><label id="pl">Max price</label>
+      <select><option>No max</option><option>£150,000</option><option>£250,000</option><option>£400,000</option><option>£600,000+</option></select>
+    </div>
+    <a class="btn btn-primary go" href="#buy">Search</a>
+  </div>
+</div>
+
+<section id="buy">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Featured</span>
+      <h2>Properties across Teesside</h2>
+      <p>A taste of what we list. On the live site these pull straight from the CRM, so they're never out of date.</p>
+    </div>
+    <div class="listings" id="listings"></div>
+    <p class="demo-note" id="listings-note">Loading live listings from Street…</p>
+  </div>
+</section>
+
+<section class="services" id="services">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">What we do</span>
+      <h2>Everything under one roof</h2>
+      <p>From your first valuation to the keys in the door — and beyond.</p>
+    </div>
+    <div class="svc-grid">
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><h3>Residential Sales</h3><p>Four selling packages to suit every budget, with marketing that makes your home stand out.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6"/></svg></div><h3>Residential Lettings</h3><p>Fully managed or let-only, with referenced tenants and protected deposits.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M5 8h9a3 3 0 010 6H7a3 3 0 000 6h10"/></svg></div><h3>Mortgage Advice</h3><p>Independent, whole-of-market advice to find the right deal for your move.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h13l3-5h2v9H3zM6 18a2 2 0 104 0 2 2 0 00-4 0z"/></svg></div><h3>G.R. Removals</h3><p>Make moving day simple with our own trusted removals service.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 12h6M9 16h6"/></svg></div><h3>Property Auctions</h3><p>A modern way to buy and sell, with secure timeframes and competitive bidding.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.5 8.5 0 11-3.5-6.9M21 4v5h-5"/></svg></div><h3>Free Valuations</h3><p>Find out what your property is worth, with no obligation and local expertise.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">Why we're loved</span><h2>The personal touch, the modern tools</h2></div>
+    <div class="why">
+      <div class="item"><h3><span class="dot"></span>Independent &amp; local</h3><p>Genuine Teesside knowledge that attracts the right buyers and tenants.</p></div>
+      <div class="item"><h3><span class="dot"></span>Marketing &amp; technology</h3><p>Pro photography, colour floor plans, 360° tours and QR-coded boards.</p></div>
+      <div class="item"><h3><span class="dot"></span>Maximum exposure</h3><p>Front and centre on Rightmove and OnTheMarket, plus social media.</p></div>
+      <div class="item"><h3><span class="dot"></span>Service your way</h3><p>Phone, email or face-to-face — as often or as little as you need.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="ai">
+  <div class="wrap">
+    <div class="ai">
+      <div>
+        <span class="eyebrow">On the roadmap</span>
+        <h2>Meet "Ask G.R."</h2>
+        <p>A friendly assistant on the website and for the team — answering common questions instantly, day or night, and passing the real enquiries straight to the right person. Less time on the basics, more time for clients.</p>
+      </div>
+      <div class="chatbox">
+        <div class="bubble u">Do you have any 2-bed rentals in Norton under £800?</div>
+        <div class="bubble a">Yes — there are 3 right now. The closest match is a 2-bed terrace on Bishopton Road at £795 pcm. Want me to book you a viewing? <br><small>· Ask G.R. · concept</small></div>
+        <div class="bubble u">Yes please, Saturday morning.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="valuation">
+  <div class="wrap">
+    <div class="val">
+      <h2>What's your property worth?</h2>
+      <p>Begin your journey with G.R. Estates. Book a free, no-obligation valuation and find out what your home could achieve.</p>
+      <a class="btn btn-dark" href="#contact">Request a valuation</a>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">Find us</span><h2>Two offices across Teesside</h2></div>
+    <div class="offices">
+      <div class="office"><h3>Stockton-on-Tees</h3><p>19 Bishop Street, Stockton-on-Tees, TS18 1SY</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
+      <div class="office"><h3>Normanby</h3><p>8c High Street, Normanby, TS6 0JZ</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" href="#top" style="color:#fff"><span class="mark">GR</span> G.R. Estates</a>
+        <p style="margin-top:14px;max-width:34ch">Independent estate &amp; letting agents specialising in residential sales &amp; lettings across Teesside.</p>
+        <div class="badges">
+          <span>Rightmove</span><span>OnTheMarket</span><span>TDS Member</span><span>UKALA / CMP</span><span>Property Ombudsman</span><span>Trading Standards</span>
+        </div>
+      </div>
+      <div><h4>Explore</h4><a href="#buy">Buy</a><a href="#buy">Rent</a><a href="#valuation">Valuation</a><a href="#services">Services</a></div>
+      <div><h4>Services</h4><a href="#services">Residential Sales</a><a href="#services">Residential Lettings</a><a href="#services">Mortgage Advice</a><a href="#services">G.R. Removals</a></div>
+      <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton office</a><a href="#contact">Normanby office</a></div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 G.R. Estates · prototype concept</span>
+      <span>Designed &amp; built by dean.id</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function setMode(btn,mode){
+    document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pl').textContent = mode==='Rent' ? 'Max rent' : 'Max price';
+  }
+</script>
+<script>
+(function(){
+  var grid = document.getElementById('listings');
+  var note = document.getElementById('listings-note');
+  if(!grid) return;
+  function money(n){ if(n==null||isNaN(n)) return ''; return '£'+Number(n).toLocaleString('en-GB'); }
+  function shortAddr(a){ if(!a) return ''; return a.split(',').map(function(s){return s.trim();}).slice(0,2).join(', '); }
+  function chip(L){
+    if(L.status==='Sold STC') return 'Sold STC';
+    if(L.status==='Let Agreed') return 'Let Agreed';
+    if(L.status==='Under Offer') return 'Under Offer';
+    return L.kind==='let' ? 'To Let' : 'For Sale';
+  }
+  function card(L){
+    var isLet = L.kind==='let';
+    var price = isLet ? money(L.price)+' <span style="font-size:.62em;color:var(--muted);font-weight:600">pcm</span>' : money(L.price);
+    var meta = [];
+    if(L.beds) meta.push('<span><b>'+L.beds+'</b> bed'+(L.beds>1?'s':'')+'</span>');
+    if(L.baths) meta.push('<span><b>'+L.baths+'</b> bath'+(L.baths>1?'s':'')+'</span>');
+    if(L.type) meta.push('<span><b>'+L.type+'</b></span>');
+    var ph = L.image
+      ? '<div class="ph" style="background:#2b3645 url(\''+L.image+'\') center/cover no-repeat">'
+      : '<div class="ph a">';
+    return '<article class="card">'+ph+'<span class="chip'+(isLet?' let':'')+'">'+chip(L)+'</span></div>'+
+      '<div class="body"><div class="price">'+price+'</div>'+
+      '<div class="addr">'+shortAddr(L.address)+'</div>'+
+      '<div class="meta">'+meta.join('')+'</div></div></article>';
+  }
+  function render(list, live){
+    var withImg = (list||[]).filter(function(L){return L.image;});
+    var use = (withImg.length ? withImg : (list||[])).slice(0,9);
+    if(!use.length){ note.textContent = 'No current listings to show.'; return; }
+    grid.innerHTML = use.map(card).join('');
+    note.innerHTML = (live ? '🟢 Live from Street' : 'Latest snapshot from Street') + ' · ' + use.length + ' current listings';
+  }
+  fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
+    if(d && d.ok && d.listings && d.listings.length){ render(d.listings, true); } else { throw new Error('empty'); }
+  }).catch(function(){
+    fetch('listings-snapshot.json').then(function(r){return r.json();}).then(function(d){
+      render((d && d.listings) || [], false);
+    }).catch(function(){ note.textContent = 'Listings unavailable right now.'; });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# .dev.vars.example — TEMPLATE ONLY (safe to commit; contains no real secrets)
+#
+# To use:  copy this file to ".dev.vars"  (which is git-ignored — never committed)
+# then paste real keys into .dev.vars.  NEVER put real keys in this .example file,
+# in chat, or anywhere that gets committed.
+#
+# For production secrets the Worker uses at runtime, prefer:
+#   npx wrangler secret put STREET_API_TOKEN
+#
+# ----------------------------------------------------------------------------
+
+# Street.co.uk — Settings > Account Administration > Applications
+# Open API token (full access)
+STREET_API_TOKEN=""
+# Property Feed token (read-only listings, for the website)
+STREET_PROPERTY_FEED_TOKEN=""
+
+# A random string YOU choose (e.g. a UUID) — gates the /api/street/ping test route
+STREET_TEST_KEY=""
+
+# PayProp — request API access from PayProp (CLIENT MONEY: read/sandbox only; never move funds)
+PAYPROP_API_KEY=""
+
+# Fixflo — Settings > API / Integrations > generate API key
+FIXFLO_API_KEY=""
+
+# Goodlord — API key for the Street sync
+GOODLORD_API_KEY=""
+
+# DocuSign — Admin > Apps & Keys > Integration Key
+DOCUSIGN_INTEGRATION_KEY=""

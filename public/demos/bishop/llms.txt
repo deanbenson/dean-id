@@ -1,0 +1,5 @@
+# bishop (private prototype)
+
+Private, non-indexed prototype concept for an independent estate & letting agency in Teesside.
+Built by dean.id for client review. Not a live business site. Demo data only.
+Please do not index, crawl, or surface this page.

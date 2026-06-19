@@ -407,8 +407,81 @@ function respond(body, status, headers) {
   return new Response(body, { status, headers: { ...SEC, ...headers } });
 }
 
+const STREET_API_BASE = "https://street.co.uk/open-api";
+
+// Read-only helper: calls the Street Open API with the server-side bearer token.
+// The token lives only in env (.dev.vars locally / wrangler secret in prod) — never in the repo.
+async function streetGet(env, path) {
+  const token = env && env.STREET_API_TOKEN;
+  if (!token) return { ok: false, status: 0, error: "STREET_API_TOKEN not set" };
+  const res = await fetch(STREET_API_BASE + path, {
+    headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.api+json" }
+  });
+  let body = null;
+  try { body = await res.json(); } catch (_) { body = null; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+// --- Live listings feed (Street Open API) --------------------------------
+const ON_SALE = new Set(["For Sale", "Under Offer", "Sold STC"]);
+const ON_LET = new Set(["To Let", "Let Agreed"]);
+
+async function collectInstructions(env, ep, priceKey, kind, onset, pages) {
+  const reqs = [];
+  for (let pn = 1; pn <= pages; pn++) {
+    reqs.push(streetGet(env, ep + "?include=property&sort=-instructed_at&page%5Bnumber%5D=" + pn + "&page%5Bsize%5D=100"));
+  }
+  const results = await Promise.all(reqs);
+  const found = new Map();
+  for (const r of results) {
+    if (!r.ok || !r.body) continue;
+    const props = {};
+    for (const inc of (r.body.included || [])) {
+      if (inc.type === "property") props[inc.id] = inc.attributes || {};
+    }
+    for (const d of (r.body.data || [])) {
+      const a = d.attributes || {};
+      if (a.revoked_at || a.deleted_at) continue;
+      const rel = d.relationships && d.relationships.property && d.relationships.property.data;
+      const pid = rel && rel.id;
+      const p = (pid && props[pid]) || {};
+      if (pid && onset.has(p.status) && !found.has(pid)) {
+        found.set(pid, {
+          id: pid, kind: kind, status: p.status, price: a[priceKey],
+          address: (p.address && p.address.single_line) || p.inline_address || null,
+          beds: p.bedrooms, baths: p.bathrooms, type: p.property_type
+        });
+      }
+    }
+  }
+  return [...found.values()];
+}
+
+async function attachImages(env, listings) {
+  await Promise.all(listings.map(async (L) => {
+    try {
+      const r = await streetGet(env, "/properties/" + L.id + "?include=media");
+      let imgs = ((r.body && r.body.included) || [])
+        .filter((i) => i.type === "media").map((i) => i.attributes || {})
+        .filter((m) => String(m.media_type || "").toLowerCase() === "image" && m.include_in_listing && !m.deleted_at);
+      imgs.sort((x, y) =>
+        ((x.is_featured ? 0 : 1) - (y.is_featured ? 0 : 1)) ||
+        ((x.feature_index == null ? 999 : x.feature_index) - (y.feature_index == null ? 999 : y.feature_index)));
+      L.image = imgs.length ? imgs[0].url : null;
+    } catch (_) { L.image = null; }
+  }));
+}
+
+async function fetchStreetListings(env) {
+  const sale = await collectInstructions(env, "/sales-instructions", "marketing_price", "sale", ON_SALE, 3);
+  const lett = await collectInstructions(env, "/lettings-instructions", "marketing_price_pcm", "let", ON_LET, 3);
+  let all = [...sale, ...lett].slice(0, 12);
+  await attachImages(env, all);
+  return all.map(({ id, ...rest }) => rest);
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
@@ -425,7 +498,7 @@ export default {
       return respond(null, 301, { location: url.toString() });
     }
 
-    if (url.protocol === "http:" && path !== "/v1/me") {
+    if (url.protocol === "http:" && path !== "/v1/me" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
       url.protocol = "https:";
       return respond(null, 301, { location: url.toString() });
     }
@@ -436,6 +509,53 @@ export default {
         "access-control-allow-origin": "*",
         "cache-control": "public, max-age=3600"
       });
+    }
+
+    // Gated, read-only Street API connection test.
+    // Hidden (404) unless STREET_TEST_KEY is set in env AND matches ?key=...
+    // Returns data only when STREET_API_TOKEN is configured, so it stays inert in prod until you opt in.
+    if (path === "/api/street/ping") {
+      const key = url.searchParams.get("key");
+      if (!env || !env.STREET_TEST_KEY || key !== env.STREET_TEST_KEY) {
+        return respond("not found\n", 404, { "content-type": "text/plain; charset=utf-8" });
+      }
+      const r = await streetGet(env, "/branches");
+      if (!r.ok) {
+        return respond(JSON.stringify({ ok: false, status: r.status, error: r.error || "Street API request failed" }, null, 2) + "\n", 502, {
+          "content-type": "application/json; charset=utf-8"
+        });
+      }
+      const data = (r.body && r.body.data) || [];
+      const branches = data.slice(0, 10).map((b) => ({
+        id: b.id,
+        name: (b.attributes && (b.attributes.name || b.attributes.branch_name || b.attributes.title)) || null
+      }));
+      const total = (r.body && r.body.meta && r.body.meta.pagination && r.body.meta.pagination.total) || data.length;
+      return respond(JSON.stringify({ ok: true, connected: true, branch_count: total, branches }, null, 2) + "\n", 200, {
+        "content-type": "application/json; charset=utf-8"
+      });
+    }
+
+    // Live on-market listings for the website (cached 15 min). Inert if no token configured.
+    if (path === "/api/listings") {
+      if (!env || !env.STREET_API_TOKEN) {
+        return respond(JSON.stringify({ ok: false, listings: [] }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
+        });
+      }
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString());
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+      let listings = [];
+      try { listings = await fetchStreetListings(env); } catch (_) { listings = []; }
+      const res = respond(JSON.stringify({ ok: true, count: listings.length, listings }), 200, {
+        "content-type": "application/json; charset=utf-8",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=900"
+      });
+      try { await cache.put(cacheKey, res.clone()); } catch (_) {}
+      return res;
     }
 
     if (path === "/badge.svg") {
