@@ -57,7 +57,8 @@
   .logo .mark{width:34px;height:34px;border-radius:9px;background:var(--orange);display:grid;place-items:center;color:#fff;font-size:.95rem;font-weight:700;font-family:var(--sans)}
   nav.links{display:flex;gap:1.6rem;align-items:center;font-weight:500;font-size:.95rem}
   nav.links a:hover{color:var(--orange)}
-  .nav-cta{display:flex;gap:.6rem;align-items:center}
+  .nav-cta{display:flex;gap:.9rem;align-items:center}
+  .navphone{font-weight:700;color:var(--ink);white-space:nowrap;font-size:.95rem}.navphone:hover{color:var(--orange)}
   .menu-btn{display:none;background:none;border:0;cursor:pointer}
 
   /* Hero */
@@ -226,7 +227,7 @@
   @media(max-width:560px){
     .why{grid-template-columns:1fr}.team-grid{grid-template-columns:repeat(2,1fr)}
     .search{grid-template-columns:1fr;gap:12px}
-    .hero h1{font-size:2.4rem}.vform{grid-template-columns:1fr}
+    .hero h1{font-size:2.4rem}.vform{grid-template-columns:1fr}.navphone{display:none}
   }
 </style>
 </head>
@@ -245,7 +246,8 @@
       <a href="#contact">Contact</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn btn-dark" href="#valuation">Free valuation</a>
+      <a class="navphone" href="tel:01642378022">📞 01642 378022</a>
+      <a class="btn btn-dark" href="valuation.html">Free valuation</a>
       <button class="menu-btn" aria-label="Menu" onclick="document.querySelector('nav.links').style.display='flex'">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1b2430" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -260,9 +262,13 @@
       <span class="eyebrow">Independent agents · Teesside</span>
       <h1>Teesside property, <em>done properly.</em></h1>
       <p class="lead">Independent estate and letting agents across Teesside. We get your home sold or let, no fuss, no nonsense. Just genuine, friendly local people who know what they're doing.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px">
+        <span style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:.4rem .85rem;font-size:.82rem;font-weight:600"><span style="color:var(--gold)">★</span> Award-winning agency</span>
+        <span style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:.4rem .85rem;font-size:.82rem;font-weight:600"><b style="color:var(--gold)">170+</b> Google reviews</span>
+      </div>
       <div style="display:flex;gap:.7rem;margin-top:1.6rem;flex-wrap:wrap">
         <a class="btn btn-primary" href="#buy">Browse properties</a>
-        <a class="btn btn-ghost" href="#valuation">What's my home worth?</a>
+        <a class="btn btn-ghost" href="valuation.html">What's my home worth?</a>
       </div>
       <div class="hero-stats">
         <div>2<span>Local offices</span></div>
