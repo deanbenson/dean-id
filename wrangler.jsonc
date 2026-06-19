@@ -22,6 +22,15 @@
 		}
 	],
 	"triggers": {
-		"crons": ["0 * * * *"]
-	}
+		"crons": [
+			"0 * * * *"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "gr_estates",
+			"database_name": "gr-estates",
+			"database_id": "bc51d668-d132-4ce5-aea0-c33b065d2ac2"
+		}
+	]
 }
