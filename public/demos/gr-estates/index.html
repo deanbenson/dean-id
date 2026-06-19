@@ -112,6 +112,11 @@
   .card .meta{display:flex;gap:1rem;font-size:.84rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:.8rem}
   .card .meta b{font-weight:600}
   .demo-note{font-size:.78rem;color:var(--muted);margin-top:16px;text-align:center}
+  .cta-card{display:grid;place-items:center;text-align:center;background:linear-gradient(140deg,var(--ink),var(--ink-soft));color:#fff;min-height:300px}
+  .cta-card .cta-inner{display:grid;gap:6px;padding:24px}
+  .cta-card .cta-arrow{font-size:2rem;color:var(--orange)}
+  .cta-card b{font-family:var(--serif);font-size:1.3rem}
+  .cta-card span{color:#aab2bd;font-size:.9rem}
 
   /* Services */
   .services{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -162,7 +167,7 @@
   .foot-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:22px;flex-wrap:wrap;gap:10px;color:#8b94a0;font-size:.82rem}
 
   /* Logo image */
-  .logo img{height:34px;width:auto;display:block}
+  .logo img{height:46px;width:auto;display:block}
   .logo.foot img{height:30px}
 
   /* Trust / accreditations */
@@ -203,6 +208,10 @@
   .cform{display:grid;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow)}
   .cform input,.cform textarea{border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;background:var(--cream);width:100%}
   .offices-col{display:grid;gap:24px}
+
+  /* Search refine bar */
+  .refine{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+  .refine select,.refine input{border:1px solid var(--line);border-radius:9px;padding:.55rem .7rem;font:inherit;background:var(--cream);min-width:130px;flex:1 1 130px}
 
   @media(max-width:900px){
     nav.links{display:none;position:absolute;top:72px;left:0;right:0;flex-direction:column;background:var(--cream);border-bottom:1px solid var(--line);box-shadow:var(--shadow);padding:8px 24px 16px;gap:0;z-index:60}
@@ -250,7 +259,7 @@
     <div>
       <span class="eyebrow">Independent agents · Teesside</span>
       <h1>Teesside property, <em>done properly.</em></h1>
-      <p class="lead">Independent estate and letting agents for Stockton, Middlesbrough and the whole of Teesside. Better marketing, fairer fees, and a team that actually answers the phone.</p>
+      <p class="lead">Independent estate and letting agents across Teesside. We get your home sold or let, no fuss, no nonsense. Just genuine, friendly local people who know what they're doing.</p>
       <div style="display:flex;gap:.7rem;margin-top:1.6rem;flex-wrap:wrap">
         <a class="btn btn-primary" href="#buy">Browse properties</a>
         <a class="btn btn-ghost" href="#valuation">What's my home worth?</a>
@@ -293,6 +302,13 @@
       <span class="eyebrow" id="buy-eyebrow">Featured</span>
       <h2 id="buy-title">Properties across Teesside</h2>
       <p>A few of the homes we've got on right now. Search for the rest.</p>
+    </div>
+    <div class="refine" id="refine" style="display:none">
+      <select id="rbeds" onchange="applyRefine()" aria-label="Minimum bedrooms"><option value="">Any beds</option><option value="1">1+ beds</option><option value="2">2+ beds</option><option value="3">3+ beds</option><option value="4">4+ beds</option><option value="5">5+ beds</option></select>
+      <input id="rmin" type="number" min="0" step="1000" placeholder="Min price (£)" onchange="applyRefine()" aria-label="Minimum price">
+      <input id="rmax" type="number" min="0" step="1000" placeholder="Max price (£)" onchange="applyRefine()" aria-label="Maximum price">
+      <select id="rtype" onchange="applyRefine()" aria-label="Property type"><option value="">Any type</option><option value="House">House</option><option value="Bungalow">Bungalow</option><option value="Flat">Flat</option></select>
+      <select id="rsort" onchange="applyRefine()" aria-label="Sort order"><option value="">Price: low to high</option><option value="price_desc">Price: high to low</option></select>
     </div>
     <div class="listings" id="listings"></div>
     <div id="more-wrap" style="text-align:center;margin-top:22px"></div>
@@ -531,7 +547,7 @@
     var use = (withImg.length ? withImg : (list||[])).slice(0,9);
     setHero(list);
     if(!use.length){ note.textContent = 'No current listings to show.'; return; }
-    grid.innerHTML = use.map(card).join('');
+    grid.innerHTML = use.map(card).join('') + (live && use.length>3 ? '<a class="card cta-card" href="#buy" onclick="showAll();return false;"><div class="cta-inner"><span class="cta-arrow">→</span><b>See all properties</b><span>Browse the full list</span></div></a>' : '');
     note.innerHTML = (live ? '🟢 Updated live' : 'Updated regularly') + ' · ' + use.length + ' featured homes';
   }
   var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
@@ -547,33 +563,38 @@
       if(mwrap) mwrap.innerHTML = (SS.shown < SS.total) ? '<button class="btn btn-dark" type="button" onclick="loadMore()" style="cursor:pointer">Load more</button>' : '';
     }).catch(function(){ note.textContent='Search unavailable right now.'; });
   }
-  window.doSearch = function(){
-    SS.kind = window.searchKind || 'sale';
-    var loc = (document.getElementById('loc')||{}).value || '';
-    var ptype = (document.getElementById('ptype')||{}).value || '';
-    var pmax = (document.getElementById('pmax')||{}).value || '';
-    var qs = 'kind='+encodeURIComponent(SS.kind)+'&pageSize=12';
-    if(loc.trim()) qs += '&q='+encodeURIComponent(loc.trim());
-    if(ptype) qs += '&type='+encodeURIComponent(ptype);
-    if(pmax) qs += '&max='+encodeURIComponent(pmax);
-    SS.qs = qs; SS.page = 1;
-    note.textContent = 'Searching…'; if(mwrap) mwrap.innerHTML='';
-    var sec = document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
-    var t = document.getElementById('buy-title'); if(t) t.textContent = 'Search results';
-    var e = document.getElementById('buy-eyebrow'); if(e) e.textContent = SS.kind==='let' ? 'To rent' : 'For sale';
+  function gv(id){ var el=document.getElementById(id); return el?(el.value||''):''; }
+  function buildAndRun(){
+    SS.kind = window.searchKind || '';
+    var qs='pageSize=12';
+    if(SS.kind) qs+='&kind='+SS.kind;
+    var loc=gv('loc').trim(); if(loc) qs+='&q='+encodeURIComponent(loc);
+    var beds=gv('rbeds'); if(beds) qs+='&beds='+beds;
+    var rmin=gv('rmin'); if(rmin) qs+='&min='+encodeURIComponent(rmin);
+    var rmax=gv('rmax'); if(rmax) qs+='&max='+encodeURIComponent(rmax);
+    var rtype=gv('rtype'); if(rtype) qs+='&type='+encodeURIComponent(rtype);
+    var rsort=gv('rsort'); if(rsort) qs+='&sort='+rsort;
+    SS.qs=qs; SS.page=1;
+    var rf=document.getElementById('refine'); if(rf) rf.style.display='flex';
+    var ba=document.getElementById('browse-all'); if(ba) ba.innerHTML='';
+    var t=document.getElementById('buy-title'); if(t) t.textContent='Properties';
+    var e=document.getElementById('buy-eyebrow'); if(e) e.textContent=SS.kind==='let'?'To rent':(SS.kind==='sale'?'For sale':'Browse');
+    note.textContent='Searching…'; if(mwrap) mwrap.innerHTML='';
     runSearch(false);
+  }
+  window.applyRefine = function(){ buildAndRun(); };
+  window.doSearch = function(){
+    window.searchKind = window.searchKind || 'sale';
+    var rt=document.getElementById('rtype'), rm=document.getElementById('rmax');
+    if(rt) rt.value=gv('ptype'); if(rm) rm.value=gv('pmax');
+    var sec=document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
+    buildAndRun();
   };
   window.loadMore = function(){ SS.page++; runSearch(true); };
-  window.showAll = function(kind){
-    SS.kind = kind || '';
-    SS.qs = (SS.kind ? 'kind='+SS.kind+'&' : '') + 'pageSize=12';
-    SS.page = 1;
-    note.textContent = 'Loading…'; if(mwrap) mwrap.innerHTML='';
-    var ba = document.getElementById('browse-all'); if(ba) ba.innerHTML='';
-    var t = document.getElementById('buy-title'); if(t) t.textContent = 'All properties';
-    var e = document.getElementById('buy-eyebrow'); if(e) e.textContent = 'Browse';
-    var sec = document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
-    runSearch(false);
+  window.showAll = function(){
+    window.searchKind=''; ['rbeds','rmin','rmax','rtype','rsort','loc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    var sec=document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
+    buildAndRun();
   };
   fetch('/api/search?pageSize=1').then(function(r){return r.json();}).then(function(d){
     var n = (d && d.total) || 0; var ba = document.getElementById('browse-all');
