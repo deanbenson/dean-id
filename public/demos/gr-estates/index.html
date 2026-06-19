@@ -215,25 +215,26 @@
       <button class="active" onclick="setMode(this,'Buy')">Buy</button>
       <button onclick="setMode(this,'Rent')">Rent</button>
     </div>
-    <div class="field"><label>Location</label><input value="Teesside" /></div>
+    <div class="field"><label>Location</label><input id="loc" value="" placeholder="Town or postcode" /></div>
     <div class="field"><label>Type</label>
-      <select><option>Any type</option><option>House</option><option>Bungalow</option><option>Flat / Apartment</option></select>
+      <select id="ptype"><option value="">Any type</option><option value="House">House</option><option value="Bungalow">Bungalow</option><option value="Flat">Flat / Apartment</option></select>
     </div>
     <div class="field"><label id="pl">Max price</label>
-      <select><option>No max</option><option>£150,000</option><option>£250,000</option><option>£400,000</option><option>£600,000+</option></select>
+      <select id="pmax"><option value="">No max</option><option value="150000">£150,000</option><option value="250000">£250,000</option><option value="400000">£400,000</option><option value="600000">£600,000</option></select>
     </div>
-    <a class="btn btn-primary go" href="#buy">Search</a>
+    <button type="button" class="btn btn-primary go" onclick="doSearch()" style="font:inherit">Search</button>
   </div>
 </div>
 
 <section id="buy">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Featured</span>
-      <h2>Properties across Teesside</h2>
+      <span class="eyebrow" id="buy-eyebrow">Featured</span>
+      <h2 id="buy-title">Properties across Teesside</h2>
       <p>A taste of what we list. On the live site these pull straight from the CRM, so they're never out of date.</p>
     </div>
     <div class="listings" id="listings"></div>
+    <div id="more-wrap" style="text-align:center;margin-top:22px"></div>
     <p class="demo-note" id="listings-note">Loading live listings from Street…</p>
   </div>
 </section>
@@ -327,9 +328,11 @@
 </footer>
 
 <script>
+  window.searchKind = 'sale';
   function setMode(btn,mode){
     document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
+    window.searchKind = (mode==='Rent') ? 'let' : 'sale';
     document.getElementById('pl').textContent = mode==='Rent' ? 'Max rent' : 'Max price';
   }
 </script>
@@ -337,6 +340,7 @@
 (function(){
   var grid = document.getElementById('listings');
   var note = document.getElementById('listings-note');
+  var mwrap = document.getElementById('more-wrap');
   if(!grid) return;
   function money(n){ if(n==null||isNaN(n)) return ''; return '£'+Number(n).toLocaleString('en-GB'); }
   function shortAddr(a){ if(!a) return ''; return a.split(',').map(function(s){return s.trim();}).slice(0,2).join(', '); }
@@ -368,6 +372,37 @@
     grid.innerHTML = use.map(card).join('');
     note.innerHTML = (live ? '🟢 Live from your Street CRM' : 'From your Street CRM') + ' · ' + use.length + ' current listings';
   }
+  var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
+  function runSearch(append){
+    fetch('/api/search?'+SS.qs+'&page='+SS.page).then(function(r){return r.json();}).then(function(d){
+      var res = (d && d.results) || [];
+      SS.total = (d && d.total) || 0;
+      if(!append){ grid.innerHTML=''; SS.shown=0; }
+      grid.insertAdjacentHTML('beforeend', res.map(card).join(''));
+      SS.shown += res.length;
+      if(!SS.shown){ note.textContent='Nothing matches that search — try widening it.'; if(mwrap) mwrap.innerHTML=''; return; }
+      note.innerHTML='🔎 '+SS.total+' '+(SS.kind==='let'?'to let':'for sale')+' · showing '+SS.shown;
+      if(mwrap) mwrap.innerHTML = (SS.shown < SS.total) ? '<button class="btn btn-dark" type="button" onclick="loadMore()" style="cursor:pointer">Load more</button>' : '';
+    }).catch(function(){ note.textContent='Search unavailable right now.'; });
+  }
+  window.doSearch = function(){
+    SS.kind = window.searchKind || 'sale';
+    var loc = (document.getElementById('loc')||{}).value || '';
+    var ptype = (document.getElementById('ptype')||{}).value || '';
+    var pmax = (document.getElementById('pmax')||{}).value || '';
+    var qs = 'kind='+encodeURIComponent(SS.kind)+'&pageSize=12';
+    if(loc.trim()) qs += '&q='+encodeURIComponent(loc.trim());
+    if(ptype) qs += '&type='+encodeURIComponent(ptype);
+    if(pmax) qs += '&max='+encodeURIComponent(pmax);
+    SS.qs = qs; SS.page = 1;
+    note.textContent = 'Searching…'; if(mwrap) mwrap.innerHTML='';
+    var sec = document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
+    var t = document.getElementById('buy-title'); if(t) t.textContent = 'Search results';
+    var e = document.getElementById('buy-eyebrow'); if(e) e.textContent = SS.kind==='let' ? 'To rent' : 'For sale';
+    runSearch(false);
+  };
+  window.loadMore = function(){ SS.page++; runSearch(true); };
+
   fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
     if(d && d.listings && d.listings.length){ render(d.listings, true); } else { throw 0; }
   }).catch(function(){

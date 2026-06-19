@@ -31,44 +31,7 @@ ${block}
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-const HOME = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dean.id · Dean Benson</title>
-<meta name="description" content="ai, tech, automation, web, strategy. North East, UK.">
-<meta name="theme-color" content="#111113">
-<link rel="canonical" href="https://dean.id/">
-<meta property="og:title" content="dean.id · Dean Benson">
-<meta property="og:description" content="ai, tech, automation, web, strategy. North East, UK. It's a real API: curl dean.id/v1/me">
-<meta property="og:url" content="https://dean.id/">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="dean.id">
-<meta property="og:image" content="https://dean.id/og.png">
-<meta property="og:image:secure_url" content="https://dean.id/og.png">
-<meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, tech, automation, web, strategy.">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://dean.id/og.png">
-<meta name="twitter:title" content="dean.id · Dean Benson">
-<meta name="twitter:description" content="ai, tech, automation, web, strategy. It's a real API: curl dean.id/v1/me">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Person",
-  "name": "Dean Benson",
-  "url": "https://dean.id",
-  "jobTitle": "AI, tech, automation, web & strategy",
-  "address": { "@type": "PostalAddress", "addressRegion": "North East", "addressCountry": "GB" },
-  "knowsAbout": ["AI", "automation", "web development", "technology", "business strategy"],
-  "mainEntityOfPage": "https://dean.id/v1/me"
-}
-</script>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
-<style>
+const STYLE = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #111113;
@@ -193,7 +156,46 @@ const HOME = `<!doctype html>
   .toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: #28c840; display: inline-block; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (prefers-reduced-motion: reduce) { .cursor, .stamp .block { animation: none; } }
-</style>
+`;
+
+const HOME = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dean.id · Dean Benson</title>
+<meta name="description" content="ai, tech, automation, web, strategy. North East, UK.">
+<meta name="theme-color" content="#111113">
+<link rel="canonical" href="https://dean.id/">
+<meta property="og:title" content="dean.id · Dean Benson">
+<meta property="og:description" content="ai, tech, automation, web, strategy. North East, UK. It's a real API: curl dean.id/v1/me">
+<meta property="og:url" content="https://dean.id/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="dean.id">
+<meta property="og:image" content="https://dean.id/og.png">
+<meta property="og:image:secure_url" content="https://dean.id/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="dean.id, with a green terminal cursor. ai, tech, automation, web, strategy.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://dean.id/og.png">
+<meta name="twitter:title" content="dean.id · Dean Benson">
+<meta name="twitter:description" content="ai, tech, automation, web, strategy. It's a real API: curl dean.id/v1/me">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Dean Benson",
+  "url": "https://dean.id",
+  "jobTitle": "AI, tech, automation, web & strategy",
+  "address": { "@type": "PostalAddress", "addressRegion": "North East", "addressCountry": "GB" },
+  "knowsAbout": ["AI", "automation", "web development", "technology", "business strategy"],
+  "mainEntityOfPage": "https://dean.id/v1/me"
+}
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
+<style>${STYLE}</style>
 </head>
 <body>
   <h1 class="sr">dean.id, Dean Benson: ai, tech, automation, web, strategy</h1>
@@ -488,11 +490,190 @@ async function refreshListings(env) {
   return listings.length;
 }
 
+// --- Error rendering -------------------------------------------------------
+// One renderer for every status code. Browsers get the dean.id "API window"
+// (same look + typed JSON + human toggle as the homepage); curl / API clients
+// get a real JSON error body. The medium is the message, even when it's a 404.
+const REASON = {
+  400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found",
+  410: "Gone", 418: "I'm a teapot", 429: "Too Many Requests",
+  500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable"
+};
+
+const ERRORS = {
+  400: { slug: "bad_request",        hint: "check the syntax and try again",          comment: "garbage in, 400 out",            human: "I couldn't make sense of that request.",                                   msg: (r) => `couldn't parse the request to ${r}` },
+  401: { slug: "unauthorized",       hint: "though there's nothing here to log into", comment: null,                             human: "That needs a login — but there's nothing here to log into.",            msg: (r) => `authentication required for ${r}` },
+  403: { slug: "forbidden",          hint: "that path isn't yours to open",           comment: null,                             human: "That path exists, but it's not one you're allowed to open.",                msg: (r) => `you can see the door, not the room` },
+  404: { slug: "not_found",          hint: "the api lives at GET /v1/me",             comment: "you've reached the void. nicely done.", human: "There's nothing at that address. It's a dead end.",                  msg: (r) => `no route matches ${r}` },
+  410: { slug: "gone",               hint: "try GET /v1/me instead",                  comment: null,                             human: "That used to be here, but it's been removed for good.",                     msg: (r) => `${r} used to exist. it doesn't anymore` },
+  418: { slug: "im_a_teapot",        hint: "i'm not brewing coffee for you",          comment: "RFC 2324 — yes, it's real", human: "I'm a teapot. I can't brew coffee. (It's a real status code — RFC 2324.)", msg: (r) => `i'm a teapot, short and stout` },
+  429: { slug: "too_many_requests",  hint: "retry after a coffee",                    comment: null,                             human: "You're sending requests faster than I can answer. Give it a second.",       msg: (r) => `slow down — more requests than i can think about` },
+  500: { slug: "internal_error",     hint: "i've probably already been pinged about it", comment: "this is embarrassing",         human: "Something broke on my side, not yours. Sorry about that.",                  msg: (r) => `something broke on my end, not yours` },
+  502: { slug: "bad_gateway",        hint: "try again in a moment",                   comment: null,                             human: "I asked another service and got nonsense back. Try again shortly.",         msg: (r) => `the upstream gave me nonsense` },
+  503: { slug: "service_unavailable",hint: "i'm tinkering. check back soon",          comment: null,                             human: "I'm doing a bit of maintenance. Back soon.",                               msg: (r) => `down for maintenance, back shortly` }
+};
+
+function errorPage(code, method, path) {
+  const e = ERRORS[code] || ERRORS[404];
+  const reason = REASON[code] || "Error";
+  const route = method + " " + path;
+  const routeHtml = esc(route);
+  const numClass = code === 418 ? "np" : (code >= 500 ? "n5" : "n4");
+  const pillClass = code === 418 ? "teapot" : (code >= 500 ? "e5" : "e4");
+
+  const lines = [];
+  lines.push('<span class="p">{</span>');
+  lines.push('  <span class="k">"error"</span>: <span class="s">"' + e.slug + '"</span>,');
+  lines.push('  <span class="k">"status"</span>: <span class="' + numClass + '">' + code + '</span>,');
+  lines.push('  <span class="k">"message"</span>: <span class="s">"' + esc(e.msg(route)) + '"</span>,');
+  lines.push('  <span class="k">"hint"</span>: <span class="s">"' + esc(e.hint) + '"</span>,');
+  lines.push('  <span class="k">"docs"</span>: <span class="s">"https://dean.id/v1/me"</span>' + (e.comment ? ',' : ''));
+  if (e.comment) lines.push('  <span class="k">"_comment"</span>: <span class="s">"' + esc(e.comment) + '"</span>');
+  lines.push('<span class="p">}</span>');
+
+  const human = [
+    'You asked for <span class="s">' + routeHtml + '</span>.',
+    esc(e.human),
+    'The API is at <a href="/v1/me" tabindex="-1">dean.id/v1/me</a> &middot; or head <a href="/" tabindex="-1">home</a>.'
+  ];
+
+  const jl = JSON.stringify(lines).replace(/</g, "\\u003c");
+  const hl = JSON.stringify(human).replace(/</g, "\\u003c");
+  const urlTxt = JSON.stringify("https://dean.id" + path).replace(/</g, "\\u003c");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${code} · dean.id</title>
+<meta name="description" content="${code} ${reason} — dean.id is a real API. Try GET /v1/me.">
+<meta name="theme-color" content="#111113">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
+<style>${STYLE}
+  .badge200.e4 { background: #3a1518; color: #ff6b5e; }
+  .badge200.e5 { background: #3a2a12; color: #f0a13b; }
+  .badge200.teapot { background: #241d3a; color: #b9a7ff; }
+  .n4 { color: #ff6b5e; }
+  .n5 { color: #f0a13b; }
+  .np { color: #b9a7ff; }
+</style>
+</head>
+<body>
+  <h1 class="sr">dean.id — ${code} ${reason}</h1>
+  <main style="display: contents;">
+  <div class="win" role="img" aria-label="HTTP ${code} ${reason}. Shown as an API error response; a human-readable toggle follows.">
+    <div class="bar">
+      <span class="method" id="m">${esc(method)}</span>
+      <span class="url" id="u">https://dean.id${esc(path)}</span>
+      <span class="badge200 ${pillClass}" id="badge">${code} ${reason}</span>
+    </div>
+    <div id="out" aria-hidden="true"></div>
+  </div>
+  <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
+  <p class="foot">
+    <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a></span>
+  </p>
+  </main>
+<script>
+  var jsonLines = ${jl};
+  var humanLines = ${hl};
+  var METHOD = ${JSON.stringify(method)};
+  var URLTXT = ${urlTxt};
+  var out = document.getElementById('out');
+  var modeLink = document.getElementById('mode');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timer = null;
+  var mode = 'machine';
+  function render(arr, n, cur) {
+    var h = '';
+    for (var k = 0; k < n; k++) {
+      h += '<div>' + arr[k] + (cur && k === n - 1 ? '<span class="cursor"></span>' : '') + '</div>';
+    }
+    return h;
+  }
+  function typeSet(arr, instant) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var i = instant ? arr.length : 0;
+    function step() {
+      if (i < arr.length) {
+        out.innerHTML = render(arr, i + 1, true);
+        i++;
+        timer = setTimeout(step, 140);
+      } else {
+        out.innerHTML = render(arr, arr.length, false);
+        document.getElementById('badge').classList.add('show');
+      }
+    }
+    step();
+  }
+  function setMode(m, instant) {
+    mode = m;
+    var human = m === 'human';
+    out.className = human ? 'human' : '';
+    document.getElementById('m').textContent = human ? '${code}' : METHOD;
+    document.getElementById('u').textContent = human ? 'what happened, in plain english' : URLTXT;
+    modeLink.innerHTML = human ? 'see the techie version' : '<span class="dot"></span>not a robot? read this in plain english';
+    modeLink.setAttribute('href', human ? '#' : '#human');
+    typeSet(human ? humanLines : jsonLines, instant || reduced);
+  }
+  modeLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    var next = mode === 'machine' ? 'human' : 'machine';
+    if (history.replaceState) { history.replaceState(null, '', next === 'human' ? '#human' : location.pathname); }
+    setMode(next, false);
+  });
+  if (location.hash === '#human') {
+    setMode('human', true);
+  } else {
+    timer = setTimeout(function () { typeSet(jsonLines, reduced); }, 350);
+  }
+</script>
+</body>
+</html>`;
+}
+
+function wantsJSON(request, path) {
+  if (path.startsWith("/v1/") || path.startsWith("/api/")) return true;
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("application/json")) return true;
+  if (!accept.includes("text/html")) return true; // curl, fetch, most non-browsers
+  return false;
+}
+
+function errorJSON(code, method, path) {
+  const e = ERRORS[code] || ERRORS[404];
+  const body = { error: e.slug, status: code, message: e.msg(method + " " + path) };
+  if (e.hint) body.hint = e.hint;
+  body.docs = "https://dean.id/v1/me";
+  return JSON.stringify(body, null, 2) + "\n";
+}
+
+function errorResponse(request, url, code) {
+  const method = request.method === "HEAD" ? "GET" : (request.method || "GET");
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (wantsJSON(request, path)) {
+    return respond(errorJSON(code, method, path), code, {
+      "content-type": "application/json; charset=utf-8",
+      "access-control-allow-origin": "*",
+      "cache-control": "no-store"
+    });
+  }
+  return respond(errorPage(code, method, path), code, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store"
+  });
+}
+
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
   },
   async fetch(request, env) {
+   try {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
@@ -559,6 +740,43 @@ export default {
         "access-control-allow-origin": "*",
         "cache-control": "public, max-age=300"
       });
+    }
+
+    // Property search over D1 (SQL) — filters + pagination.
+    if (path === "/api/search") {
+      if (!env || !env.gr_estates) {
+        return respond(JSON.stringify({ ok: false, total: 0, results: [] }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
+        });
+      }
+      const p = url.searchParams;
+      const where = []; const args = [];
+      const kind = p.get("kind");
+      if (kind === "sale" || kind === "let") { where.push("kind = ?"); args.push(kind); }
+      const min = parseInt(p.get("min"), 10); if (!isNaN(min)) { where.push("price >= ?"); args.push(min); }
+      const max = parseInt(p.get("max"), 10); if (!isNaN(max)) { where.push("price <= ?"); args.push(max); }
+      const beds = parseInt(p.get("beds"), 10); if (!isNaN(beds)) { where.push("beds >= ?"); args.push(beds); }
+      const type = p.get("type"); if (type) { where.push("type = ?"); args.push(type); }
+      const q = (p.get("q") || "").trim();
+      if (q) { const like = "%" + q + "%"; where.push("(address LIKE ? OR town LIKE ? OR postcode LIKE ?)"); args.push(like, like, like); }
+      const clause = where.length ? ("WHERE " + where.join(" AND ")) : "";
+      const pageSize = Math.min(48, Math.max(1, parseInt(p.get("pageSize"), 10) || 12));
+      const page = Math.max(1, parseInt(p.get("page"), 10) || 1);
+      const offset = (page - 1) * pageSize;
+      const order = p.get("sort") === "price_desc" ? "ORDER BY (price IS NULL), price DESC" : "ORDER BY (price IS NULL), price ASC";
+      try {
+        const db = env.gr_estates;
+        const countRow = await db.prepare("SELECT COUNT(*) AS n FROM listings " + clause).bind(...args).first();
+        const total = (countRow && countRow.n) || 0;
+        const rs = await db.prepare("SELECT id,kind,status,price,address,town,postcode,beds,baths,type,style,image FROM listings " + clause + " " + order + " LIMIT ? OFFSET ?").bind(...args, pageSize, offset).all();
+        return respond(JSON.stringify({ ok: true, total, page, pageSize, results: (rs && rs.results) || [] }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=120"
+        });
+      } catch (e) {
+        return respond(JSON.stringify({ ok: false, error: "search failed", total: 0, results: [] }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
+        });
+      }
     }
 
     if (path === "/badge.svg") {
@@ -640,9 +858,22 @@ export default {
       });
     }
 
-    return respond(HOME, path === "/" ? 200 : 404, {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300"
-    });
+    if (path === "/coffee") {
+      return errorResponse(request, url, 418); // easter egg (HTCPCP). remove this block if undesired.
+    }
+
+    if (path === "/") {
+      return respond(HOME, 200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=300"
+      });
+    }
+
+    return errorResponse(request, url, 404);
+    } catch (err) {
+      let u;
+      try { u = new URL(request.url); } catch (_) { u = new URL("https://dean.id/"); }
+      return errorResponse(request, u, 500);
+    }
   }
 };
