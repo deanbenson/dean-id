@@ -75,6 +75,7 @@
   if(!id){ document.getElementById('status').textContent='No property selected.'; return; }
   function money(n){ if(n==null||n===0||isNaN(n)) return 'POA'; return '£'+Number(n).toLocaleString('en-GB'); }
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function clean(h){ return (h||'').replace(/<\/p\s*>\s*<p[^>]*>/gi,'\n\n').replace(/<br\s*\/?>/gi,'\n').replace(/<\/?[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\n{3,}/g,'\n\n').trim(); }
   fetch('/api/property?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
     if(!d||!d.ok) throw 0; render(d);
   }).catch(function(){ document.getElementById('status').textContent='Sorry — we couldn\'t load this property. It may no longer be available.'; });
@@ -97,7 +98,7 @@
     var feats=(d.features||[]).slice(0,12).map(function(f){return '<li>'+esc(f)+'</li>';}).join('');
     var main0=imgs[0]?'<img id="mainimg" src="'+imgs[0]+'" alt="'+esc(d.address)+'" referrerpolicy="no-referrer">':'<div style="height:100%;background:linear-gradient(135deg,#516a86,#8aa2bd)"></div>';
     var thumbs=imgs.slice(0,12).map(function(u,i){return '<img src="'+u+'" referrerpolicy="no-referrer" class="'+(i===0?'active':'')+'" onclick="setMain(this,\''+u+'\')">';}).join('');
-    var desc=d.description||d.location||'Contact us for full details on this property.';
+    var desc=clean(d.description||d.location||'Contact us for full details on this property.');
     main.innerHTML=
       '<div class="gallery"><div class="gmain"><span class="chip'+(isLet?' let':'')+'">'+esc(chip)+'</span>'+main0+'</div>'+(imgs.length>1?'<div class="thumbs">'+thumbs+'</div>':'')+'</div>'+
       '<div class="pgrid"><div>'+
