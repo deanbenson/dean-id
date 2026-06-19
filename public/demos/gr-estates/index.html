@@ -13,6 +13,9 @@
 <meta property="og:image" content="https://apollo.street.co.uk/street-live/properties/general/46784038/06df9448-f6c4-480a-891e-e7fdcd2d2321.png" />
 <meta property="og:image:alt" content="A home marketed by G.R. Estates" />
 <meta name="twitter:card" content="summary_large_image" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"RealEstateAgent","name":"G.R. Estates","description":"Independent estate and letting agents in Teesside, covering Stockton, Middlesbrough, Yarm and the wider area.","url":"https://dean.id/demos/gr-estates/","telephone":"+44 1642 378022","priceRange":"££","areaServed":["Stockton-on-Tees","Middlesbrough","Yarm","Normanby","Teesside"],"address":[{"@type":"PostalAddress","streetAddress":"19 Bishop Street","addressLocality":"Stockton-on-Tees","postalCode":"TS18 1SY","addressCountry":"GB"},{"@type":"PostalAddress","streetAddress":"8c High Street","addressLocality":"Normanby","postalCode":"TS6 0JZ","addressCountry":"GB"}],"sameAs":["https://www.facebook.com/GREstatesEstateAgency","https://www.instagram.com/g.r.estates/","https://www.linkedin.com/company/gr-estates/"]}
+</script>
 <meta name="theme-color" content="#1b2430" />
 <link rel="canonical" href="https://dean.id/demos/gr-estates/" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -192,15 +195,30 @@
   .rem-visual svg{position:absolute;inset:0;width:100%;height:100%;opacity:.8}
   .rem-tag{margin:14px;background:rgba(255,255,255,.14);color:#fff;font-size:.78rem;font-weight:600;padding:.4rem .8rem;border-radius:999px;position:relative;z-index:2}
 
+  /* Forms */
+  .vform{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px;margin:22px auto 0;text-align:left}
+  .vform input,.vform select{border:0;border-radius:10px;padding:.75rem .85rem;font:inherit;background:#fff;color:var(--ink);width:100%}
+  .vform button{grid-column:1/-1}
+  .contact-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start}
+  .cform{display:grid;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow)}
+  .cform input,.cform textarea{border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;background:var(--cream);width:100%}
+  .offices-col{display:grid;gap:24px}
+
   @media(max-width:900px){
-    nav.links{display:none}.menu-btn{display:block}
+    nav.links{display:none;position:absolute;top:72px;left:0;right:0;flex-direction:column;background:var(--cream);border-bottom:1px solid var(--line);box-shadow:var(--shadow);padding:8px 24px 16px;gap:0;z-index:60}
+    nav.links a{padding:.85rem 0;border-bottom:1px solid var(--line);font-size:1rem}
+    .menu-btn{display:block}
     .hero-grid{grid-template-columns:1fr}.hero-card{display:none}
     .search{grid-template-columns:1fr 1fr;gap:14px}.search .toggle{grid-column:1/-1}.search .go{grid-column:1/-1;justify-self:stretch}
     .listings,.svc-grid{grid-template-columns:1fr}.why{grid-template-columns:1fr 1fr}
-    .ai,.offices,.foot-grid,.removals{grid-template-columns:1fr}.ai{padding:32px}.removals{padding:30px}
+    .ai,.offices,.foot-grid,.removals,.contact-grid{grid-template-columns:1fr}.ai{padding:32px}.removals{padding:30px}
     .team-grid{grid-template-columns:repeat(3,1fr)}
   }
-  @media(max-width:560px){.why{grid-template-columns:1fr}.team-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){
+    .why{grid-template-columns:1fr}.team-grid{grid-template-columns:repeat(2,1fr)}
+    .search{grid-template-columns:1fr;gap:12px}
+    .hero h1{font-size:2.4rem}.vform{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
@@ -292,7 +310,9 @@
     </div>
     <div class="svc-grid">
       <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg></div><h3>Residential Sales</h3><p>Four selling packages to suit your budget, with photography and marketing that does your home justice.</p></div>
-      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6"/></svg></div><h3>Residential Lettings</h3><p>Fully managed or let-only, with referenced tenants and protected deposits.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6"/></svg></div><h3>Residential Lettings</h3><p>Let your property quickly to referenced tenants, with protected deposits and marketing that gets it seen.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Property Management</h3><p>Hands-off management for landlords: rent collection, maintenance, inspections and full compliance.</p></div>
+      <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-5a2 2 0 012-2h14a2 2 0 012 2v5M3 18h18M6 11V8a2 2 0 012-2h8a2 2 0 012 2v3"/></svg></div><h3>Serviced Accommodation</h3><p>Short-let and Airbnb-style properties managed end to end: listings, guests, cleaning and upkeep.</p></div>
       <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M5 8h9a3 3 0 010 6H7a3 3 0 000 6h10"/></svg></div><h3>Mortgage Advice</h3><p>Independent, whole-of-market advice to find the right deal for your move.</p></div>
       <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h13l3-5h2v9H3zM6 18a2 2 0 104 0 2 2 0 00-4 0z"/></svg></div><h3>G.R. Removals</h3><p>Make moving day simple with our own trusted removals service.</p></div>
       <div class="svc"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 12h6M9 16h6"/></svg></div><h3>Property Auctions</h3><p>Buy or sell by auction, with fixed timescales and open bidding.</p></div>
@@ -373,17 +393,37 @@
     <div class="val">
       <h2>What's your property worth?</h2>
       <p>Thinking of selling or letting? Find out what your place is really worth. Free valuation, no pressure.</p>
-      <a class="btn btn-dark" href="#contact">Request a valuation</a>
+      <form class="vform" onsubmit="return formThanks(event,this)">
+        <input required name="name" placeholder="Your name" aria-label="Your name">
+        <input required name="phone" type="tel" placeholder="Phone" aria-label="Phone">
+        <input name="email" type="email" placeholder="Email" aria-label="Email">
+        <input required name="address" placeholder="Property address or postcode" aria-label="Property address">
+        <select name="kind" aria-label="Selling or letting"><option>I'm selling</option><option>I'm letting</option></select>
+        <button class="btn btn-dark" type="submit">Request my free valuation</button>
+      </form>
+      <p class="thanks-msg" style="display:none;font-weight:600;margin-top:14px">Thanks! We'll be in touch shortly to arrange your valuation. ✓</p>
     </div>
   </div>
 </section>
 
 <section id="contact">
   <div class="wrap">
-    <div class="sec-head"><span class="eyebrow">Find us</span><h2>Two offices across Teesside</h2></div>
-    <div class="offices">
-      <div class="office"><h3>Stockton-on-Tees</h3><p>19 Bishop Street, Stockton-on-Tees, TS18 1SY</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
-      <div class="office"><h3>Normanby</h3><p>8c High Street, Normanby, TS6 0JZ</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
+    <div class="sec-head"><span class="eyebrow">Get in touch</span><h2>Drop us a line</h2><p>Send a message or call either office and we'll get straight back to you.</p></div>
+    <div class="contact-grid">
+      <div>
+        <form class="cform" onsubmit="return formThanks(event,this)">
+          <input required name="name" placeholder="Your name" aria-label="Your name">
+          <input name="email" type="email" placeholder="Email" aria-label="Email">
+          <input name="phone" type="tel" placeholder="Phone" aria-label="Phone">
+          <textarea required name="message" rows="4" placeholder="How can we help?" aria-label="Message"></textarea>
+          <button class="btn btn-primary" type="submit">Send message</button>
+        </form>
+        <p class="thanks-msg" style="display:none;font-weight:600;color:var(--orange-deep);margin-top:12px">Thanks! We'll get back to you shortly. ✓</p>
+      </div>
+      <div class="offices-col">
+        <div class="office"><h3>Stockton-on-Tees</h3><p>19 Bishop Street, Stockton-on-Tees, TS18 1SY</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
+        <div class="office"><h3>Normanby</h3><p>8c High Street, Normanby, TS6 0JZ</p><p style="margin-top:.6rem"><a href="tel:01642378022">01642 378022</a></p></div>
+      </div>
     </div>
   </div>
 </section>
@@ -412,7 +452,7 @@
         </div>
       </div>
       <div><h4>Explore</h4><a href="#buy">Buy</a><a href="#buy">Rent</a><a href="#team">Meet the team</a><a href="#valuation">Valuation</a><a href="#services">Services</a></div>
-      <div><h4>Services</h4><a href="#services">Residential Sales</a><a href="#services">Residential Lettings</a><a href="#services">Mortgage Advice</a><a href="#services">G.R. Removals</a></div>
+      <div><h4>Services</h4><a href="#services">Residential Sales</a><a href="#services">Residential Lettings</a><a href="#services">Property Management</a><a href="#services">Serviced Accommodation</a><a href="#services">Mortgage Advice</a><a href="#services">G.R. Removals</a></div>
       <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton &amp; Normanby offices</a><span style="display:block;padding-top:10px;color:#8b94a0;font-size:.78rem">Company No. 15494951 · VAT 463 2650 95</span></div>
     </div>
     <div class="foot-bottom">
@@ -425,6 +465,7 @@
 <script>
   window.searchKind = 'sale';
   function logoFail(img){ img.style.display='none'; var a=img.parentNode; if(a && !a.querySelector('.mark')){ a.insertAdjacentHTML('beforeend','<span class="mark">GR</span> G.R. Estates'); } }
+  function formThanks(e, form){ e.preventDefault(); form.style.display='none'; var t=form.nextElementSibling; while(t && !(t.classList && t.classList.contains('thanks-msg'))) t=t.nextElementSibling; if(t) t.style.display='block'; return false; }
   function setMode(btn,mode){
     document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
