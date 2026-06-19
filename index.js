@@ -415,7 +415,7 @@ async function streetGet(env, path) {
   const token = env && env.STREET_API_TOKEN;
   if (!token) return { ok: false, status: 0, error: "STREET_API_TOKEN not set" };
   const res = await fetch(STREET_API_BASE + path, {
-    headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.api+json" }
+    headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.api+json", "User-Agent": "dean.id-worker/1.0 (+https://dean.id)" }
   });
   let body = null;
   try { body = await res.json(); } catch (_) { body = null; }
@@ -544,7 +544,7 @@ export default {
         });
       }
       const cache = caches.default;
-      const cacheKey = new Request(url.toString());
+      const cacheKey = new Request(url.origin + "/api/listings?cv=1");
       const hit = await cache.match(cacheKey);
       if (hit) return hit;
       let listings = [];
