@@ -74,7 +74,7 @@
   .hero h1 em{font-style:normal;color:var(--orange)}
   .hero p.lead{font-size:1.12rem;color:#d9dde4;max-width:34ch}
   .hero-stats{display:flex;gap:2rem;margin-top:2rem}
-  .hero-stats div{font-family:var(--serif);font-size:1.7rem;font-weight:700}
+  .hero-stats div{font-family:var(--sans);font-size:1.8rem;font-weight:800;letter-spacing:-.02em}
   .hero-stats span{display:block;font-family:var(--sans);font-size:.78rem;font-weight:500;color:#aab2bd;letter-spacing:.04em}
   .hero-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:10px;backdrop-filter:blur(6px)}
   .hero-photo{height:320px;border-radius:14px;background:
@@ -144,6 +144,17 @@
   .bubble.u{background:var(--orange);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
   .bubble.a{background:rgba(255,255,255,.1);border-bottom-left-radius:4px}
   .bubble small{opacity:.7}
+  .ai-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+  .ai-chips button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:.45rem .85rem;font:inherit;font-size:.82rem;cursor:pointer;transition:.15s}
+  .ai-chips button:hover{background:rgba(255,255,255,.18)}
+  .ai-msgs{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding-right:4px}
+  .ai-input{display:flex;gap:8px}
+  .ai-input input{flex:1;border:0;border-radius:10px;padding:.75rem .85rem;font:inherit;color:var(--ink)}
+  .ai-input button{border:0;background:var(--orange);color:#fff;border-radius:10px;width:46px;cursor:pointer;font-size:1.05rem}
+  .ai-input button:hover{background:var(--orange-deep)}
+  .ai-res{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px;text-decoration:none;color:#fff;margin-top:6px}
+  .ai-res .rimg{width:62px;height:52px;border-radius:8px;background:#2b3645 center/cover no-repeat;flex:none}
+  .ai-res .rp{font-weight:800}.ai-res .rb{font-size:.84rem;line-height:1.3}
 
   /* Valuation CTA */
   .val{background:var(--orange);color:#fff;border-radius:24px;padding:52px;text-align:center}
@@ -271,7 +282,7 @@
         <a class="btn btn-ghost" href="valuation.html">What's my home worth?</a>
       </div>
       <div class="hero-stats">
-        <div>2<span>Local offices</span></div>
+        <div>Teesside<span>Born &amp; based</span></div>
         <div>18<span>In the team</span></div>
         <div>100%<span>Independent</span></div>
       </div>
@@ -362,8 +373,7 @@
         </div>
         <p style="font-size:.85rem;color:var(--muted);margin-top:12px">Free home visit · no obligation</p>
       </div>
-      <div class="rem-visual">
-        <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="#fff" stroke-width="2" opacity=".6"><rect x="34" y="120" width="180" height="98" rx="6"/><path d="M214 150 h70 l44 40 v28 h-114 z"/><circle cx="92" cy="228" r="17"/><circle cx="286" cy="228" r="17"/><rect x="250" y="162" width="42" height="28"/><path d="M54 142 h140 M54 162 h96 M54 182 h70"/></g></svg>
+      <div class="rem-visual" style="background:linear-gradient(180deg,rgba(27,36,48,.1),rgba(27,36,48,.72)),#2b3645 url('https://gr-estatesremovals.co.uk/media/g-r-removals/comercial-1.webp.1300x1050_q85_crop_upscale.jpg') center/cover no-repeat">
         <span class="rem-tag">📦 From A to B, covered</span>
       </div>
     </div>
@@ -398,14 +408,24 @@
   <div class="wrap">
     <div class="ai">
       <div>
-        <span class="eyebrow">On the roadmap</span>
+        <span class="eyebrow">Ask G.R. · live demo</span>
         <h2>Meet "Ask G.R."</h2>
-        <p>An assistant on the website and for the team. It answers the everyday questions day or night, then hands the real enquiries to the right person, so the team spends less time on the basics.</p>
+        <p>Our assistant searches every property the moment you ask, day or night, then passes the real enquiries straight to the team. Go on, ask it something.</p>
+        <div class="ai-chips">
+          <button type="button" onclick="askChip(this)">2-bed houses under £150k</button>
+          <button type="button" onclick="askChip(this)">Bungalows in Middlesbrough</button>
+          <button type="button" onclick="askChip(this)">Cheapest flats to rent</button>
+          <button type="button" onclick="askChip(this)">What's my home worth?</button>
+        </div>
       </div>
       <div class="chatbox">
-        <div class="bubble u">Do you have any 2-bed rentals in Norton under £800?</div>
-        <div class="bubble a">Yes, there are 3 right now. The closest is a 2-bed terrace on Bishopton Road at £795 pcm. Want me to book a viewing? <br><small>· Ask G.R. · concept</small></div>
-        <div class="bubble u">Yes please, Saturday morning.</div>
+        <div class="ai-msgs" id="aimsgs">
+          <div class="bubble a">Hi, I'm G.R. 👋 Ask me to find you a home, sort a valuation, or anything else. Tap a suggestion or type below.</div>
+        </div>
+        <form class="ai-input" onsubmit="return askGR(event)">
+          <input id="aiq" placeholder="e.g. 3 bed house in Stockton under £200k" autocomplete="off">
+          <button type="submit" aria-label="Send">➤</button>
+        </form>
       </div>
     </div>
   </div>
@@ -637,7 +657,7 @@
     {name:"Olivia Rich",title:"Lettings Negotiator"},{name:"Violet Yendall",title:"Lettings Negotiator"},
     {name:"Noah Foster",title:"Team Lettings"},{name:"Lea Finegan",title:"Trainee Valuer"},
     {name:"Emma Wild",title:"Maintenance Coordinator"},{name:"Nicole Purvis",title:"Maintenance Coordinator"},
-    {name:"Arelly Camacho",title:"Admin"},{name:"Rosie Turner",title:"Accounts"},
+    {name:"Rosie Turner",title:"Accounts"},
     {name:"Dean Benson",title:"Techie"}
   ];
   function initials(n){return (n||'').split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();}
@@ -654,6 +674,50 @@
   fetch('/api/team').then(function(r){return r.json();}).then(function(d){
     if(d&&d.members&&d.members.length){ render(d.members,true); } else { throw 0; }
   }).catch(function(){ render(SNAP,false); });
+})();
+</script>
+<script>
+(function(){
+  var msgs=document.getElementById('aimsgs'); if(!msgs) return;
+  var TOWNS=['stockton','middlesbrough','norton','yarm','billingham','redcar','guisborough','thornaby','ingleby','marske','saltburn','hartlepool','darlington','eston','normanby','sunderland'];
+  var W2N={one:1,two:2,three:3,four:4,five:5,six:6};
+  function add(html,who){ var d=document.createElement('div'); d.className='bubble '+(who||'a'); d.innerHTML=html; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
+  function money(n){ return n? '£'+Number(n).toLocaleString('en-GB') : 'POA'; }
+  function parseQ(t){
+    t=' '+t.toLowerCase()+' '; var q={};
+    if(/\b(rent|renting|to let|letting|tenant|pcm|landlord)\b/.test(t)) q.kind='let'; else if(/\b(buy|for sale|sale|sell|selling|purchase|buying)\b/.test(t)) q.kind='sale';
+    var b=t.match(/(\d+)\s*(?:\+|or more)?\s*(?:bed|bedroom)/); if(b){ q.beds=b[1]; } else { for(var w in W2N){ if(new RegExp('\\b'+w+'\\s*(?:bed|bedroom)').test(t)){ q.beds=W2N[w]; } } }
+    if(/\bstudio\b/.test(t)) q.beds='0';
+    var mx=t.match(/(?:under|below|up to|max|less than|cheaper than)\s*£?\s*([\d,]+)\s*(k)?/); if(mx){ var v=parseInt(mx[1].replace(/,/g,''),10); if(mx[2]==='k'||v<1000) v*=1000; q.max=v; }
+    var mn=t.match(/(?:over|above|from|min|more than|at least)\s*£?\s*([\d,]+)\s*(k)?/); if(mn){ var v2=parseInt(mn[1].replace(/,/g,''),10); if(mn[2]==='k'||v2<1000) v2*=1000; q.min=v2; }
+    if(/\bbungalow/.test(t)) q.type='Bungalow'; else if(/\b(flat|apartment)/.test(t)) q.type='Flat'; else if(/\bhouse/.test(t)) q.type='House';
+    for(var i=0;i<TOWNS.length;i++){ if(t.indexOf(TOWNS[i])>=0){ q.q=TOWNS[i]; break; } }
+    q.valuation=/\b(worth|valuation|value my|how much.*(home|house|property))\b/.test(t);
+    q.cheap=/\b(cheap|cheapest|lowest|budget)\b/.test(t);
+    return q;
+  }
+  function rescard(L){ var pr=money(L.price)+(L.kind==='let'?' pcm':''); var img=L.image?' style="background-image:url(\''+L.image+'\')"':''; return '<a class="ai-res" href="property.html?id='+encodeURIComponent(L.id)+'"><div class="rimg"'+img+'></div><div class="rb"><div class="rp">'+pr+'</div>'+((L.address||'').split(',').slice(0,2).join(', '))+'</div></a>'; }
+  window.askChip=function(btn){ doAsk(btn.textContent); };
+  window.askGR=function(e){ if(e) e.preventDefault(); var inp=document.getElementById('aiq'); var t=(inp.value||'').trim(); if(!t) return false; inp.value=''; doAsk(t); return false; };
+  window.askSeeAll=function(){ var q=window._lastAskQ||{}; window.searchKind=q.kind||''; var s=function(id,v){var el=document.getElementById(id); if(el)el.value=(v==null?'':v);}; s('loc',q.q||''); s('rbeds',q.beds||''); s('rmin',q.min||''); s('rmax',q.max||''); s('rtype',q.type||''); var b=document.getElementById('buy'); if(b)b.scrollIntoView({behavior:'smooth'}); if(window.applyRefine) window.applyRefine(); return false; };
+  function doAsk(t){
+    add(t,'u'); window._lastAskQ=null;
+    var typing=add('<span style="opacity:.6">G.R. is searching…</span>','a');
+    var q=parseQ(t); window._lastAskQ=q;
+    setTimeout(function(){
+      if(typing.parentNode) typing.parentNode.removeChild(typing);
+      if(q.valuation){ add('Happy to help! Pop in your details and we\'ll sort a free, no-obligation valuation. <a href="valuation.html" style="color:#fff;text-decoration:underline">Book it here →</a>'); return; }
+      if(!q.kind && !q.beds && q.max==null && !q.type && !q.q && !q.cheap){ add('I can find you a property, sort a valuation, or put you through to the team. Try something like <b>"2 bed house in Stockton under £150k"</b>, or tap a suggestion above.'); return; }
+      var qs='pageSize=4'+(q.kind?'&kind='+q.kind:'')+(q.beds?'&beds='+q.beds:'')+(q.min?'&min='+q.min:'')+(q.max?'&max='+q.max:'')+(q.type?'&type='+encodeURIComponent(q.type):'')+(q.q?'&q='+encodeURIComponent(q.q):'')+(q.cheap?'&sort=price_asc':'');
+      fetch('/api/search?'+qs).then(function(r){return r.json();}).then(function(d){
+        var list=(d&&d.results)||[]; var total=(d&&d.total)||0;
+        if(!list.length){ add('Hmm, nothing matched that exactly. Try widening the price or beds, or <a href="#contact" style="color:#fff;text-decoration:underline">ask the team</a> and we\'ll dig deeper.'); return; }
+        add('Found <b>'+total+'</b> '+(q.kind==='let'?'to rent':(q.kind==='sale'?'for sale':'properties'))+' matching that. Here are a few:');
+        add(list.slice(0,3).map(rescard).join(''));
+        add('<a href="#buy" onclick="return askSeeAll()" style="color:#fff;text-decoration:underline">See all '+total+' results →</a>');
+      }).catch(function(){ add('Sorry, I had trouble searching just now — <a href="#contact" style="color:#fff;text-decoration:underline">contact the team</a> and they\'ll sort you out.'); });
+    },650);
+  }
 })();
 </script>
 </body>

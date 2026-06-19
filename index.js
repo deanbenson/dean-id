@@ -832,7 +832,7 @@ export default {
       try {
         const r = await streetGet(env, "/users?page%5Bsize%5D=100");
         if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
-        const exclude = new Set([]);
+        const exclude = new Set(["arelly camacho"]);
         const rankOf = function (t) {
           t = (t || "").toLowerCase();
           if (t.indexOf("director") >= 0) return 0;
