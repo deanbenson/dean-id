@@ -779,6 +779,46 @@ export default {
       }
     }
 
+    // Live team straight from the Street CRM (names + titles only — no contact details).
+    if (path === "/api/team") {
+      try {
+        const r = await streetGet(env, "/users?page%5Bsize%5D=100");
+        if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
+        const exclude = new Set(["dean benson"]);
+        const rankOf = function (t) {
+          t = (t || "").toLowerCase();
+          if (t.indexOf("director") >= 0) return 0;
+          if (t.indexOf("sales manager") >= 0) return 1;
+          if (t.indexOf("senior valuer") >= 0) return 2;
+          if (t.indexOf("property manager") >= 0) return 3;
+          if (t.indexOf("negotiator") >= 0) return 4;
+          if (t.indexOf("lettings") >= 0) return 4;
+          if (t.indexOf("valuer") >= 0) return 5;
+          if (t.indexOf("maintenance") >= 0) return 6;
+          if (t.indexOf("admin") >= 0 || t.indexOf("accounts") >= 0) return 7;
+          return 5;
+        };
+        const members = r.body.data
+          .map(function (d) { return d.attributes || {}; })
+          .filter(function (a) {
+            if (a.deactivated_at || a.deleted_at) return false;
+            const nm = ((a.first_name || "") + " " + (a.last_name || "")).toLowerCase().trim();
+            if (!nm || exclude.has(nm)) return false;
+            if ((a.job_title || "").toLowerCase().indexOf("techie") >= 0) return false;
+            return true;
+          })
+          .map(function (a) { return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: a.job_title || "" }; });
+        members.sort(function (x, y) { const d = rankOf(x.title) - rankOf(y.title); return d !== 0 ? d : x.name.localeCompare(y.name); });
+        return respond(JSON.stringify({ ok: true, count: members.length, members }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=3600"
+        });
+      } catch (e) {
+        return respond(JSON.stringify({ ok: false, members: [] }), 200, {
+          "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*"
+        });
+      }
+    }
+
     if (path === "/badge.svg") {
       const themes = ["dark", "light", "transparent", "transparent-dark"];
       const theme = themes.includes(url.searchParams.get("theme")) ? url.searchParams.get("theme") : "dark";

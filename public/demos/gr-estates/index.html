@@ -97,7 +97,7 @@
   .ph .chip{margin:12px;background:var(--orange);color:#fff;font-size:.72rem;font-weight:700;padding:.3rem .65rem;border-radius:6px;letter-spacing:.02em}
   .ph .chip.let{background:var(--ink)}
   .card .body{padding:18px 18px 20px}
-  .card .price{font-family:var(--serif);font-size:1.4rem;font-weight:700}
+  .card .price{font-family:var(--sans);font-size:1.4rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
   .card .addr{color:var(--muted);font-size:.92rem;margin:.2rem 0 .9rem}
   .card .meta{display:flex;gap:1rem;font-size:.84rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:.8rem}
   .card .meta b{font-weight:600}
@@ -147,8 +147,30 @@
   footer h4{color:#fff;font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
   footer a{display:block;padding:.25rem 0}footer a:hover{color:#fff}
   .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-  .badges span{border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:.3rem .6rem;font-size:.72rem;color:#aab2bd}
+  .badges span,.badges a{border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:.3rem .6rem;font-size:.72rem;color:#aab2bd;display:inline-block}
+  .badges a:hover{border-color:var(--orange);color:#fff}
   .foot-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:22px;flex-wrap:wrap;gap:10px;color:#8b94a0;font-size:.82rem}
+
+  /* Logo image */
+  .logo img{height:34px;width:auto;display:block}
+  .logo.foot img{height:30px}
+
+  /* Trust / accreditations */
+  .trust{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .trust .wrap{display:flex;align-items:center;justify-content:center;gap:30px;flex-wrap:wrap;padding:22px 24px}
+  .trust .lbl{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .trust img{height:38px;width:auto;opacity:.6;filter:grayscale(1);transition:.2s}
+  .trust img:hover{opacity:1;filter:none}
+
+  /* Team */
+  .team-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px 18px}
+  .member{text-align:center}
+  .member .av{width:94px;height:94px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;overflow:hidden;
+     background:linear-gradient(140deg,var(--orange),var(--orange-deep));color:#fff;font-family:var(--serif);font-weight:600;font-size:1.5rem;
+     border:3px solid #fff;box-shadow:0 8px 22px rgba(27,36,48,.14)}
+  .member .av img{width:100%;height:100%;object-fit:cover}
+  .member .nm{font-weight:700;font-size:.94rem;line-height:1.2}
+  .member .ti{color:var(--muted);font-size:.8rem;margin-top:3px}
 
   @media(max-width:900px){
     nav.links{display:none}.menu-btn{display:block}
@@ -156,8 +178,9 @@
     .search{grid-template-columns:1fr 1fr;gap:14px}.search .toggle{grid-column:1/-1}.search .go{grid-column:1/-1;justify-self:stretch}
     .listings,.svc-grid{grid-template-columns:1fr}.why{grid-template-columns:1fr 1fr}
     .ai,.offices,.foot-grid{grid-template-columns:1fr}.ai{padding:32px}
+    .team-grid{grid-template-columns:repeat(3,1fr)}
   }
-  @media(max-width:560px){.why{grid-template-columns:1fr}}
+  @media(max-width:560px){.why{grid-template-columns:1fr}.team-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -166,11 +189,12 @@
 
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="logo" href="#top"><span class="mark">GR</span> G.R. Estates</a>
+    <a class="logo" href="#top"><img src="https://www.gr-estates.co.uk/static/images/logo-orange.aaf58e97174a.png" alt="G.R. Estates" referrerpolicy="no-referrer" onerror="logoFail(this)"></a>
     <nav class="links">
       <a href="#buy">Buy</a>
       <a href="#buy">Rent</a>
       <a href="#services">Services</a>
+      <a href="#team">Team</a>
       <a href="#ai">Ask G.R.</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -189,14 +213,14 @@
     <div>
       <span class="eyebrow">Independent agents · Teesside</span>
       <h1>Teesside property, <em>done properly.</em></h1>
-      <p class="lead">Straight-talking sales &amp; lettings across Stockton, Norton, Yarm and the wider area — from people who actually know the place.</p>
+      <p class="lead">Straight-talking sales &amp; lettings across Stockton, Middlesbrough, Yarm and the wider Teesside area — from people who actually know the place.</p>
       <div style="display:flex;gap:.7rem;margin-top:1.6rem;flex-wrap:wrap">
         <a class="btn btn-primary" href="#buy">Browse properties</a>
         <a class="btn btn-ghost" href="#valuation">What's my home worth?</a>
       </div>
       <div class="hero-stats">
         <div>2<span>Local offices</span></div>
-        <div>#1<span>On Rightmove &amp; OTM</span></div>
+        <div>18<span>In the team</span></div>
         <div>100%<span>Independent</span></div>
       </div>
     </div>
@@ -270,6 +294,18 @@
   </div>
 </section>
 
+<section id="team" style="background:var(--paper);border-top:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head" style="max-width:660px">
+      <span class="eyebrow">The team</span>
+      <h2>The people behind G.R. Estates</h2>
+      <p>Local, straight-talking property people across sales, lettings, valuations and management. This line-up is pulled live from our CRM — so it's always who's actually here today.</p>
+    </div>
+    <div class="team-grid" id="team-grid"></div>
+    <p class="demo-note" id="team-note" style="margin-top:28px">Loading the team…</p>
+  </div>
+</section>
+
 <section id="ai">
   <div class="wrap">
     <div class="ai">
@@ -307,19 +343,32 @@
   </div>
 </section>
 
+<section class="trust" style="padding:0">
+  <div class="wrap">
+    <span class="lbl">Members of</span>
+    <img src="https://www.gr-estates.co.uk/media/footer/download_4.png.184x90_q85.jpg" alt="Trading Standards" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+    <img src="https://www.gr-estates.co.uk/media/footer/download_2.png.184x90_q85.jpg" alt="Rightmove" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+    <img src="https://www.gr-estates.co.uk/media/footer/download_1.png.184x90_q85.jpg" alt="UKALA / CMP" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+    <img src="https://www.gr-estates.co.uk/media/footer/tds.png.184x90_q85.png" alt="Tenancy Deposit Scheme" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+    <img src="https://www.gr-estates.co.uk/media/footer/download_3.png.184x90_q85.jpg" alt="The Property Ombudsman" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="logo" href="#top" style="color:#fff"><span class="mark">GR</span> G.R. Estates</a>
+        <a class="logo foot" href="#top" style="color:#fff"><img src="https://www.gr-estates.co.uk/static/images/logo-white.b42da4b5902f.png" alt="G.R. Estates" referrerpolicy="no-referrer" onerror="logoFail(this)"></a>
         <p style="margin-top:14px;max-width:34ch">Independent estate &amp; letting agents specialising in residential sales &amp; lettings across Teesside.</p>
         <div class="badges">
-          <span>Rightmove</span><span>OnTheMarket</span><span>TDS Member</span><span>UKALA / CMP</span><span>Property Ombudsman</span><span>Trading Standards</span>
+          <a href="https://www.facebook.com/GREstatesEstateAgency" target="_blank" rel="noopener">Facebook</a>
+          <a href="https://www.instagram.com/g.r.estates/" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.linkedin.com/company/gr-estates/" target="_blank" rel="noopener">LinkedIn</a>
         </div>
       </div>
-      <div><h4>Explore</h4><a href="#buy">Buy</a><a href="#buy">Rent</a><a href="#valuation">Valuation</a><a href="#services">Services</a></div>
+      <div><h4>Explore</h4><a href="#buy">Buy</a><a href="#buy">Rent</a><a href="#team">Meet the team</a><a href="#valuation">Valuation</a><a href="#services">Services</a></div>
       <div><h4>Services</h4><a href="#services">Residential Sales</a><a href="#services">Residential Lettings</a><a href="#services">Mortgage Advice</a><a href="#services">G.R. Removals</a></div>
-      <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton office</a><a href="#contact">Normanby office</a></div>
+      <div><h4>Contact</h4><a href="tel:01642378022">01642 378022</a><a href="#contact">Stockton &amp; Normanby offices</a><span style="display:block;padding-top:10px;color:#8b94a0;font-size:.78rem">Company No. 15494951 · VAT 463 2650 95</span></div>
     </div>
     <div class="foot-bottom">
       <span>© 2026 G.R. Estates · prototype concept</span>
@@ -330,6 +379,7 @@
 
 <script>
   window.searchKind = 'sale';
+  function logoFail(img){ img.style.display='none'; var a=img.parentNode; if(a && !a.querySelector('.mark')){ a.insertAdjacentHTML('beforeend','<span class="mark">GR</span> G.R. Estates'); } }
   function setMode(btn,mode){
     document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
@@ -427,6 +477,43 @@
       render((d && d.listings) || [], false);
     }).catch(function(){ note.textContent = 'Listings unavailable right now.'; });
   });
+})();
+</script>
+<script>
+(function(){
+  var grid=document.getElementById('team-grid'); var note=document.getElementById('team-note');
+  if(!grid) return;
+  var PHOTOS={
+    "Georgina Robinson":"https://www.gr-estates.co.uk/media/about/team/GR_Estates_130922-31.jpg.553x553_q85_crop_upscale.jpg",
+    "Vikki Catterson":"https://www.gr-estates.co.uk/media/about/team/GR_Estates_130922-27.jpg.553x553_q85_crop_upscale.jpg",
+    "Megan Rich":"https://www.gr-estates.co.uk/media/about/team/IMG-20221117-WA0008.jpg.553x553_q85_crop_upscale.jpg",
+    "Olivia Rich":"https://www.gr-estates.co.uk/media/about/team/GR_Estates_130922-34_2.jpg.553x553_q85_crop_upscale.jpg"
+  };
+  var SNAP=[
+    {name:"Georgina Robinson",title:"Director"},{name:"Megan Rich",title:"Sales Manager"},
+    {name:"Vikki Catterson",title:"Senior Valuer"},{name:"Alfie Armour",title:"Property Manager"},
+    {name:"Lewis Griffiths",title:"Sales Negotiator"},{name:"Leanne Wood",title:"Sales Negotiator"},
+    {name:"Abbie Huskinson",title:"Sales Negotiator"},{name:"Rebecca Welham",title:"Sales Negotiator"},
+    {name:"Donna Cuthbertson",title:"Lettings Negotiator"},{name:"Maddie Cowell",title:"Lettings Negotiator"},
+    {name:"Olivia Rich",title:"Lettings Negotiator"},{name:"Violet Yendall",title:"Lettings Negotiator"},
+    {name:"Noah Foster",title:"Team Lettings"},{name:"Lea Finegan",title:"Trainee Valuer"},
+    {name:"Emma Wild",title:"Maintenance Coordinator"},{name:"Nicole Purvis",title:"Maintenance Coordinator"},
+    {name:"Arelly Camacho",title:"Admin"},{name:"Rosie Turner",title:"Accounts"}
+  ];
+  function initials(n){return (n||'').split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();}
+  function mcard(m){
+    var ini=initials(m.name); var p=PHOTOS[m.name];
+    var av=p?'<div class="av"><img src="'+p+'" alt="'+m.name+'" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=&quot;'+ini+'&quot;"></div>':'<div class="av">'+ini+'</div>';
+    return '<div class="member">'+av+'<div class="nm">'+m.name+'</div><div class="ti">'+(m.title||'')+'</div></div>';
+  }
+  function render(list,live){
+    if(!list||!list.length){ note.textContent='Team unavailable right now.'; return; }
+    grid.innerHTML=list.map(mcard).join('');
+    note.innerHTML=(live?'🟢 Live from the Street CRM':'From the Street CRM')+' · '+list.length+' people';
+  }
+  fetch('/api/team').then(function(r){return r.json();}).then(function(d){
+    if(d&&d.members&&d.members.length){ render(d.members,true); } else { throw 0; }
+  }).catch(function(){ render(SNAP,false); });
 })();
 </script>
 </body>
