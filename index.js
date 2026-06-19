@@ -763,7 +763,7 @@ export default {
       const pageSize = Math.min(48, Math.max(1, parseInt(p.get("pageSize"), 10) || 12));
       const page = Math.max(1, parseInt(p.get("page"), 10) || 1);
       const offset = (page - 1) * pageSize;
-      const order = p.get("sort") === "price_desc" ? "ORDER BY (price IS NULL), price DESC" : "ORDER BY (price IS NULL), price ASC";
+      const order = p.get("sort") === "price_desc" ? "ORDER BY (price IS NULL OR price = 0), price DESC" : "ORDER BY (price IS NULL OR price = 0), price ASC";
       try {
         const db = env.gr_estates;
         const countRow = await db.prepare("SELECT COUNT(*) AS n FROM listings " + clause).bind(...args).first();

@@ -236,6 +236,7 @@
     <div class="listings" id="listings"></div>
     <div id="more-wrap" style="text-align:center;margin-top:22px"></div>
     <p class="demo-note" id="listings-note">Loading live listings from Street…</p>
+    <div id="browse-all" style="text-align:center;margin-top:10px"></div>
   </div>
 </section>
 
@@ -352,7 +353,8 @@
   }
   function card(L){
     var isLet = L.kind==='let';
-    var price = isLet ? money(L.price)+' <span style="font-size:.62em;color:var(--muted);font-weight:600">pcm</span>' : money(L.price);
+    var price = (!L.price) ? 'POA'
+      : (isLet ? money(L.price)+' <span style="font-size:.62em;color:var(--muted);font-weight:600">pcm</span>' : money(L.price));
     var meta = [];
     if(L.beds) meta.push('<span><b>'+L.beds+'</b> bed'+(L.beds>1?'s':'')+'</span>');
     if(L.baths) meta.push('<span><b>'+L.baths+'</b> bath'+(L.baths>1?'s':'')+'</span>');
@@ -370,7 +372,7 @@
     var use = (withImg.length ? withImg : (list||[])).slice(0,9);
     if(!use.length){ note.textContent = 'No current listings to show.'; return; }
     grid.innerHTML = use.map(card).join('');
-    note.innerHTML = (live ? '🟢 Live from your Street CRM' : 'From your Street CRM') + ' · ' + use.length + ' current listings';
+    note.innerHTML = (live ? '🟢 Live from your Street CRM' : 'From your Street CRM') + ' · ' + use.length + ' featured';
   }
   var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
   function runSearch(append){
@@ -381,7 +383,7 @@
       grid.insertAdjacentHTML('beforeend', res.map(card).join(''));
       SS.shown += res.length;
       if(!SS.shown){ note.textContent='Nothing matches that search — try widening it.'; if(mwrap) mwrap.innerHTML=''; return; }
-      note.innerHTML='🔎 '+SS.total+' '+(SS.kind==='let'?'to let':'for sale')+' · showing '+SS.shown;
+      var lbl=SS.kind==='let'?'to let':(SS.kind==='sale'?'for sale':'properties'); note.innerHTML='🔎 '+SS.total+' '+lbl+' · showing '+SS.shown;
       if(mwrap) mwrap.innerHTML = (SS.shown < SS.total) ? '<button class="btn btn-dark" type="button" onclick="loadMore()" style="cursor:pointer">Load more</button>' : '';
     }).catch(function(){ note.textContent='Search unavailable right now.'; });
   }
@@ -402,6 +404,21 @@
     runSearch(false);
   };
   window.loadMore = function(){ SS.page++; runSearch(true); };
+  window.showAll = function(kind){
+    SS.kind = kind || '';
+    SS.qs = (SS.kind ? 'kind='+SS.kind+'&' : '') + 'pageSize=12';
+    SS.page = 1;
+    note.textContent = 'Loading…'; if(mwrap) mwrap.innerHTML='';
+    var ba = document.getElementById('browse-all'); if(ba) ba.innerHTML='';
+    var t = document.getElementById('buy-title'); if(t) t.textContent = 'All properties';
+    var e = document.getElementById('buy-eyebrow'); if(e) e.textContent = 'Browse';
+    var sec = document.getElementById('buy'); if(sec) sec.scrollIntoView({behavior:'smooth'});
+    runSearch(false);
+  };
+  fetch('/api/search?pageSize=1').then(function(r){return r.json();}).then(function(d){
+    var n = (d && d.total) || 0; var ba = document.getElementById('browse-all');
+    if(ba && n){ ba.innerHTML = '<button type="button" class="btn btn-dark" onclick="showAll()" style="cursor:pointer">Browse all '+n+' properties →</button>'; }
+  }).catch(function(){});
 
   fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
     if(d && d.listings && d.listings.length){ render(d.listings, true); } else { throw 0; }
