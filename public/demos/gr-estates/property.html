@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content="noindex, nofollow"/>
 <title>Property · G.R. Estates</title>
-<meta id="meta-desc" name="description" content="Property details — G.R. Estates, independent estate &amp; letting agents in Teesside."/>
+<meta id="meta-desc" name="description" content="Property details from G.R. Estates, independent estate and letting agents in Teesside."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -56,7 +56,6 @@
 </style>
 </head>
 <body>
-<div class="banner">Private prototype concept · <b>not live</b> · built by dean.id for review</div>
 <header class="nav"><div class="wrap nav-inner">
   <a class="logo" href="/demos/gr-estates/"><img src="https://www.gr-estates.co.uk/static/images/logo-orange.aaf58e97174a.png" alt="G.R. Estates" referrerpolicy="no-referrer"></a>
   <a class="btn btn-ghost" href="/demos/gr-estates/#buy">← All properties</a>
@@ -66,7 +65,7 @@
   <p id="status" style="padding:70px 0;text-align:center;color:var(--muted)">Loading property…</p>
 </main>
 
-<footer>© 2026 G.R. Estates · prototype concept · Stockton &amp; Normanby · 01642 378022 <span style="opacity:.45">· v0.4</span></footer>
+<footer>© 2026 G.R. Estates · Stockton &amp; Normanby · 01642 378022 <span style="font-size:.7rem;opacity:.3;font-weight:500;margin-left:5px">v0.4</span></footer>
 
 <script>
 (function(){
@@ -78,7 +77,7 @@
   function clean(h){ return (h||'').replace(/<\/p\s*>\s*<p[^>]*>/gi,'\n\n').replace(/<br\s*\/?>/gi,'\n').replace(/<\/?[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\n{3,}/g,'\n\n').trim(); }
   fetch('/api/property?id='+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
     if(!d||!d.ok) throw 0; render(d);
-  }).catch(function(){ document.getElementById('status').textContent='Sorry — we couldn\'t load this property. It may no longer be available.'; });
+  }).catch(function(){ document.getElementById('status').textContent='Sorry, we couldn\'t load this property. It may no longer be available.'; });
 
   function render(d){
     var isLet=d.kind==='let';
@@ -111,7 +110,7 @@
         (d.virtualTour?'<div class="sec"><a class="btn btn-ghost" href="'+d.virtualTour+'" target="_blank" rel="noopener">▶ Virtual tour</a></div>':'')+
       '</div>'+
       '<aside><div class="book">'+
-        '<h3>Book a viewing</h3><p class="sub">Arrange a viewing or ask us anything — we\'ll be straight back to you.</p>'+
+        '<h3>Book a viewing</h3><p class="sub">Arrange a viewing or ask us anything and we\'ll be straight back to you.</p>'+
         '<form onsubmit="return sendEnq(event)">'+
         '<label>Your name</label><input required name="name">'+
         '<label>Phone</label><input required name="phone" type="tel">'+
