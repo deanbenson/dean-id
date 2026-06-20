@@ -939,6 +939,34 @@ function looksLikeSearch(q, f) {
   return /\b(buy|rent|house|flat|bungalow|apartment|propert|home|for sale|to let|bedroom|under £|budget)\b/i.test(String(q || ""));
 }
 
+// Abuse / cost guard: throttle a single source, and cap total paid spend per day.
+async function rateGuard(env, request) {
+  if (!env || !env.LISTINGS) return { allow: true, fallback: false };
+  const ip = request.headers.get("CF-Connecting-IP") || request.headers.get("x-forwarded-for") || "anon";
+  const now = Date.now();
+  // Per-IP throttle: ~10 messages a minute and ~50 every 10 minutes.
+  try {
+    const mk = "rl:" + ip + ":m" + Math.floor(now / 60000);
+    const mc = parseInt((await env.LISTINGS.get(mk)) || "0", 10);
+    if (mc >= 10) return { allow: false, fallback: false };
+    const tk = "rl:" + ip + ":t" + Math.floor(now / 600000);
+    const tc = parseInt((await env.LISTINGS.get(tk)) || "0", 10);
+    if (tc >= 50) return { allow: false, fallback: false };
+    await env.LISTINGS.put(mk, String(mc + 1), { expirationTtl: 120 });
+    await env.LISTINGS.put(tk, String(tc + 1), { expirationTtl: 1200 });
+  } catch (_) {}
+  // Global daily budget for the paid model. Beyond it, serve the free fallback so spend is capped.
+  try {
+    const day = new Date(now).toISOString().slice(0, 10);
+    const bk = "budget:" + day;
+    const used = parseInt((await env.LISTINGS.get(bk)) || "0", 10);
+    const cap = parseInt(String(env.DAILY_AI_CAP || "600"), 10) || 600;
+    if (used >= cap) return { allow: true, fallback: true };
+    await env.LISTINGS.put(bk, String(used + 1), { expirationTtl: 172800 });
+  } catch (_) {}
+  return { allow: true, fallback: false };
+}
+
 async function askGeorgina(request, env, url, ctx) {
   const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
   if (request.method === "OPTIONS") {
@@ -984,8 +1012,22 @@ async function askGeorgina(request, env, url, ctx) {
   const model = MODELS[(url.searchParams.get("model") || "").toLowerCase()] || ASK_MODEL;
   dbg.model = model;
 
+  const streaming = url.searchParams.get("stream") === "1";
+
+  // Abuse / cost guard.
+  const guard = await rateGuard(env, request);
+  if (!guard.allow) {
+    const msg = "You're sending messages a little too quickly. Give me a few seconds and try again, or call the team on 01642 378022.";
+    if (streaming) {
+      const e2 = new TextEncoder();
+      return new Response(e2.encode(JSON.stringify({ d: msg }) + "\n" + JSON.stringify({ done: true }) + "\n"), { status: 200, headers: Object.assign({}, CORS, { "content-type": "application/x-ndjson; charset=utf-8" }) });
+    }
+    return respond(JSON.stringify({ ok: false, reply: msg }), 200, CORS);
+  }
+  const overBudget = !!guard.fallback;
+
   // Streaming path — tokens are sent to the browser as they're generated (NDJSON lines).
-  if (url.searchParams.get("stream") === "1") {
+  if (streaming) {
     const ndHeaders = Object.assign({}, CORS, { "content-type": "application/x-ndjson; charset=utf-8" });
     const enc = new TextEncoder();
     if (!env || !env.ANTHROPIC_API_KEY) {
@@ -998,6 +1040,14 @@ async function askGeorgina(request, env, url, ctx) {
       let any = false;
       const onText = function (t) { const c = deDash(t); if (c) { any = true; emit({ d: c }); } };
       try {
+        if (overBudget) {
+          const fb = await workersFallback(env, q, history);
+          if (fb.properties && fb.properties.length) emit({ p: fb.properties });
+          const parts = fb.reply.split(/(\s+)/);
+          for (let i = 0; i < parts.length; i++) { if (parts[i]) emit({ d: parts[i] }); }
+          emit({ done: true });
+          return;
+        }
         const first = await withTimeout(streamClaude(env, GEORGINA_SYSTEM, messages, tools, model, onText), 30000);
         if (first.stoppedForTool && first.toolName === "search_properties") {
           const a = first.toolInput || {};
@@ -1037,6 +1087,14 @@ async function askGeorgina(request, env, url, ctx) {
     const fb = await workersFallback(env, q, history);
     const out = { ok: true, reply: fb.reply, properties: fb.properties };
     if (url.searchParams.get("debug") === "1") out.debug = { model: "fallback-forced", fallback: "workers-ai" };
+    return respond(JSON.stringify(out), 200, CORS);
+  }
+
+  // Daily paid-spend cap reached — serve the free fallback for the rest of the day.
+  if (overBudget) {
+    const fb = await workersFallback(env, q, history);
+    const out = { ok: true, reply: fb.reply, properties: fb.properties };
+    if (url.searchParams.get("debug") === "1") out.debug = { model: "budget-fallback", fallback: "workers-ai" };
     return respond(JSON.stringify(out), 200, CORS);
   }
 
