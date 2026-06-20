@@ -715,6 +715,109 @@ function errorResponse(request, url, code) {
 }
 
 
+// ---- "Ask Georgina" AI assistant (Cloudflare Workers AI) -------------------
+const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+
+const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
+
+Voice: warm, modern, plain English, no jargon, no nonsense. Keep replies short and helpful (2 to 4 sentences). Sound like a genuine, honest local agent who knows the area. Use UK English. Never use the word "CRM" or long dashes.
+
+What G.R. Estates does: residential sales, lettings, property management, serviced accommodation (managing Airbnb-style short lets for owners), free valuations, mortgage advice, commercial property, property auctions, and removals (G.R. Removals). Independent and local.
+
+Areas covered: Teesside and the wider North East, including Stockton-on-Tees, Middlesbrough, Yarm, Norton, Ingleby Barwick, Thornaby, Billingham, Hartlepool and Redcar.
+
+Contact: phone 01642 378022. Offices in Stockton-on-Tees and Normanby. People can book a free, no-obligation valuation on the website.
+
+Rules:
+- To find a property for someone, you MUST use the search_properties tool. Only describe properties returned by the tool. Never invent listings, prices, addresses or property details.
+- If you do not know something (exact fees, or a property that is not in the results), say so honestly and offer to get the team to help, book a free valuation, or call 01642 378022.
+- Gently guide people to a next step: book a free valuation, arrange a viewing, or give the team a call.
+- Be warm and encouraging about helping them buy, sell, rent or let.`;
+
+function toNum(v) {
+  if (typeof v === "number" && isFinite(v)) return v;
+  if (typeof v === "string") { const n = parseInt(v.replace(/[^0-9]/g, ""), 10); if (!isNaN(n)) return n; }
+  return undefined;
+}
+
+async function searchForAI(env, f) {
+  if (!env || !env.gr_estates) return [];
+  const where = [], args = [];
+  if (f.kind === "sale" || f.kind === "let") { where.push("kind = ?"); args.push(f.kind); }
+  if (Number.isFinite(f.min)) { where.push("price >= ?"); args.push(f.min); }
+  if (Number.isFinite(f.max)) { where.push("price <= ?"); args.push(f.max); }
+  if (Number.isFinite(f.beds)) { where.push("beds >= ?"); args.push(f.beds); }
+  if (f.type) { where.push("LOWER(type) LIKE ?"); args.push("%" + String(f.type).toLowerCase() + "%"); }
+  if (f.location) { const like = "%" + String(f.location).toLowerCase() + "%"; where.push("(LOWER(address) LIKE ? OR LOWER(town) LIKE ? OR LOWER(postcode) LIKE ?)"); args.push(like, like, like); }
+  const clause = where.length ? ("WHERE " + where.join(" AND ")) : "";
+  const order = f.sort === "price_desc" ? "ORDER BY (price IS NULL OR price = 0), price DESC" : "ORDER BY (price IS NULL OR price = 0), price ASC";
+  const limit = Math.min(8, Math.max(1, f.limit || 6));
+  try {
+    const rs = await env.gr_estates.prepare("SELECT id,kind,status,price,address,town,postcode,beds,baths,type,style,image FROM listings " + clause + " " + order + " LIMIT ?").bind(...args, limit).all();
+    return (rs && rs.results) || [];
+  } catch (e) { return []; }
+}
+
+async function askGeorgina(request, env, url) {
+  const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
+  if (request.method === "OPTIONS") {
+    return respond(null, 204, { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" });
+  }
+  let q = "", history = [];
+  try {
+    if (request.method === "POST") { const b = await request.json(); q = (b.q || b.message || "") + ""; history = Array.isArray(b.history) ? b.history : []; }
+    else { q = (url.searchParams.get("q") || "") + ""; }
+  } catch (e) {}
+  q = q.slice(0, 500).trim();
+  if (!q) return respond(JSON.stringify({ ok: false, reply: "Ask me anything about buying, renting, selling or letting in Teesside." }), 200, CORS);
+  if (!env || !env.AI) return respond(JSON.stringify({ ok: false, reply: "The assistant is just warming up. Please try again in a moment, or call us on 01642 378022." }), 200, CORS);
+
+  const tools = [{
+    name: "search_properties",
+    description: "Search G.R. Estates' live property listings in Teesside. Use this whenever the user is looking for a property to buy or rent, or mentions a budget, number of bedrooms, an area, or a property type.",
+    parameters: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["sale", "let"], description: "'sale' if they want to buy, 'let' if they want to rent" },
+        location: { type: "string", description: "Town or area, e.g. Stockton, Middlesbrough, Yarm, Norton" },
+        min_price: { type: "number", description: "Minimum price in GBP (monthly if renting)" },
+        max_price: { type: "number", description: "Maximum price in GBP (monthly if renting)" },
+        min_beds: { type: "number", description: "Minimum number of bedrooms" },
+        property_type: { type: "string", description: "e.g. house, flat, bungalow, detached, semi, terraced" }
+      },
+      required: []
+    }
+  }];
+
+  const messages = [{ role: "system", content: GEORGINA_SYSTEM }];
+  history.slice(-6).forEach(function (m) {
+    if (m && m.role && m.content) messages.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 800) });
+  });
+  messages.push({ role: "user", content: q });
+
+  let properties = [], reply = "";
+  try {
+    const r1 = await env.AI.run(ASK_MODEL, { messages, tools, max_tokens: 600, temperature: 0.4 });
+    const tc = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
+    if (tc && tc.name === "search_properties") {
+      const a = tc.arguments || {};
+      properties = await searchForAI(env, { kind: a.kind, location: a.location, min: toNum(a.min_price), max: toNum(a.max_price), beds: toNum(a.min_beds), type: a.property_type, limit: 6 });
+      const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
+      messages.push({ role: "assistant", content: JSON.stringify(tc) });
+      messages.push({ role: "tool", content: JSON.stringify({ count: properties.length, results: brief }) });
+      const r2 = await env.AI.run(ASK_MODEL, { messages, max_tokens: 500, temperature: 0.5 });
+      reply = (r2 && r2.response) || "";
+    } else {
+      reply = (r1 && r1.response) || "";
+    }
+  } catch (e) { reply = ""; }
+
+  if (!reply || !reply.trim()) {
+    reply = "Sorry, I had a little hiccup there. Give the team a call on 01642 378022 or book a free valuation and we'll help you straight away.";
+  }
+  return respond(JSON.stringify({ ok: true, reply: reply.trim(), properties: properties }), 200, CORS);
+}
+
 // Property detail page: served as a static asset, but the Worker runs first
 // (run_worker_first in wrangler) so we can inject per-property share/preview
 // tags (Open Graph / Twitter) for WhatsApp, Facebook, iMessage, Slack, etc.
@@ -797,6 +900,11 @@ export default {
    try {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
+
+    // "Ask Georgina" AI assistant — accepts GET (?q=) and POST (JSON) + CORS preflight.
+    if (path === "/api/ask") {
+      return await askGeorgina(request, env, url);
+    }
 
     if (!["GET", "HEAD"].includes(request.method)) {
       return respond("method not allowed\n", 405, {
