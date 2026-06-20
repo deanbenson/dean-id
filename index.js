@@ -726,7 +726,7 @@ function withTimeout(promise, ms) {
 }
 
 // Call Anthropic's Messages API (Claude).
-async function claudeCall(env, system, messages, tools, maxTokens) {
+async function claudeCall(env, system, messages, tools, maxTokens, model) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -735,7 +735,7 @@ async function claudeCall(env, system, messages, tools, maxTokens) {
       "content-type": "application/json"
     },
     body: JSON.stringify({
-      model: ASK_MODEL,
+      model: model || ASK_MODEL,
       max_tokens: maxTokens || 500,
       system: system,
       messages: messages,
@@ -882,12 +882,17 @@ async function askGeorgina(request, env, url) {
   const pickNum = function (v, fb) { const n = toNum(v); return Number.isFinite(n) ? n : fb; };
   let properties = [], reply = "", dbg = {};
 
+  // Optional model override for A/B testing (e.g. ?model=sonnet). Falls back to default.
+  const MODELS = { opus: "claude-opus-4-8", sonnet: "claude-sonnet-4-6", haiku: "claude-haiku-4-5-20251001" };
+  const model = MODELS[(url.searchParams.get("model") || "").toLowerCase()] || ASK_MODEL;
+  dbg.model = model;
+
   if (!env || !env.ANTHROPIC_API_KEY) {
     return respond(JSON.stringify({ ok: false, reply: "I'm just being set up and can't chat quite yet. Please call the team on 01642 378022 and they'll be glad to help." }), 200, CORS);
   }
 
   try {
-    const r1 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 500), 22000);
+    const r1 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 500, model), 22000);
     dbg.stop = r1 && r1.stop_reason;
     const toolUse = ((r1 && r1.content) || []).find(function (b) { return b.type === "tool_use"; });
     if (toolUse && toolUse.name === "search_properties") {
@@ -902,7 +907,7 @@ async function askGeorgina(request, env, url) {
       const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
       messages.push({ role: "assistant", content: r1.content });
       messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ count: properties.length, listings: brief, note: "These are the ONLY real G.R. Estates listings that match. Reply warmly in 2 to 3 sentences. If count is above 0, you may mention one or two by area and price, and tell the user they can see them as cards just below and book a viewing or call 01642 378022. If count is 0, say there is no exact match right now, suggest widening the search or a free valuation, and do not name any property. Never invent a listing." }) }] });
-      const r2 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 450), 22000);
+      const r2 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 450, model), 22000);
       reply = claudeText(r2);
     } else {
       reply = claudeText(r1);
