@@ -1336,11 +1336,11 @@ async function refreshGoogleReviews(env, force) {
       const rr = await fetch("https://places.googleapis.com/v1/places:searchText", {
         method: "POST",
         headers: { "content-type": "application/json", "X-Goog-Api-Key": KEY, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.reviews" },
-        body: JSON.stringify({ textQuery: "G.R. Removal Services, Teesside", maxResultCount: 3, regionCode: "GB", languageCode: "en" })
+        body: JSON.stringify({ textQuery: "G.R. Removal Services, Stockton-on-Tees", maxResultCount: 5, regionCode: "GB", languageCode: "en", locationBias: { circle: { center: { latitude: 54.5622734, longitude: -1.1123651 }, radius: 2000 } } })
       });
       const rj = await rr.json().catch(function () { return null; });
       if (rr.ok && rj && rj.places) {
-        const rp = rj.places.find(function (p) { return ((p.displayName && p.displayName.text) || "").toLowerCase().indexOf("removal") >= 0; });
+        const rp = rj.places.find(function (p) { const n = ((p.displayName && p.displayName.text) || "").toLowerCase(); return n.indexOf("removal") >= 0 && (n.indexOf("g.r") >= 0 || n.indexOf("g r") >= 0); });
         if (rp) {
           const rrevs = [];
           ((rp.reviews) || []).forEach(function (rv) {
