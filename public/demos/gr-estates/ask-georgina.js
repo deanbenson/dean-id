@@ -48,6 +48,11 @@
   .ag-bub{background:#fff;border:1px solid #ece3d7;border-radius:15px;padding:10px 13px;font-size:.92rem;line-height:1.5;color:#26313f;
     box-shadow:0 2px 8px rgba(27,36,48,.05);white-space:pre-wrap}
   .ag-row.me .ag-bub{background:#e2672a;color:#fff;border-color:#e2672a}
+  .ag-bub strong{font-weight:700}
+  .ag-bub ul{margin:6px 0 2px;padding-left:18px}
+  .ag-bub li{margin:2px 0}
+  .ag-bub.ag-streaming::after{content:"▋";color:#e2672a;margin-left:1px;animation:agblink 1s steps(2) infinite}
+  @keyframes agblink{50%{opacity:0}}
   .ag-cards{display:flex;flex-direction:column;gap:8px;align-self:stretch;margin:2px 0 4px 37px}
   .agc{display:flex;gap:10px;background:#fff;border:1px solid #ece3d7;border-radius:13px;overflow:hidden;text-decoration:none;
     color:#1b2430;box-shadow:0 2px 8px rgba(27,36,48,.06);transition:transform .15s,box-shadow .15s}
@@ -108,6 +113,16 @@
   function esc(s) { return (s == null ? "" : String(s)).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function scrollDown() { body.scrollTop = body.scrollHeight; }
   function shortAddr(a) { var p = String(a || "").split(","); return p.slice(0, 2).join(",").trim() || a || ""; }
+  function mdToHtml(t) {
+    var s = esc(t).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(?:^|\n)((?:[ \t]*[-•]\s+.+(?:\n|$))+)/g, function (_, block) {
+      var items = block.trim().split(/\n/).map(function (l) { return "<li>" + l.replace(/^[ \t]*[-•]\s+/, "").trim() + "</li>"; }).join("");
+      return "<ul>" + items + "</ul>";
+    });
+    s = s.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br>");
+    s = s.replace(/<br>\s*<ul>/g, "<ul>").replace(/<\/ul>\s*<br>/g, "</ul>");
+    return s;
+  }
 
   function bubble(role, text) {
     var row = document.createElement("div");
@@ -166,19 +181,45 @@
     bubble("me", text);
     msgs.push({ role: "user", content: text });
     busy = true; sendBtn.disabled = true; typing(true);
-    fetch(API, {
+
+    var aiBub = null, aiText = "", props = null, finished = false;
+    function ensureBub() { if (!aiBub) { typing(false); var row = bubble("ai", ""); aiBub = row.querySelector(".ag-bub"); aiBub.classList.add("ag-streaming"); } }
+    function finalize() {
+      if (finished) return; finished = true;
+      typing(false);
+      if (aiBub) { aiBub.classList.remove("ag-streaming"); aiBub.innerHTML = mdToHtml(aiText); }
+      else { aiText = "Sorry, I couldn't reach the system just then. Please try again, or call us on 01642 378022."; bubble("ai", aiText); }
+      msgs.push({ role: "assistant", content: aiText });
+      if (props && props.length) cardsBlock(props);
+      scrollDown(); busy = false; sendBtn.disabled = false; ta.focus();
+    }
+
+    fetch(API + "?stream=1", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ q: text, history: msgs.slice(-7, -1) })
-    }).then(function (r) { return r.json(); }).then(function (d) {
-      typing(false);
-      var reply = (d && d.reply) || "Sorry, I had a hiccup. Please call us on 01642 378022.";
-      bubble("ai", reply);
-      msgs.push({ role: "assistant", content: reply });
-      if (d && d.properties && d.properties.length) cardsBlock(d.properties);
-    }).catch(function () {
-      typing(false);
-      bubble("ai", "Sorry, I couldn't reach the system just then. Please try again, or call us on 01642 378022.");
-    }).then(function () { busy = false; sendBtn.disabled = false; ta.focus(); });
+    }).then(function (resp) {
+      if (!resp.body || !resp.body.getReader) {
+        return resp.json().then(function (d) { aiText = (d && d.reply) || ""; props = d && d.properties; ensureBub(); aiBub.textContent = aiText; finalize(); });
+      }
+      var reader = resp.body.getReader(), dec = new TextDecoder(), buf = "";
+      function read() {
+        return reader.read().then(function (r) {
+          if (r.done) { finalize(); return; }
+          buf += dec.decode(r.value, { stream: true });
+          var nl;
+          while ((nl = buf.indexOf("\n")) >= 0) {
+            var line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+            if (!line.trim()) continue;
+            var ev; try { ev = JSON.parse(line); } catch (e) { continue; }
+            if (ev.d) { ensureBub(); aiText += ev.d; aiBub.textContent = aiText; scrollDown(); }
+            else if (ev.p) { props = ev.p; }
+            else if (ev.done) { finalize(); }
+          }
+          return read();
+        });
+      }
+      return read();
+    }).catch(function () { finalize(); });
   }
 
   /* ---------- open / close ---------- */
