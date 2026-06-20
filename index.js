@@ -1285,7 +1285,7 @@ async function refreshGoogleReviews(env, force) {
   if (!env || !env.GOOGLE_API_KEY || !env.LISTINGS) return;
   try {
     if (!force) {
-      const cur = await env.LISTINGS.get("google:reviewsv4");
+      const cur = await env.LISTINGS.get("google:reviewsv5");
       if (cur) { try { const c = JSON.parse(cur); if (c && c.generated_at && (Date.now() - new Date(c.generated_at).getTime()) < 12 * 3600000) return; } catch (_) {} }
     }
     const KEY = env.GOOGLE_API_KEY;
@@ -1330,31 +1330,11 @@ async function refreshGoogleReviews(env, force) {
     allReviews.sort(function (a, c) { return (c.rating - a.rating) || String(c.publishTime).localeCompare(String(a.publishTime)); });
     let reviews = allReviews.filter(function (rv) { return rv.rating >= 4 && rv.text.length > 40; });
     if (reviews.length < 6) reviews = allReviews;
-    // G.R. Removal Services (sister company) — pulled separately, kept out of the estate-agency total.
-    let removals = null;
-    try {
-      const rr = await fetch("https://places.googleapis.com/v1/places:searchText", {
-        method: "POST",
-        headers: { "content-type": "application/json", "X-Goog-Api-Key": KEY, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.location,places.reviews" },
-        body: JSON.stringify({ textQuery: "G.R. Removal Services", maxResultCount: 10, regionCode: "GB", languageCode: "en", locationRestriction: { rectangle: { low: { latitude: 54.48, longitude: -1.45 }, high: { latitude: 54.68, longitude: -1.02 } } } })
-      });
-      const rj = await rr.json().catch(function () { return null; });
-      if (rr.ok && rj && rj.places) {
-        const isGRrem = function (p) { const n = ((p.displayName && p.displayName.text) || "").toLowerCase(); return n.indexOf("removal") >= 0 && (n.indexOf("g.r") >= 0 || n.indexOf("g r") >= 0 || n.indexOf("gr remov") >= 0); };
-        let rp = rj.places.find(isGRrem);
-        if (!rp) rp = rj.places.find(function (p) { const L = p.location; return L && Math.abs(L.latitude - 54.5622734) < 0.004 && Math.abs(L.longitude - (-1.1123651)) < 0.004; });
-        if (rp) {
-          const rrevs = [];
-          ((rp.reviews) || []).forEach(function (rv) {
-            const aa = rv.authorAttribution || {};
-            const txt = (rv.text && rv.text.text) || (rv.originalText && rv.originalText.text) || "";
-            if (txt) rrevs.push({ author: aa.displayName || "Google user", photo: aa.photoUri || "", rating: rv.rating || 5, when: rv.relativePublishTimeDescription || "", text: txt });
-          });
-          removals = { name: "G.R. Removals", rating: rp.rating || 0, count: rp.userRatingCount || 0, url: rp.googleMapsUri || "", reviews: rrevs.slice(0, 3) };
-        }
-      }
-    } catch (e) {}
-    await env.LISTINGS.put("google:reviewsv4", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
+    // G.R. Removal Services (sister company). It's a service-area business with no indexed
+    // address, so Google's Places API won't return it via search (confirmed: 0 results).
+    // Figures set manually from its Google listing; bump if the count moves materially.
+    const removals = { name: "G.R. Removals", rating: 5.0, count: 23, url: "https://www.google.com/maps?cid=1120685705039092282", reviews: [] };
+    await env.LISTINGS.put("google:reviewsv5", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
     try { await env.LISTINGS.delete("google:err"); } catch (_) {}
   } catch (e) {
     try { if (env.LISTINGS) await env.LISTINGS.put("google:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
@@ -1446,9 +1426,9 @@ export default {
     // Live Google reviews aggregated across branches (cached in KV, refreshed daily by cron).
     if (path === "/api/reviews") {
       let data = null;
-      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviewsv4"); if (v) data = JSON.parse(v); } catch (_) {} }
+      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviewsv5"); if (v) data = JSON.parse(v); } catch (_) {} }
       if ((!data || !data.reviews || !data.reviews.length || typeof data.removals === "undefined") && env && env.GOOGLE_API_KEY) {
-        try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviewsv4"); if (v) data = JSON.parse(v); } catch (_) {}
+        try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviewsv5"); if (v) data = JSON.parse(v); } catch (_) {}
       }
       const out = data || { ok: true, total: 0, average: 0, branches: [], reviews: [] };
       if (url.searchParams.get("debug") === "1") {
