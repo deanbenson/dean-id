@@ -939,6 +939,16 @@ function looksLikeSearch(q, f) {
   return /\b(buy|rent|house|flat|bungalow|apartment|propert|home|for sale|to let|bedroom|under £|budget)\b/i.test(String(q || ""));
 }
 
+// Lock the assistant to the G.R. Estates site: requests must come from a dean.id page.
+function originOk(request) {
+  function hostOk(u) { try { const h = new URL(u).host.toLowerCase(); return h === "dean.id" || h === "www.dean.id" || h.endsWith(".dean.id"); } catch (_) { return false; } }
+  const o = request.headers.get("Origin");
+  if (o) return hostOk(o);
+  const r = request.headers.get("Referer");
+  if (r) return hostOk(r);
+  return false;
+}
+
 // Abuse / cost guard: throttle a single source, and cap total paid spend per day.
 async function rateGuard(env, request) {
   if (!env || !env.LISTINGS) return { allow: true, fallback: false };
@@ -968,9 +978,9 @@ async function rateGuard(env, request) {
 }
 
 async function askGeorgina(request, env, url, ctx) {
-  const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
+  const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "https://dean.id", "cache-control": "no-store" };
   if (request.method === "OPTIONS") {
-    return respond(null, 204, { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" });
+    return respond(null, 204, { "access-control-allow-origin": "https://dean.id", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" });
   }
   let q = "", history = [];
   try {
@@ -1013,6 +1023,13 @@ async function askGeorgina(request, env, url, ctx) {
   dbg.model = model;
 
   const streaming = url.searchParams.get("stream") === "1";
+
+  // Locked to the G.R. Estates site — block off-site or scripted calls.
+  if (!originOk(request)) {
+    const msg = "Sorry, the assistant can only be used on the G.R. Estates website. Please head to the site, or call the team on 01642 378022.";
+    if (streaming) return new Response(new TextEncoder().encode(JSON.stringify({ d: msg }) + "\n" + JSON.stringify({ done: true }) + "\n"), { status: 200, headers: Object.assign({}, CORS, { "content-type": "application/x-ndjson; charset=utf-8" }) });
+    return respond(JSON.stringify({ ok: false, reply: msg }), 403, CORS);
+  }
 
   // Abuse / cost guard.
   const guard = await rateGuard(env, request);
