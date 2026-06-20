@@ -31,8 +31,27 @@
  .tile .l{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin-top:5px}
  .tile.accent{background:linear-gradient(155deg,#fff,#fbf1e9)}
  .tile .n .st{color:#1d9e75;font-size:.95rem;font-weight:600}
- .bar{display:flex;align-items:center;gap:10px;margin:26px 0 12px;flex-wrap:wrap}
- .bar h2{font-family:var(--serif);font-size:1.3rem}.bar .sp{flex:1}
+ .secttl{font-family:var(--serif);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:26px 0 11px}
+ .panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+ .panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 6px 20px rgba(44,46,51,.05)}
+ .panel h3{font-family:var(--serif);font-size:1.05rem;margin-bottom:3px}
+ .panel .sub{color:var(--muted);font-size:.82rem;margin-bottom:14px}
+ .pbig{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1}
+ .psplit{display:flex;gap:18px;margin:10px 0 16px;flex-wrap:wrap}
+ .psplit .pc{font-family:var(--serif);font-weight:700;font-size:1.15rem}.psplit .pc span{display:block;color:var(--muted);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-family:var(--sans)}
+ .brow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:.85rem;padding:5px 0}
+ .brow .lab{color:#43464d}.brow .v{font-weight:700;font-variant-numeric:tabular-nums}
+ .bar{height:7px;border-radius:5px;background:#efe7dd;overflow:hidden;margin-top:3px;grid-column:1/3}
+ .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--orange-deep))}
+ .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+ .tag{font-size:.74rem;font-weight:600;background:rgba(226,103,42,.1);color:var(--orange-deep);border-radius:20px;padding:.2rem .6rem}
+ .branch{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+ .branch:last-child{border-bottom:0}
+ .branch .nm{font-weight:600}.branch .nm small{display:block;color:var(--muted);font-weight:500;font-size:.74rem}
+ .branch .sc{font-family:var(--serif);font-weight:700;font-size:1.05rem;white-space:nowrap}.branch .sc b{color:var(--orange)}
+ .branch.sis .nm small{color:var(--orange-deep)}
+ .bar2{display:flex;align-items:center;gap:10px;margin:8px 0 12px;flex-wrap:wrap}
+ .bar2 h2{font-family:var(--serif);font-size:1.3rem}.bar2 .sp{flex:1}
  .chip{font:inherit;font-size:.8rem;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;padding:.32rem .8rem;cursor:pointer}
  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.88rem;box-shadow:0 8px 26px rgba(44,46,51,.06)}
@@ -43,9 +62,9 @@
  .msg{color:#43464d;max-width:300px}
  .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
  a{color:var(--orange)}
- .empty{text-align:center;color:var(--muted);padding:54px;background:#fff;border:1px solid var(--line);border-radius:12px}
+ .empty{text-align:center;color:var(--muted);padding:40px;background:#fff;border:1px solid var(--line);border-radius:12px}
  .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:26px 0 40px}
- @media(max-width:900px){.tiles{grid-template-columns:repeat(3,1fr)}}
+ @media(max-width:900px){.tiles{grid-template-columns:repeat(3,1fr)}.panels{grid-template-columns:1fr}}
  @media(max-width:760px){.msg{max-width:120px}th:nth-child(5),td:nth-child(5){display:none}}
  @media(max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -60,6 +79,7 @@
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmt(ts){ if(!ts) return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+  function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
   function startOfToday(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
   window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} document.getElementById('rf').style.display='none'; render(); };
   function gate(err){
@@ -69,8 +89,38 @@
   }
   window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
   window.setFilter=function(f){ FILTER=f; paint(); };
-  var DATA={leads:[],stats:{},reviews:null};
+  var DATA={leads:[],stats:{},reviews:null,portfolio:null};
+
   function tile(n,l,accent,sub){ return '<div class="tile'+(accent?' accent':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
+
+  function portfolioPanel(){
+    var p=DATA.portfolio;
+    if(!p){ return '<div class="panel"><h3>Portfolio</h3><div class="sub">Live from your property database</div><div class="empty" style="padding:24px">Loading…</div></div>'; }
+    var max=0; (p.byTown||[]).forEach(function(t){ if(t.n>max) max=t.n; });
+    var towns=(p.byTown||[]).slice(0,5).map(function(t){
+      var w=max?Math.round(t.n/max*100):0;
+      return '<div class="brow"><span class="lab">'+esc(t.town)+'</span><span class="v">'+t.n+'</span><span class="bar"><i style="width:'+w+'%"></i></span></div>';
+    }).join('');
+    var types=(p.byType||[]).slice(0,6).map(function(t){ return '<span class="tag">'+esc(t.type)+' · '+t.n+'</span>'; }).join('');
+    return '<div class="panel"><h3>Portfolio</h3><div class="sub">Live from your property database</div>'
+      +'<div class="pbig">'+(p.total||0)+'</div><div class="sub" style="margin:2px 0 0">properties on the market</div>'
+      +'<div class="psplit"><div class="pc">'+(p.sale||0)+'<span>For sale</span></div><div class="pc">'+(p.let||0)+'<span>To let</span></div>'
+      +'<div class="pc">'+money(p.avgSale)+'<span>Avg asking</span></div><div class="pc">'+(p.avgLetPcm!=null?money(p.avgLetPcm)+' <small style="font-size:.7rem">pcm</small>':'—')+'<span>Avg rent</span></div></div>'
+      +(towns?'<div class="secttl" style="margin:6px 0 6px">Where</div>'+towns:'')
+      +(types?'<div class="secttl" style="margin:14px 0 7px">By type</div><div class="chips">'+types+'</div>':'')
+      +'</div>';
+  }
+
+  function reviewsPanel(){
+    var r=DATA.reviews;
+    if(!r){ return '<div class="panel"><h3>Reviews</h3><div class="sub">Live from Google</div><div class="empty" style="padding:24px">Loading…</div></div>'; }
+    var rows=(r.branches||[]).map(function(b){
+      return '<div class="branch"><div class="nm">'+esc(b.name)+'<small>estate &amp; lettings</small></div><div class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</div></div>';
+    }).join('');
+    if(r.removals){ rows+='<div class="branch sis"><div class="nm">'+esc(r.removals.name||'G.R. Removals')+'<small>sister company</small></div><div class="sc"><b>'+(r.removals.rating||'—')+'★</b> · '+(r.removals.count||0)+'</div></div>'; }
+    return '<div class="panel"><h3>Reviews</h3><div class="sub">Live from Google · '+(r.average||'—')+'★ across '+(r.total||0)+' estate reviews</div>'+(rows||'<div class="empty" style="padding:20px">No review data.</div>')+'</div>';
+  }
+
   function paint(){
     var leads=DATA.leads||[];
     var today=startOfToday(), weekAgo=Date.now()-6048e5;
@@ -83,7 +133,9 @@
     });
     var pct=leads.length?Math.round(nStreet/leads.length*100):0;
     var rv=DATA.reviews, rvN=rv&&rv.average?rv.average.toFixed(1)+'★':'—', rvC=rv&&rv.total?rv.total+' reviews':'live';
-    var tiles=tile(leads.length,'Enquiries',true)+tile(nWeek,'This week')+tile(nToday,'Today')+tile(pct+'%','Into Street',false)+tile(rvN,rvC)+tile(DATA.stats&&DATA.stats.waitlist!=null?DATA.stats.waitlist:'—','Waitlist');
+    var pf=DATA.portfolio, pfN=pf?(pf.total||0):'—';
+    var tiles=tile(leads.length,'Enquiries',true)+tile(nWeek,'This week')+tile(nToday,'Today')+tile(pct+'%','Into Street')+tile(rvN,rvC)+tile(DATA.stats&&DATA.stats.waitlist!=null?DATA.stats.waitlist:'—','Waitlist');
+
     function chip(f,label){ return '<button class="chip'+(FILTER===f?' on':'')+'" onclick="setFilter(\''+f+'\')">'+label+'</button>'; }
     var chips=chip('all','All ('+leads.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')');
     var shown=leads.filter(function(L){ return FILTER==='all' || (L.kind||'contact')===FILTER; });
@@ -100,18 +152,26 @@
       }).join('');
       body='<table><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }
-    app.innerHTML='<div class="tiles">'+tiles+'</div><div class="bar"><h2>Enquiries</h2><span class="sp"></span>'+chips+'</div>'+body+'<div class="foot">Live from your site + Street. Newest first · most recent 200 shown.</div>';
+
+    app.innerHTML='<div class="tiles">'+tiles+'</div>'
+      +'<div class="secttl">Your business, live</div><div class="panels">'+portfolioPanel()+reviewsPanel()+'</div>'
+      +'<div class="bar2"><h2>Enquiries</h2><span class="sp"></span>'+chips+'</div>'+body
+      +'<div class="foot">Live from your site, your property database, Street and Google. Newest enquiries first · most recent 200 shown.</div>';
   }
+
   window.render=function(){
     if(!key()){ gate(); return; }
     document.getElementById('rf').style.display='';
-    app.innerHTML='<div class="bar"><h2>Loading…</h2></div>';
+    app.innerHTML='<div class="bar2"><h2>Loading…</h2></div>';
     var hKey={'x-admin-key':key()};
     Promise.all([
       fetch('/api/leads',{headers:hKey}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
-      fetch('/api/reviews').then(function(r){ return r.json(); }).catch(function(){ return null; })
+      fetch('/api/reviews').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch('/api/hub',{headers:hKey}).then(function(r){ return r.json(); }).catch(function(){ return null; })
     ]).then(function(res){
-      var d=res[0]||{}; DATA.leads=(d&&d.leads)||[]; DATA.stats=(d&&d.stats)||{}; DATA.reviews=res[1]||null;
+      var d=res[0]||{}; DATA.leads=(d&&d.leads)||[]; DATA.stats=(d&&d.stats)||{};
+      DATA.reviews=res[1]||null;
+      DATA.portfolio=(res[2]&&res[2].portfolio)||null;
       paint();
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); }

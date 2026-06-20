@@ -1544,6 +1544,26 @@ export default {
       return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
+    // Admin: portfolio intelligence for the Hub — live counts + averages from D1. Same key as /api/leads.
+    if (path === "/api/hub" && request.method === "GET") {
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, { "content-type": "application/json; charset=utf-8" });
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, { "content-type": "application/json; charset=utf-8" });
+      const portfolio = { total: 0, sale: 0, let: 0, avgSale: null, avgLetPcm: null, byTown: [], byType: [] };
+      try {
+        if (env.gr_estates) {
+          const db = env.gr_estates;
+          const t = await db.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN kind='sale' THEN 1 ELSE 0 END) AS sales, SUM(CASE WHEN kind='let' THEN 1 ELSE 0 END) AS lets, AVG(CASE WHEN kind='sale' THEN price END) AS avgSale, AVG(CASE WHEN kind='let' THEN price END) AS avgLet FROM listings").first();
+          if (t) { portfolio.total = t.total || 0; portfolio.sale = t.sales || 0; portfolio.let = t.lets || 0; portfolio.avgSale = t.avgSale != null ? Math.round(t.avgSale) : null; portfolio.avgLetPcm = t.avgLet != null ? Math.round(t.avgLet) : null; }
+          const tw = await db.prepare("SELECT town, COUNT(*) AS n FROM listings WHERE town IS NOT NULL AND town <> '' GROUP BY town ORDER BY n DESC LIMIT 8").all();
+          portfolio.byTown = ((tw && tw.results) || []).map(function (r) { return { town: r.town, n: r.n }; });
+          const ty = await db.prepare("SELECT type, COUNT(*) AS n FROM listings WHERE type IS NOT NULL AND type <> '' GROUP BY type ORDER BY n DESC LIMIT 8").all();
+          portfolio.byType = ((ty && ty.results) || []).map(function (r) { return { type: r.type, n: r.n }; });
+        }
+      } catch (_) {}
+      return respond(JSON.stringify({ ok: true, portfolio: portfolio, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+    }
+
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
     if (path === "/api/social") {
       let data = null;
