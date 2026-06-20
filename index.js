@@ -715,6 +715,56 @@ function errorResponse(request, url, code) {
 }
 
 
+// Property detail page: served as a static asset, but the Worker runs first
+// (run_worker_first in wrangler) so we can inject per-property share/preview
+// tags (Open Graph / Twitter) for WhatsApp, Facebook, iMessage, Slack, etc.
+async function propertyShare(request, env, url) {
+  let assetResp;
+  try {
+    const assetReq = new Request(new URL("/demos/gr-estates/property.html", url.origin), { headers: request.headers });
+    assetResp = await env.ASSETS.fetch(assetReq);
+  } catch (_) {
+    return errorResponse(request, url, 404);
+  }
+  const id = url.searchParams.get("id") || "";
+  if (!id || !env || !env.gr_estates) return assetResp;
+  let row = null;
+  try {
+    row = await env.gr_estates.prepare("SELECT id,kind,price,address,town,beds,baths,type,image FROM listings WHERE id = ?").bind(id).first();
+  } catch (_) {}
+  if (!row) return assetResp;
+
+  const town = row.town || (String(row.address || "").split(",").slice(-2, -1)[0] || "").trim() || "Teesside";
+  const isLet = row.kind === "let";
+  const priceStr = row.price ? ("£" + Number(row.price).toLocaleString("en-GB") + (isLet ? " pcm" : "")) : "";
+  let core = "";
+  if (row.beds) core += row.beds + " bed";
+  if (row.type) core += (core ? " " : "") + String(row.type).toLowerCase();
+  core = core ? (core.charAt(0).toUpperCase() + core.slice(1)) : "Property";
+  const title = core + " in " + town + (priceStr ? (" · " + priceStr) : "") + " · G.R. Estates";
+  const descBits = [(isLet ? "To let" : "For sale") + " in " + town];
+  if (row.beds) descBits.push(row.beds + " bedroom" + (row.beds > 1 ? "s" : ""));
+  if (row.baths) descBits.push(row.baths + " bathroom" + (row.baths > 1 ? "s" : ""));
+  if (priceStr) descBits.push(priceStr);
+  const desc = descBits.join(" · ") + ". View photos, full details and book a viewing with G.R. Estates.";
+  const img = row.image || "https://www.gr-estates.co.uk/static/images/logo-orange.aaf58e97174a.png";
+  const canonical = "https://dean.id/demos/gr-estates/property.html?id=" + encodeURIComponent(id);
+  const setAttr = (attr, val) => ({ element(el) { el.setAttribute(attr, val); } });
+
+  return new HTMLRewriter()
+    .on("title", { element(el) { el.setInnerContent(title); } })
+    .on('meta[name="description"]', setAttr("content", desc))
+    .on('meta[property="og:title"]', setAttr("content", title))
+    .on('meta[property="og:description"]', setAttr("content", desc))
+    .on('meta[property="og:image"]', setAttr("content", img))
+    .on('meta[property="og:url"]', setAttr("content", canonical))
+    .on('meta[name="twitter:title"]', setAttr("content", title))
+    .on('meta[name="twitter:description"]', setAttr("content", desc))
+    .on('meta[name="twitter:image"]', setAttr("content", img))
+    .on('link[rel="canonical"]', setAttr("href", canonical))
+    .transform(assetResp);
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
@@ -741,6 +791,11 @@ export default {
     if (url.protocol === "http:" && path !== "/v1/me" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
       url.protocol = "https:";
       return respond(null, 301, { location: url.toString() });
+    }
+
+    // Property detail page (Worker runs first here) — inject per-property preview tags.
+    if (path === "/demos/gr-estates/property.html") {
+      return await propertyShare(request, env, url);
     }
 
     if (path === "/v1/me") {
