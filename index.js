@@ -1330,7 +1330,29 @@ async function refreshGoogleReviews(env, force) {
     allReviews.sort(function (a, c) { return (c.rating - a.rating) || String(c.publishTime).localeCompare(String(a.publishTime)); });
     let reviews = allReviews.filter(function (rv) { return rv.rating >= 4 && rv.text.length > 40; });
     if (reviews.length < 6) reviews = allReviews;
-    await env.LISTINGS.put("google:reviews", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), generated_at: new Date().toISOString() }));
+    // G.R. Removal Services (sister company) — pulled separately, kept out of the estate-agency total.
+    let removals = null;
+    try {
+      const rr = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-Goog-Api-Key": KEY, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.reviews" },
+        body: JSON.stringify({ textQuery: "G.R. Removal Services, Teesside", maxResultCount: 3, regionCode: "GB", languageCode: "en" })
+      });
+      const rj = await rr.json().catch(function () { return null; });
+      if (rr.ok && rj && rj.places) {
+        const rp = rj.places.find(function (p) { return ((p.displayName && p.displayName.text) || "").toLowerCase().indexOf("removal") >= 0; });
+        if (rp) {
+          const rrevs = [];
+          ((rp.reviews) || []).forEach(function (rv) {
+            const aa = rv.authorAttribution || {};
+            const txt = (rv.text && rv.text.text) || (rv.originalText && rv.originalText.text) || "";
+            if (txt) rrevs.push({ author: aa.displayName || "Google user", photo: aa.photoUri || "", rating: rv.rating || 5, when: rv.relativePublishTimeDescription || "", text: txt });
+          });
+          removals = { name: "G.R. Removals", rating: rp.rating || 0, count: rp.userRatingCount || 0, url: rp.googleMapsUri || "", reviews: rrevs.slice(0, 3) };
+        }
+      }
+    } catch (e) {}
+    await env.LISTINGS.put("google:reviews", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
     try { await env.LISTINGS.delete("google:err"); } catch (_) {}
   } catch (e) {
     try { if (env.LISTINGS) await env.LISTINGS.put("google:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
@@ -1423,7 +1445,7 @@ export default {
     if (path === "/api/reviews") {
       let data = null;
       if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviews"); if (v) data = JSON.parse(v); } catch (_) {} }
-      if ((!data || !data.reviews || !data.reviews.length) && env && env.GOOGLE_API_KEY) {
+      if ((!data || !data.reviews || !data.reviews.length || typeof data.removals === "undefined") && env && env.GOOGLE_API_KEY) {
         try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviews"); if (v) data = JSON.parse(v); } catch (_) {}
       }
       const out = data || { ok: true, total: 0, average: 0, branches: [], reviews: [] };
