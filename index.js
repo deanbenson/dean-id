@@ -1429,8 +1429,9 @@ export default {
       try {
         const r = await streetGet(env, "/users?page%5Bsize%5D=100");
         if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
-        const exclude = new Set(["arelly camacho"]);
+        const exclude = new Set(["arelly camacho", "nicole purvis", "leanne wood"]);
         const excludeFirst = new Set(["emma", "lewis", "rebecca", "nicola"]); // left G.R. Estates, still active in CRM
+        const titleOverride = { "megan": "Sales Progressor", "vikki": "Manager / Senior Valuer" }; // correct titles by first name
         const rankOf = function (t) {
           t = (t || "").toLowerCase();
           if (t.indexOf("director") >= 0) return 0;
@@ -1439,6 +1440,7 @@ export default {
           if (t.indexOf("property manager") >= 0) return 3;
           if (t.indexOf("negotiator") >= 0) return 4;
           if (t.indexOf("lettings") >= 0) return 4;
+          if (t.indexOf("progress") >= 0) return 4;
           if (t.indexOf("valuer") >= 0) return 5;
           if (t.indexOf("social") >= 0 || t.indexOf("marketing") >= 0) return 6;
           if (t.indexOf("maintenance") >= 0) return 6;
@@ -1455,7 +1457,7 @@ export default {
             if (!nm || exclude.has(nm) || excludeFirst.has(first)) return false;
             return true;
           })
-          .map(function (a) { return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: a.job_title || "" }; });
+          .map(function (a) { const fn = (a.first_name || "").toLowerCase().trim(); return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: titleOverride[fn] || a.job_title || "" }; });
         // Team members who aren't in the CRM (e.g. social media manager) — added by hand.
         const extra = [{ name: "Tia-Rose Catterson", title: "Social Media Manager" }];
         extra.forEach(function (m) { if (!members.some(function (x) { return x.name.toLowerCase() === m.name.toLowerCase(); })) members.push(m); });
