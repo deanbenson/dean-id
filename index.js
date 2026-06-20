@@ -1451,7 +1451,7 @@ export default {
       try {
         const r = await streetGet(env, "/users?page%5Bsize%5D=100");
         if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
-        const exclude = new Set(["arelly camacho", "nicole purvis", "leanne wood"]);
+        const exclude = new Set(["arelly camacho", "nicole purvis", "leanne wood", "abbie huskinson"]);
         const excludeFirst = new Set(["emma", "lewis", "rebecca", "nicola"]); // left G.R. Estates, still active in CRM
         const titleOverride = { "megan": "Sales Progressor", "vikki": "Manager / Senior Valuer" }; // correct titles by first name
         const rankOf = function (t) {
