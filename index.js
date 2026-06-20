@@ -1539,7 +1539,9 @@ export default {
         }
       } catch (_) {}
       leads.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
-      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200) }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      let waitlist = 0;
+      try { if (env.LISTINGS) { const wl = await env.LISTINGS.list({ prefix: "waitlist:", limit: 1000 }); waitlist = (wl.keys || []).length; } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content="noindex, nofollow"/>
-<title>Leads · G.R. Estates (admin)</title>
+<title>Hub · G.R. Estates (admin)</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -17,6 +17,7 @@
  header{background:var(--panel);border-bottom:1px solid #ddd5c8}
  header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
  .ttl{font-family:var(--serif);font-weight:700;font-size:1.15rem}.ttl .k{color:var(--orange)}
+ .ttl small{font-weight:600;color:var(--muted);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
  .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer}
  .btn:hover{border-color:var(--orange)}
  .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
@@ -24,8 +25,16 @@
  .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}
  .gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
  .gate input{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;margin-bottom:12px}
- .bar{display:flex;align-items:center;gap:12px;margin:24px 0 14px}
- .bar h2{font-family:var(--serif);font-size:1.35rem}.bar .ct{color:var(--muted);font-size:.9rem}.bar .sp{flex:1}
+ .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:24px 0 6px}
+ .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 6px 20px rgba(44,46,51,.05)}
+ .tile .n{font-family:var(--serif);font-weight:700;font-size:1.7rem;letter-spacing:-.01em;line-height:1.05}
+ .tile .l{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin-top:5px}
+ .tile.accent{background:linear-gradient(155deg,#fff,#fbf1e9)}
+ .tile .n .st{color:#1d9e75;font-size:.95rem;font-weight:600}
+ .bar{display:flex;align-items:center;gap:10px;margin:26px 0 12px;flex-wrap:wrap}
+ .bar h2{font-family:var(--serif);font-size:1.3rem}.bar .sp{flex:1}
+ .chip{font:inherit;font-size:.8rem;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;padding:.32rem .8rem;cursor:pointer}
+ .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.88rem;box-shadow:0 8px 26px rgba(44,46,51,.06)}
  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}
  th{background:#faf7f2;font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
@@ -35,38 +44,79 @@
  .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
  a{color:var(--orange)}
  .empty{text-align:center;color:var(--muted);padding:54px;background:#fff;border:1px solid var(--line);border-radius:12px}
+ .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:26px 0 40px}
+ @media(max-width:900px){.tiles{grid-template-columns:repeat(3,1fr)}}
  @media(max-width:760px){.msg{max-width:120px}th:nth-child(5),td:nth-child(5){display:none}}
+ @media(max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-<header><div class="wrap"><span class="ttl">G.<span class="k">R.</span> Estates · Leads inbox</span><button class="btn" onclick="logout()">Lock</button></div></header>
+<header><div class="wrap"><span class="ttl">G.<span class="k">R.</span> Estates · Hub<small>admin</small></span><span><button class="btn" id="rf" onclick="render()" style="display:none">Refresh</button> <button class="btn" onclick="logout()">Lock</button></span></div></header>
 <div class="wrap" id="app"></div>
 <script>
 (function(){
   var app=document.getElementById('app');
+  var FILTER='all';
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmt(ts){ if(!ts) return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
-  window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} render(); };
+  function startOfToday(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+  window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} document.getElementById('rf').style.display='none'; render(); };
   function gate(err){
-    app.innerHTML='<div class="gate"><h1>Leads inbox</h1><p>Enter the admin key to view captured enquiries.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="save()">View leads</button></div>';
+    document.getElementById('rf').style.display='none';
+    app.innerHTML='<div class="gate"><h1>G.R. Estates Hub</h1><p>Enter the admin key to view enquiries and stats.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="save()">Open hub</button></div>';
     var i=document.getElementById('k'); if(i){ i.focus(); i.addEventListener('keydown',function(e){ if(e.key==="Enter") save(); }); }
   }
   window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
-  window.render=function(){
-    if(!key()){ gate(); return; }
-    app.innerHTML='<div class="bar"><h2>Enquiries</h2><span class="ct" id="ct">Loading…</span><span class="sp"></span><button class="btn" onclick="render()">Refresh</button></div><div id="rows"></div>';
-    fetch('/api/leads',{headers:{'x-admin-key':key()}}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }).then(function(d){
-      var leads=(d&&d.leads)||[];
-      document.getElementById('ct').textContent=leads.length+' enquir'+(leads.length===1?'y':'ies');
-      if(!leads.length){ document.getElementById('rows').innerHTML='<div class="empty">No enquiries yet — they’ll appear here the moment someone uses a form on the site.</div>'; return; }
-      var rows=leads.map(function(L){
+  window.setFilter=function(f){ FILTER=f; paint(); };
+  var DATA={leads:[],stats:{},reviews:null};
+  function tile(n,l,accent,sub){ return '<div class="tile'+(accent?' accent':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
+  function paint(){
+    var leads=DATA.leads||[];
+    var today=startOfToday(), weekAgo=Date.now()-6048e5;
+    var nToday=0,nWeek=0,nStreet=0,byKind={valuation:0,viewing:0,contact:0,other:0};
+    leads.forEach(function(L){
+      if((L.at||0)>=today) nToday++;
+      if((L.at||0)>=weekAgo) nWeek++;
+      if(L.streetOk) nStreet++;
+      var k=(L.kind||'other'); byKind[k]=(byKind[k]||0)+1;
+    });
+    var pct=leads.length?Math.round(nStreet/leads.length*100):0;
+    var rv=DATA.reviews, rvN=rv&&rv.average?rv.average.toFixed(1)+'★':'—', rvC=rv&&rv.total?rv.total+' reviews':'live';
+    var tiles=tile(leads.length,'Enquiries',true)+tile(nWeek,'This week')+tile(nToday,'Today')+tile(pct+'%','Into Street',false)+tile(rvN,rvC)+tile(DATA.stats&&DATA.stats.waitlist!=null?DATA.stats.waitlist:'—','Waitlist');
+    function chip(f,label){ return '<button class="chip'+(FILTER===f?' on':'')+'" onclick="setFilter(\''+f+'\')">'+label+'</button>'; }
+    var chips=chip('all','All ('+leads.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')');
+    var shown=leads.filter(function(L){ return FILTER==='all' || (L.kind||'contact')===FILTER; });
+    var body;
+    if(!leads.length){
+      body='<div class="empty">No enquiries yet — they’ll appear here the moment someone uses a form on the site.</div>';
+    } else if(!shown.length){
+      body='<div class="empty">No '+esc(FILTER)+' enquiries yet.</div>';
+    } else {
+      var rows=shown.map(function(L){
         var contact=[L.email,L.phone].filter(Boolean).map(esc).join('<br>');
         var inStreet=L.streetOk?'<span class="ok">✓ in Street</span>':'<span class="no">backup only</span>';
         return '<tr><td>'+esc(fmt(L.at))+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(contact||'—')+'</td><td class="msg">'+esc((L.message||'').slice(0,220))+'</td><td>'+inStreet+'</td></tr>';
       }).join('');
-      document.getElementById('rows').innerHTML='<table><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>';
-    }).catch(function(e){ if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); } else { app.innerHTML='<div class="empty">Couldn’t load leads right now.</div>'; } });
+      body='<table><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }
+    app.innerHTML='<div class="tiles">'+tiles+'</div><div class="bar"><h2>Enquiries</h2><span class="sp"></span>'+chips+'</div>'+body+'<div class="foot">Live from your site + Street. Newest first · most recent 200 shown.</div>';
+  }
+  window.render=function(){
+    if(!key()){ gate(); return; }
+    document.getElementById('rf').style.display='';
+    app.innerHTML='<div class="bar"><h2>Loading…</h2></div>';
+    var hKey={'x-admin-key':key()};
+    Promise.all([
+      fetch('/api/leads',{headers:hKey}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
+      fetch('/api/reviews').then(function(r){ return r.json(); }).catch(function(){ return null; })
+    ]).then(function(res){
+      var d=res[0]||{}; DATA.leads=(d&&d.leads)||[]; DATA.stats=(d&&d.stats)||{}; DATA.reviews=res[1]||null;
+      paint();
+    }).catch(function(e){
+      if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); }
+      else { app.innerHTML='<div class="empty">Couldn’t load the hub right now.</div>'; }
+    });
   };
   render();
 })();

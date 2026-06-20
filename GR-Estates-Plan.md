@@ -36,9 +36,10 @@ The website is fed by **Google** (reviews), **Claude** (the "Ask Georgina" AI) a
 
 ## The next ~3 weeks
 - **Week 1 — Polish + visibility.** Full QA pass (mobile, content, reliability), branch-route the leads to the right office, and stand up a simple **leads inbox** so you can actually *see* enquiries coming in.
-- **Week 2 — Socials, content & the v3 teaser.** Connect Instagram/Facebook (needs your FB untangled), tighten the "My G.R. Estates — coming soon" page, and quietly scope the go-live.
-- **Week 3 — Launch v2 + PR.** Make the go-live call, cut over, and announce it — with a "v3 coming" teaser so you get a second PR moment when it lands.
+- **Week 2 — Socials & the v3 teaser.** Connect Instagram/Facebook (needs your FB untangled), tighten the "My G.R. Estates — coming soon" page, and quietly scope the go-live.
+- **When it's ready (no fixed date) — go-live.** Make the go-live call and cut over to a G.R.-owned address. It goes when it's right, not on a clock.
 - **Then — v3.** My G.R. Estates accounts (saved homes, saved searches), instant "be first" alerts, and the AI receptionist.
+- **Optional, only if you want it — press.** A launch/PR pack is drafted and parked (*GR-Launch-and-PR-pack.md*). We are **not** pressing for now — it's just there for if/when you and Georgina ever fancy a moment of it. No rush, no pressure.
 
 ## Open dependencies (the things waiting on someone)
 - **Socials** — needs your Facebook account untangled (the Meta token we got stuck on).
