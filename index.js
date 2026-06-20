@@ -750,6 +750,44 @@ function claudeText(resp) {
   return ((resp && resp.content) || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("\n").trim();
 }
 
+// Replace long dashes (Georgina must never use them).
+function deDash(s) { return String(s == null ? "" : s).replace(/\s*[—–]\s*/g, ", "); }
+
+// Stream a Claude response (SSE). Calls onText for each text delta; collects any tool call.
+async function streamClaude(env, system, messages, tools, model, onText) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: model || ASK_MODEL, max_tokens: 500, system: system, messages: messages, tools: (tools && tools.length) ? tools : undefined, stream: true })
+  });
+  if (!resp.ok || !resp.body) { let t = ""; try { t = await resp.text(); } catch (_) {} throw new Error("anthropic_" + resp.status + "_" + String(t).slice(0, 160)); }
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", toolName = null, toolUseId = null, toolJson = "", stoppedForTool = false;
+  for (;;) {
+    const r = await reader.read();
+    if (r.done) break;
+    buf += dec.decode(r.value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+      if (line.indexOf("data:") !== 0) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      let ev; try { ev = JSON.parse(data); } catch (_) { continue; }
+      if (ev.type === "content_block_start" && ev.content_block && ev.content_block.type === "tool_use") {
+        stoppedForTool = true; toolName = ev.content_block.name; toolUseId = ev.content_block.id;
+      } else if (ev.type === "content_block_delta" && ev.delta) {
+        if (ev.delta.type === "text_delta" && ev.delta.text) onText(ev.delta.text);
+        else if (ev.delta.type === "input_json_delta" && ev.delta.partial_json) toolJson += ev.delta.partial_json;
+      }
+    }
+  }
+  let toolInput = {};
+  if (toolJson) { try { toolInput = JSON.parse(toolJson); } catch (_) {} }
+  return { stoppedForTool: stoppedForTool, toolName: toolName, toolUseId: toolUseId, toolInput: toolInput };
+}
+
 const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
 
 Voice: warm, modern, plain English, no jargon, no nonsense. Keep replies short and helpful (2 to 4 sentences). Sound like a genuine, honest local agent who knows the area. Use UK English. Never use the word "CRM" or long dashes.
@@ -794,6 +832,8 @@ async function searchForAI(env, f) {
     syn.forEach(function (s) { args.push("%" + s + "%", "%" + s + "%"); });
   }
   if (f.location) { const like = "%" + String(f.location).toLowerCase() + "%"; where.push("(LOWER(address) LIKE ? OR LOWER(town) LIKE ? OR LOWER(postcode) LIKE ?)"); args.push(like, like, like); }
+  // Only surface available stock to buyers/renters — hide Sold STC and Let Agreed.
+  where.push("(status IS NULL OR (LOWER(status) NOT LIKE '%sold%' AND LOWER(status) NOT LIKE '%let agreed%'))");
   const clause = where.length ? ("WHERE " + where.join(" AND ")) : "";
   const order = f.sort === "price_desc" ? "ORDER BY (price IS NULL OR price = 0), price DESC" : "ORDER BY (price IS NULL OR price = 0), price ASC";
   const limit = Math.min(8, Math.max(1, f.limit || 6));
@@ -842,7 +882,7 @@ function looksLikeSearch(q, f) {
   return /\b(buy|rent|house|flat|bungalow|apartment|propert|home|for sale|to let|bedroom|under £|budget)\b/i.test(String(q || ""));
 }
 
-async function askGeorgina(request, env, url) {
+async function askGeorgina(request, env, url, ctx) {
   const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
   if (request.method === "OPTIONS") {
     return respond(null, 204, { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" });
@@ -887,6 +927,42 @@ async function askGeorgina(request, env, url) {
   const model = MODELS[(url.searchParams.get("model") || "").toLowerCase()] || ASK_MODEL;
   dbg.model = model;
 
+  // Streaming path — tokens are sent to the browser as they're generated (NDJSON lines).
+  if (url.searchParams.get("stream") === "1") {
+    const ndHeaders = Object.assign({}, CORS, { "content-type": "application/x-ndjson; charset=utf-8" });
+    const enc = new TextEncoder();
+    if (!env || !env.ANTHROPIC_API_KEY) {
+      return new Response(enc.encode(JSON.stringify({ d: "I'm just being set up and can't chat quite yet. Please call the team on 01642 378022." }) + "\n" + JSON.stringify({ done: true }) + "\n"), { status: 200, headers: ndHeaders });
+    }
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
+    const emit = function (o) { try { writer.write(enc.encode(JSON.stringify(o) + "\n")); } catch (_) {} };
+    const pump = (async function () {
+      let any = false;
+      const onText = function (t) { const c = deDash(t); if (c) { any = true; emit({ d: c }); } };
+      try {
+        const first = await withTimeout(streamClaude(env, GEORGINA_SYSTEM, messages, tools, model, onText), 30000);
+        if (first.stoppedForTool && first.toolName === "search_properties") {
+          const a = first.toolInput || {};
+          const hf = heuristicFilters(q);
+          const props = await searchForAI(env, { kind: a.kind || hf.kind, location: a.location || hf.location, min: pickNum(a.min_price, hf.min), max: pickNum(a.max_price, hf.max), beds: pickNum(a.min_beds, hf.beds), type: a.property_type || hf.type, limit: 6 });
+          const brief = props.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
+          messages.push({ role: "assistant", content: [{ type: "tool_use", id: first.toolUseId, name: first.toolName, input: a }] });
+          messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: first.toolUseId, content: JSON.stringify({ count: props.length, listings: brief, note: "These are the ONLY real G.R. Estates listings that match. Reply warmly in 2 to 3 sentences. If count is above 0, you may mention one or two by area and price, and tell the user they can see them as cards just below and book a viewing or call 01642 378022. If count is 0, say there is no exact match right now, suggest widening the search or a free valuation, and do not name any property. Never invent a listing." }) }] });
+          emit({ p: props });
+          await withTimeout(streamClaude(env, GEORGINA_SYSTEM, messages, tools, model, onText), 30000);
+        }
+        if (!any) emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away." });
+        emit({ done: true });
+      } catch (e) {
+        emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away." });
+        emit({ done: true });
+      } finally { try { await writer.close(); } catch (_) {} }
+    })();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(pump);
+    return new Response(stream.readable, { status: 200, headers: ndHeaders });
+  }
+
   if (!env || !env.ANTHROPIC_API_KEY) {
     return respond(JSON.stringify({ ok: false, reply: "I'm just being set up and can't chat quite yet. Please call the team on 01642 378022 and they'll be glad to help." }), 200, CORS);
   }
@@ -917,7 +993,7 @@ async function askGeorgina(request, env, url) {
   if (!reply || !reply.trim()) {
     reply = "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away.";
   }
-  const out = { ok: true, reply: reply.trim(), properties: properties };
+  const out = { ok: true, reply: deDash(reply.trim()), properties: properties };
   if (url.searchParams.get("debug") === "1") out.debug = dbg;
   return respond(JSON.stringify(out), 200, CORS);
 }
@@ -1000,14 +1076,14 @@ export default {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
     ctx.waitUntil(refreshD1(env).catch(() => {}));
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
    try {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
     // "Ask Georgina" AI assistant — accepts GET (?q=) and POST (JSON) + CORS preflight.
     if (path === "/api/ask") {
-      return await askGeorgina(request, env, url);
+      return await askGeorgina(request, env, url, ctx);
     }
 
     if (!["GET", "HEAD"].includes(request.method)) {
