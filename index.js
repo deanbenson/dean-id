@@ -1374,6 +1374,7 @@ export default {
           if (t.indexOf("negotiator") >= 0) return 4;
           if (t.indexOf("lettings") >= 0) return 4;
           if (t.indexOf("valuer") >= 0) return 5;
+          if (t.indexOf("social") >= 0 || t.indexOf("marketing") >= 0) return 6;
           if (t.indexOf("maintenance") >= 0) return 6;
           if (t.indexOf("admin") >= 0 || t.indexOf("accounts") >= 0) return 7;
           if (t.indexOf("techie") >= 0) return 9;
@@ -1388,6 +1389,9 @@ export default {
             return true;
           })
           .map(function (a) { return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: a.job_title || "" }; });
+        // Team members who aren't in the CRM (e.g. social media manager) — added by hand.
+        const extra = [{ name: "Tia-Rose Catterson", title: "Social Media Manager" }];
+        extra.forEach(function (m) { if (!members.some(function (x) { return x.name.toLowerCase() === m.name.toLowerCase(); })) members.push(m); });
         members.sort(function (x, y) { const d = rankOf(x.title) - rankOf(y.title); return d !== 0 ? d : x.name.localeCompare(y.name); });
         return respond(JSON.stringify({ ok: true, count: members.length, members }), 200, {
           "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=3600"
