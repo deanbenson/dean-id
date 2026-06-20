@@ -1229,10 +1229,58 @@ async function propertyShare(request, env, url) {
     .transform(assetResp);
 }
 
+// Pull Instagram + Facebook posts via Meta's Graph API into KV (for the "Follow along" section).
+// Needs a META_TOKEN secret (a non-expiring System User token with pages_read_engagement + instagram_basic).
+async function refreshSocial(env) {
+  if (!env || !env.META_TOKEN || !env.LISTINGS) return;
+  const V = "v21.0";
+  const g = async function (path, token) {
+    const url = "https://graph.facebook.com/" + V + "/" + path + (path.indexOf("?") >= 0 ? "&" : "?") + "access_token=" + encodeURIComponent(token);
+    const r = await fetch(url);
+    const b = await r.json().catch(function () { return null; });
+    if (!r.ok) throw new Error("meta_" + r.status + "_" + JSON.stringify((b && b.error) || b).slice(0, 160));
+    return b;
+  };
+  try {
+    const acc = await g("me/accounts?fields=name,id,access_token,instagram_business_account", env.META_TOKEN);
+    const pages = (acc && acc.data) || [];
+    const page = pages.find(function (p) { return p.instagram_business_account; }) || pages[0];
+    if (!page) return;
+    const pageToken = page.access_token || env.META_TOKEN;
+    const pageId = env.META_PAGE_ID || page.id;
+    const igId = env.META_IG_ID || (page.instagram_business_account && page.instagram_business_account.id);
+    const posts = [];
+    if (igId) {
+      try {
+        const m = await g(igId + "/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&limit=12", pageToken);
+        ((m && m.data) || []).forEach(function (p) {
+          const img = (p.media_type === "VIDEO" && p.thumbnail_url) ? p.thumbnail_url : p.media_url;
+          if (img) posts.push({ source: "instagram", image: img, permalink: p.permalink || "", caption: p.caption || "", timestamp: p.timestamp || "" });
+        });
+      } catch (e) {}
+    }
+    if (pageId) {
+      try {
+        const f = await g(pageId + "/posts?fields=id,message,full_picture,permalink_url,created_time&limit=12", pageToken);
+        ((f && f.data) || []).forEach(function (p) {
+          if (p.full_picture) posts.push({ source: "facebook", image: p.full_picture, permalink: p.permalink_url || "", caption: p.message || "", timestamp: p.created_time || "" });
+        });
+      } catch (e) {}
+    }
+    posts.sort(function (a, b) { return String(b.timestamp).localeCompare(String(a.timestamp)); });
+    const top = posts.slice(0, 12);
+    if (top.length) { await env.LISTINGS.put("social:posts", JSON.stringify({ posts: top, generated_at: new Date().toISOString() })); try { await env.LISTINGS.delete("social:err"); } catch (_) {} }
+    else { try { await env.LISTINGS.put("social:err", JSON.stringify({ err: "connected but no posts returned (instagram=" + (!!igId) + ", facebook=" + (!!pageId) + ")", at: Date.now() })); } catch (_) {} }
+  } catch (e) {
+    try { if (env.LISTINGS) await env.LISTINGS.put("social:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
     ctx.waitUntil(refreshD1(env).catch(() => {}));
+    ctx.waitUntil(refreshSocial(env).catch(() => {}));
   },
   async fetch(request, env, ctx) {
    try {
@@ -1309,6 +1357,23 @@ export default {
     }
 
     // On-market listings, served fast from KV (refreshed hourly by the scheduled job).
+    // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
+    if (path === "/api/social") {
+      let data = null;
+      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("social:posts"); if (v) data = JSON.parse(v); } catch (_) {} }
+      if ((!data || !data.posts || !data.posts.length) && env && env.META_TOKEN) {
+        try { await refreshSocial(env); const v = await env.LISTINGS.get("social:posts"); if (v) data = JSON.parse(v); } catch (_) {}
+      }
+      const out = { ok: true, posts: (data && data.posts) || [], generated_at: (data && data.generated_at) || null };
+      if (url.searchParams.get("debug") === "1") {
+        let err = null; if (env && env.LISTINGS) { try { const e2 = await env.LISTINGS.get("social:err"); if (e2) err = JSON.parse(e2); } catch (_) {} }
+        out.debug = { count: out.posts.length, tokenSet: !!(env && env.META_TOKEN), lastError: err };
+      }
+      return respond(JSON.stringify(out), 200, {
+        "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=600"
+      });
+    }
+
     if (path === "/api/listings") {
       let data = null;
       if (env && env.LISTINGS) {

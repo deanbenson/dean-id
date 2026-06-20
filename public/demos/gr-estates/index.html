@@ -693,33 +693,31 @@
     }).join('');
   }
 
-  // Real Instagram posts via Behold (https://behold.so). Set BEHOLD_FEED to the feed id once
-  // Georgina's Instagram is connected, and the wall fills with genuine posts; until then it
-  // gracefully falls back to the live listings preview above.
-  var BEHOLD_FEED = ""; // e.g. "AbCdEf123" — the id from feeds.behold.so/<id>
-  function renderBeholdFeed(){
-    if(!BEHOLD_FEED) return;
+  // Real Instagram + Facebook posts from our own Worker (/api/social, fed by Meta's Graph API).
+  // Until the Meta token is connected it returns nothing, so the wall keeps the listings preview.
+  function renderSocialFeed(){
     var wall=document.getElementById('igWall'); if(!wall) return;
-    fetch("https://feeds.behold.so/"+BEHOLD_FEED).then(function(r){return r.json();}).then(function(data){
-      var posts=(Array.isArray(data)?data:((data&&data.media)||[])).filter(function(p){return p&&(p.mediaUrl||p.thumbnailUrl);}).slice(0,9);
+    fetch('/api/social').then(function(r){return r.json();}).then(function(d){
+      var posts=((d&&d.posts)||[]).filter(function(p){return p&&p.image;}).slice(0,9);
       if(!posts.length) return;
       function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+      var ig='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e2672a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#e2672a" stroke="none"/></svg>';
+      var fb='<svg width="14" height="14" viewBox="0 0 24 24" fill="#1877f2"><path d="M13 22v-9h3l.4-3.5H13V7.3c0-1 .3-1.7 1.7-1.7H17V2.4C16.6 2.4 15.3 2.3 13.9 2.3c-2.9 0-4.9 1.8-4.9 5v2.2H6V13h3v9z"/></svg>';
       window.__igFeed=true;
       var sec=document.getElementById('social'); if(sec) sec.style.display='';
       wall.innerHTML=posts.map(function(p){
-        var img=(p.mediaType==='VIDEO'&&p.thumbnailUrl)?p.thumbnailUrl:p.mediaUrl;
         var cap=(p.caption||'').replace(/\s+/g,' ').trim();
         var capShort=cap.length>72?cap.slice(0,72)+'…':cap;
         var href=p.permalink||'https://www.instagram.com/g.r.estates/';
-        return '<a class="ig-tile" href="'+esc(href)+'" target="_blank" rel="noopener" aria-label="Instagram post">'
-          +'<img src="'+esc(img)+'" alt="Instagram post by G.R. Estates" loading="lazy" referrerpolicy="no-referrer" onerror="var t=this.closest(\'.ig-tile\'); if(t) t.style.display=\'none\'">'
-          +'<span class="glyph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e2672a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#e2672a" stroke="none"/></svg></span>'
+        return '<a class="ig-tile" href="'+esc(href)+'" target="_blank" rel="noopener" aria-label="Social post">'
+          +'<img src="'+esc(p.image)+'" alt="G.R. Estates social post" loading="lazy" referrerpolicy="no-referrer" onerror="var t=this.closest(\'.ig-tile\'); if(t) t.style.display=\'none\'">'
+          +'<span class="glyph">'+(p.source==='facebook'?fb:ig)+'</span>'
           +(capShort?('<span class="ov"><b>'+esc(capShort)+'</b></span>'):'')
           +'</a>';
       }).join('');
     }).catch(function(){});
   }
-  renderBeholdFeed();
+  renderSocialFeed();
   var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
   function runSearch(append){
     fetch('/api/search?'+SS.qs+'&page='+SS.page).then(function(r){return r.json();}).then(function(d){
