@@ -739,6 +739,7 @@ Contact: phone 01642 378022. Offices in Stockton-on-Tees and Normanby. People ca
 Rules:
 - To find a property for someone, you MUST use the search_properties tool. Only describe properties returned by the tool. Never invent listings, prices, addresses or property details.
 - If you do not know something (exact fees, or a property that is not in the results), say so honestly and offer to get the team to help, book a free valuation, or call 01642 378022.
+- Never mention a specific property, address or asking price unless it appears in a live search result given to you in this conversation. If you have no live results, do not name any property.
 - Gently guide people to a next step: book a free valuation, arrange a viewing, or give the team a call.
 - Be warm and encouraging about helping them buy, sell, rent or let.`;
 
@@ -766,6 +767,45 @@ async function searchForAI(env, f) {
   } catch (e) { return []; }
 }
 
+function moneyFrom(str) {
+  const m = String(str || "").match(/£?\s*([\d][\d,.]*)\s*(k|m)?/i);
+  if (!m) return undefined;
+  let v = parseFloat(m[1].replace(/,/g, ""));
+  if (isNaN(v)) return undefined;
+  if (m[2] && m[2].toLowerCase() === "k") v *= 1000;
+  if (m[2] && m[2].toLowerCase() === "m") v *= 1000000;
+  return Math.round(v);
+}
+
+// Keyword fallback: extract search filters from raw text if the model's tool call fails.
+function heuristicFilters(q) {
+  const s = " " + String(q || "").toLowerCase() + " ";
+  const f = {};
+  if (/\b(rent|renting|to let|letting|tenant|landlord|pcm|per month|monthly|lettings)\b/.test(s)) f.kind = "let";
+  if (/\b(buy|buying|for sale|purchase|first[ -]time buyer|mortgage)\b/.test(s)) f.kind = f.kind || "sale";
+  const bm = s.match(/(\d+)\s*\+?\s*(?:bed|bedroom)/);
+  if (bm) f.beds = parseInt(bm[1], 10);
+  const mx = s.match(/(?:under|below|up to|max(?:imum)?|less than|no more than)\s*(£?\s*[\d][\d,.]*\s*[km]?)/);
+  if (mx) f.max = moneyFrom(mx[1]);
+  const mn = s.match(/(?:over|above|from|at least|min(?:imum)?|more than)\s*(£?\s*[\d][\d,.]*\s*[km]?)/);
+  if (mn) f.min = moneyFrom(mn[1]);
+  if (f.max === undefined && f.min === undefined) {
+    const any = s.match(/(?:around|about|budget(?: of)?|roughly|circa)?\s*(£\s*[\d][\d,.]*\s*[km]?)/);
+    if (any) f.max = moneyFrom(any[1]);
+  }
+  const types = ["detached", "semi-detached", "semi", "terraced", "terrace", "bungalow", "flat", "apartment", "maisonette", "cottage", "house"];
+  for (let i = 0; i < types.length; i++) { if (s.indexOf(types[i]) >= 0) { f.type = types[i].replace("semi-detached", "semi").replace("terrace", "terraced").replace("apartment", "flat"); break; } }
+  const areas = ["stockton", "middlesbrough", "yarm", "norton", "ingleby barwick", "thornaby", "billingham", "hartlepool", "redcar", "marske", "saltburn", "guisborough", "eaglescliffe", "wynyard", "darlington", "normanby", "acklam", "linthorpe", "nunthorpe", "ingleby"];
+  for (let i = 0; i < areas.length; i++) { if (s.indexOf(areas[i]) >= 0) { f.location = areas[i]; break; } }
+  if (!f.kind) { const pv = f.max || f.min; if (pv) f.kind = pv >= 10000 ? "sale" : "let"; }
+  return f;
+}
+
+function looksLikeSearch(q, f) {
+  if (f && (f.beds || f.min || f.max || f.location || f.type)) return true;
+  return /\b(buy|rent|house|flat|bungalow|apartment|propert|home|for sale|to let|bedroom|under £|budget)\b/i.test(String(q || ""));
+}
+
 async function askGeorgina(request, env, url) {
   const CORS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
   if (request.method === "OPTIONS") {
@@ -781,19 +821,22 @@ async function askGeorgina(request, env, url) {
   if (!env || !env.AI) return respond(JSON.stringify({ ok: false, reply: "The assistant is just warming up. Please try again in a moment, or call us on 01642 378022." }), 200, CORS);
 
   const tools = [{
-    name: "search_properties",
-    description: "Search G.R. Estates' live property listings in Teesside. Use this whenever the user is looking for a property to buy or rent, or mentions a budget, number of bedrooms, an area, or a property type.",
-    parameters: {
-      type: "object",
-      properties: {
-        kind: { type: "string", enum: ["sale", "let"], description: "'sale' if they want to buy, 'let' if they want to rent" },
-        location: { type: "string", description: "Town or area, e.g. Stockton, Middlesbrough, Yarm, Norton" },
-        min_price: { type: "number", description: "Minimum price in GBP (monthly if renting)" },
-        max_price: { type: "number", description: "Maximum price in GBP (monthly if renting)" },
-        min_beds: { type: "number", description: "Minimum number of bedrooms" },
-        property_type: { type: "string", description: "e.g. house, flat, bungalow, detached, semi, terraced" }
-      },
-      required: []
+    type: "function",
+    function: {
+      name: "search_properties",
+      description: "Search G.R. Estates' live property listings in Teesside. Use this whenever the user is looking for a property to buy or rent, or mentions a budget, number of bedrooms, an area, or a property type.",
+      parameters: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["sale", "let"], description: "'sale' if they want to buy, 'let' if they want to rent" },
+          location: { type: "string", description: "Town or area, e.g. Stockton, Middlesbrough, Yarm, Norton" },
+          min_price: { type: "number", description: "Minimum price in GBP (monthly if renting)" },
+          max_price: { type: "number", description: "Maximum price in GBP (monthly if renting)" },
+          min_beds: { type: "number", description: "Minimum number of bedrooms" },
+          property_type: { type: "string", description: "e.g. house, flat, bungalow, detached, semi, terraced" }
+        },
+        required: []
+      }
     }
   }];
 
@@ -804,30 +847,53 @@ async function askGeorgina(request, env, url) {
   messages.push({ role: "user", content: q });
 
   let properties = [], reply = "", dbg = {};
-  const plain = async function () {
-    try { const r = await aiRun(env, { messages: messages, max_tokens: 380, temperature: 0.5 }, 16000); return (r && (r.response || r.result || "")) || ""; }
-    catch (e) { dbg.plainErr = String((e && e.message) || e); return ""; }
+  const hf = heuristicFilters(q);
+  const isSearch = looksLikeSearch(q, hf);
+  const pickNum = function (v, fb) { const n = toNum(v); return Number.isFinite(n) ? n : fb; };
+
+  const gen = async function (msgs) {
+    try { const r = await aiRun(env, { messages: msgs, max_tokens: 400, temperature: 0.5 }, 16000); return (r && (r.response || r.result || "")) || ""; }
+    catch (e) { dbg.genErr = String((e && e.message) || e); return ""; }
   };
+
+  // 1) Ask the model — it may call the search tool, or answer directly.
+  let modelArgs = null, directReply = "";
   try {
-    const r1 = await aiRun(env, { messages: messages, tools: tools, max_tokens: 500, temperature: 0.3 }, 18000);
-    dbg.r1keys = r1 ? Object.keys(r1) : null;
-    const tc = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
-    if (tc && tc.name === "search_properties") {
-      let a = tc.arguments || {};
+    const r1 = await aiRun(env, { messages: messages, tools: tools, max_tokens: 450, temperature: 0.3 }, 16000);
+    const raw = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
+    const fn = raw ? (raw.function || raw) : null;
+    dbg.tool = fn ? fn.name : null;
+    if (fn && fn.name === "search_properties") {
+      let a = fn.arguments || {};
       if (typeof a === "string") { try { a = JSON.parse(a); } catch (_) { a = {}; } }
-      dbg.args = a;
-      properties = await searchForAI(env, { kind: a.kind, location: a.location, min: toNum(a.min_price), max: toNum(a.max_price), beds: toNum(a.min_beds), type: a.property_type, limit: 6 });
-      const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
-      messages.push({ role: "assistant", content: JSON.stringify(tc) });
-      messages.push({ role: "tool", content: JSON.stringify({ count: properties.length, results: brief }) });
-      reply = await plain();
+      modelArgs = a;
     } else {
-      reply = (r1 && (r1.response || r1.result || "")) || "";
-      if (!reply) reply = await plain();
+      directReply = (r1 && (r1.response || r1.result || "")) || "";
     }
-  } catch (e) {
-    dbg.toolErr = String((e && e.message) || e);
-    reply = await plain();
+  } catch (e) { dbg.toolErr = String((e && e.message) || e); }
+
+  // 2) For anything property-related, ALWAYS run a real D1 search (model filters first,
+  //    keyword parse as backup) so the model can only speak from real listings.
+  if (modelArgs || isSearch) {
+    const f = {
+      kind: (modelArgs && modelArgs.kind) || hf.kind,
+      location: (modelArgs && modelArgs.location) || hf.location,
+      min: pickNum(modelArgs && modelArgs.min_price, hf.min),
+      max: pickNum(modelArgs && modelArgs.max_price, hf.max),
+      beds: pickNum(modelArgs && modelArgs.min_beds, hf.beds),
+      type: (modelArgs && modelArgs.property_type) || hf.type,
+      limit: 6
+    };
+    dbg.filters = f;
+    properties = await searchForAI(env, f);
+    const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
+    const cmsgs = [{ role: "system", content: GEORGINA_SYSTEM }];
+    history.slice(-4).forEach(function (m) { if (m && m.role && m.content) cmsgs.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 600) }); });
+    cmsgs.push({ role: "user", content: q });
+    cmsgs.push({ role: "user", content: "(These are the ONLY live G.R. Estates listings that match, " + properties.length + " found: " + JSON.stringify(brief) + ". Answer warmly in 2 to 3 sentences using ONLY these. Mention one or two by area and price, then invite me to view them below or call 01642 378022. If the list is empty, say there is no exact match right now, suggest widening the search or booking a free valuation, and do NOT name any property.)" });
+    reply = await gen(cmsgs);
+  } else {
+    reply = directReply || await gen(messages);
   }
 
   if (!reply || !reply.trim()) {
