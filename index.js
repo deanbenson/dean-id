@@ -751,6 +751,28 @@ async function propertyShare(request, env, url) {
   const canonical = "https://dean.id/demos/gr-estates/property.html?id=" + encodeURIComponent(id);
   const setAttr = (attr, val) => ({ element(el) { el.setAttribute(attr, val); } });
 
+  // Structured data so Google (rich results) and AI assistants understand the listing.
+  const st = String(row.status || "").toLowerCase();
+  const sold = st.indexOf("sold") >= 0 || st.indexOf("let agreed") >= 0 || st.indexOf("under offer") >= 0;
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": core + " in " + town,
+    "description": desc,
+    "image": [img],
+    "url": canonical,
+    "category": isLet ? "Residential property to let" : "Residential property for sale",
+    "brand": { "@type": "RealEstateAgent", "name": "G.R. Estates" }
+  };
+  if (row.price) {
+    ld.offers = {
+      "@type": "Offer", "url": canonical, "priceCurrency": "GBP", "price": row.price,
+      "availability": sold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+      "seller": { "@type": "RealEstateAgent", "name": "G.R. Estates", "telephone": "+441642378022", "areaServed": "Teesside" }
+    };
+  }
+  const ldStr = JSON.stringify(ld).replace(/</g, "\\u003c");
+
   return new HTMLRewriter()
     .on("title", { element(el) { el.setInnerContent(title); } })
     .on('meta[name="description"]', setAttr("content", desc))
@@ -762,6 +784,7 @@ async function propertyShare(request, env, url) {
     .on('meta[name="twitter:description"]', setAttr("content", desc))
     .on('meta[name="twitter:image"]', setAttr("content", img))
     .on('link[rel="canonical"]', setAttr("href", canonical))
+    .on('head', { element(el) { el.append('<script type="application/ld+json">' + ldStr + '</script>', { html: true }); } })
     .transform(assetResp);
 }
 
