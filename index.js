@@ -716,14 +716,38 @@ function errorResponse(request, url, code) {
 
 
 // ---- "Ask Georgina" AI assistant (Cloudflare Workers AI) -------------------
-const ASK_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+const ASK_MODEL = "claude-opus-4-8"; // swappable anytime: "claude-sonnet-4-6" or "claude-haiku-4-5-20251001"
 
-// Run a Workers AI call with a hard timeout so the endpoint can never hang the UI.
-async function aiRun(env, opts, ms) {
-  return await Promise.race([
-    env.AI.run(ASK_MODEL, opts),
-    new Promise(function (_, rej) { setTimeout(function () { rej(new Error("ai_timeout")); }, ms || 18000); })
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, ms || 22000); })
   ]);
+}
+
+// Call Anthropic's Messages API (Claude).
+async function claudeCall(env, system, messages, tools, maxTokens) {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model: ASK_MODEL,
+      max_tokens: maxTokens || 500,
+      system: system,
+      messages: messages,
+      tools: (tools && tools.length) ? tools : undefined
+    })
+  });
+  if (!r.ok) { const t = await r.text().catch(function () { return ""; }); throw new Error("anthropic_" + r.status + "_" + t.slice(0, 180)); }
+  return await r.json();
+}
+
+function claudeText(resp) {
+  return ((resp && resp.content) || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("\n").trim();
 }
 
 const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
@@ -833,90 +857,60 @@ async function askGeorgina(request, env, url) {
   if (!env || !env.AI) return respond(JSON.stringify({ ok: false, reply: "The assistant is just warming up. Please try again in a moment, or call us on 01642 378022." }), 200, CORS);
 
   const tools = [{
-    type: "function",
-    function: {
-      name: "search_properties",
-      description: "Search G.R. Estates' live property listings in Teesside. Use this whenever the user is looking for a property to buy or rent, or mentions a budget, number of bedrooms, an area, or a property type.",
-      parameters: {
-        type: "object",
-        properties: {
-          kind: { type: "string", enum: ["sale", "let"], description: "'sale' if they want to buy, 'let' if they want to rent" },
-          location: { type: "string", description: "Town or area, e.g. Stockton, Middlesbrough, Yarm, Norton" },
-          min_price: { type: "number", description: "Minimum price in GBP (monthly if renting)" },
-          max_price: { type: "number", description: "Maximum price in GBP (monthly if renting)" },
-          min_beds: { type: "number", description: "Minimum number of bedrooms" },
-          property_type: { type: "string", description: "e.g. house, flat, bungalow, detached, semi, terraced" }
-        },
-        required: []
-      }
+    name: "search_properties",
+    description: "Search G.R. Estates' live property listings in Teesside. Use this ONLY when the user is actually looking for a property to buy or rent, or mentions a budget, bedrooms, an area, or a property type. Do NOT use it for general questions like contacting the team, opening hours, or how things work.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["sale", "let"], description: "'sale' to buy, 'let' to rent" },
+        location: { type: "string", description: "Town or area, e.g. Stockton, Middlesbrough, Yarm, Norton" },
+        min_price: { type: "number", description: "Minimum price in GBP (monthly if renting)" },
+        max_price: { type: "number", description: "Maximum price in GBP (monthly if renting)" },
+        min_beds: { type: "number", description: "Minimum number of bedrooms" },
+        property_type: { type: "string", description: "e.g. house, flat, bungalow, detached, semi, terraced" }
+      },
+      required: []
     }
   }];
 
-  const messages = [{ role: "system", content: GEORGINA_SYSTEM }];
+  const messages = [];
   history.slice(-6).forEach(function (m) {
     if (m && m.role && m.content) messages.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 800) });
   });
   messages.push({ role: "user", content: q });
 
-  let properties = [], reply = "", dbg = {};
-  const hf = heuristicFilters(q);
-  const isSearch = looksLikeSearch(q, hf);
   const pickNum = function (v, fb) { const n = toNum(v); return Number.isFinite(n) ? n : fb; };
+  let properties = [], reply = "", dbg = {};
 
-  const gen = async function (msgs) {
-    try { const r = await aiRun(env, { messages: msgs, max_tokens: 400, temperature: 0.5 }, 16000); return (r && (r.response || r.result || "")) || ""; }
-    catch (e) { dbg.genErr = String((e && e.message) || e); return ""; }
-  };
-
-  // 1) Ask the model — it may call the search tool, or answer directly.
-  let modelArgs = null, directReply = "";
-  try {
-    const r1 = await aiRun(env, { messages: messages, tools: tools, max_tokens: 450, temperature: 0.3 }, 16000);
-    const raw = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
-    const fn = raw ? (raw.function || raw) : null;
-    dbg.tool = fn ? fn.name : null;
-    if (fn && fn.name === "search_properties") {
-      let a = fn.arguments || {};
-      if (typeof a === "string") { try { a = JSON.parse(a); } catch (_) { a = {}; } }
-      modelArgs = a;
-    } else {
-      directReply = (r1 && (r1.response || r1.result || "")) || "";
-    }
-  } catch (e) { dbg.toolErr = String((e && e.message) || e); }
-
-  // 2) For anything property-related, ALWAYS run a real D1 search (model filters first,
-  //    keyword parse as backup) so the model can only speak from real listings.
-  if (modelArgs || isSearch) {
-    const f = {
-      kind: (modelArgs && modelArgs.kind) || hf.kind,
-      location: (modelArgs && modelArgs.location) || hf.location,
-      min: pickNum(modelArgs && modelArgs.min_price, hf.min),
-      max: pickNum(modelArgs && modelArgs.max_price, hf.max),
-      beds: pickNum(modelArgs && modelArgs.min_beds, hf.beds),
-      type: (modelArgs && modelArgs.property_type) || hf.type,
-      limit: 6
-    };
-    dbg.filters = f;
-    properties = await searchForAI(env, f);
-    dbg.found = properties.length;
-    if (properties.length) {
-      // The real listings render as cards in the UI. The model only writes a warm intro,
-      // with NO specific property facts, so it can never invent a listing.
-      const cmsgs = [{ role: "system", content: GEORGINA_SYSTEM }];
-      history.slice(-4).forEach(function (m) { if (m && m.role && m.content) cmsgs.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 600) }); });
-      cmsgs.push({ role: "user", content: q });
-      cmsgs.push({ role: "user", content: "(We found " + properties.length + " live G.R. Estates listings that match. They are shown to me as cards right below your message, with photos and prices. Write a warm, natural reply of 1 to 2 sentences: acknowledge what I am looking for and say you have found some good options below. Do NOT list any specific property, address or price in your text, the cards already show those. Finish by inviting me to take a look or call 01642 378022.)" });
-      reply = await gen(cmsgs);
-      if (!reply || !reply.trim()) reply = "Good news, I've found " + properties.length + " that could be a great fit, have a look just below. Fancy a viewing? Give us a call on 01642 378022.";
-    } else {
-      reply = "I couldn't find an exact match for that right now, but our list changes all the time. It's worth widening your search a little, or I can get the team to help, you can book a free valuation or call us on 01642 378022.";
-    }
-  } else {
-    reply = directReply || await gen(messages);
+  if (!env || !env.ANTHROPIC_API_KEY) {
+    return respond(JSON.stringify({ ok: false, reply: "I'm just being set up and can't chat quite yet. Please call the team on 01642 378022 and they'll be glad to help." }), 200, CORS);
   }
 
+  try {
+    const r1 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 500), 22000);
+    dbg.stop = r1 && r1.stop_reason;
+    const toolUse = ((r1 && r1.content) || []).find(function (b) { return b.type === "tool_use"; });
+    if (toolUse && toolUse.name === "search_properties") {
+      const a = toolUse.input || {};
+      const hf = heuristicFilters(q);
+      properties = await searchForAI(env, {
+        kind: a.kind || hf.kind, location: a.location || hf.location,
+        min: pickNum(a.min_price, hf.min), max: pickNum(a.max_price, hf.max),
+        beds: pickNum(a.min_beds, hf.beds), type: a.property_type || hf.type, limit: 6
+      });
+      dbg.found = properties.length;
+      const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
+      messages.push({ role: "assistant", content: r1.content });
+      messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ count: properties.length, listings: brief, note: "These are the ONLY real G.R. Estates listings that match. Reply warmly in 2 to 3 sentences. If count is above 0, you may mention one or two by area and price, and tell the user they can see them as cards just below and book a viewing or call 01642 378022. If count is 0, say there is no exact match right now, suggest widening the search or a free valuation, and do not name any property. Never invent a listing." }) }] });
+      const r2 = await withTimeout(claudeCall(env, GEORGINA_SYSTEM, messages, tools, 450), 22000);
+      reply = claudeText(r2);
+    } else {
+      reply = claudeText(r1);
+    }
+  } catch (e) { dbg.err = String((e && e.message) || e); }
+
   if (!reply || !reply.trim()) {
-    reply = "Sorry, I had a little hiccup there. Give the team a call on 01642 378022 or book a free valuation and we'll help you straight away.";
+    reply = "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away.";
   }
   const out = { ok: true, reply: reply.trim(), properties: properties };
   if (url.searchParams.get("debug") === "1") out.debug = dbg;
