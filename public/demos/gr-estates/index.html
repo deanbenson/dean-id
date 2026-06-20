@@ -302,7 +302,7 @@
       <a href="#buy">Rent</a>
       <a href="#services">Services</a>
       <a href="#team">Team</a>
-      <a href="#ai">Ask G.R.</a>
+      <a href="#ai">Ask Georgina</a>
       <a href="#contact">Contact</a>
     </nav>
     <div class="nav-cta">
@@ -326,8 +326,14 @@
         <span style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:.4rem .85rem;font-size:.82rem;font-weight:600"><span style="color:var(--gold)">★</span> Award-winning agency</span>
         <span style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:.4rem .85rem;font-size:.82rem;font-weight:600"><b style="color:var(--gold)">170+</b> Google reviews</span>
       </div>
+      <style>
+        .btn-ai{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#e2672a,#c2541d);color:#fff;border:0;cursor:pointer;box-shadow:0 10px 24px rgba(226,103,42,.4);transition:transform .18s,box-shadow .18s}
+        .btn-ai:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(226,103,42,.55)}
+        .hero-ai-ava{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:.85rem}
+      </style>
       <div style="display:flex;gap:.7rem;margin-top:1.6rem;flex-wrap:wrap">
         <a class="btn btn-primary" href="#buy">Browse properties</a>
+        <button type="button" class="btn btn-ai" onclick="openAG()"><span class="hero-ai-ava">G</span> Ask Georgina</button>
         <a class="btn btn-ghost" href="valuation.html">What's my home worth?</a>
       </div>
       <div class="hero-stats">
@@ -457,21 +463,21 @@
   <div class="wrap">
     <div class="ai">
       <div>
-        <span class="eyebrow">Ask G.R. · live demo</span>
-        <h2>Meet "Ask G.R."</h2>
-        <p>Our assistant searches every property the moment you ask, day or night, then passes the real enquiries straight to the team. Go on, ask it something.</p>
+        <span class="eyebrow">Ask Georgina · powered by AI</span>
+        <h2>Meet "Ask Georgina"</h2>
+        <p>Our AI assistant understands plain English, searches every G.R. Estates property the moment you ask, day or night, and answers anything about buying, renting, selling or letting. Go on, ask her something.</p>
         <div class="ai-chips">
-          <button type="button" onclick="askChip(this)">2-bed houses under £150k</button>
-          <button type="button" onclick="askChip(this)">Bungalows in Middlesbrough</button>
-          <button type="button" onclick="askChip(this)">Cheapest flats to rent</button>
-          <button type="button" onclick="askChip(this)">What's my home worth?</button>
+          <button type="button" onclick="openAG(this.textContent)">2 bed houses under £150k</button>
+          <button type="button" onclick="openAG(this.textContent)">3 bed house in Middlesbrough</button>
+          <button type="button" onclick="openAG(this.textContent)">Do you manage Airbnbs?</button>
+          <button type="button" onclick="openAG(this.textContent)">What's my home worth?</button>
         </div>
       </div>
       <div class="chatbox">
         <div class="ai-msgs" id="aimsgs">
-          <div class="bubble a">Hi, I'm G.R. 👋 Ask me to find you a home, sort a valuation, or anything else. Tap a suggestion or type below.</div>
+          <div class="bubble a">Hi, I'm Georgina, G.R. Estates' AI assistant. 👋 Ask me to find you a home, tell you what your place is worth, or anything else. Tap a suggestion or type below to start chatting.</div>
         </div>
-        <form class="ai-input" onsubmit="return askGR(event)">
+        <form class="ai-input" onsubmit="return openAGForm(event)">
           <input id="aiq" placeholder="e.g. 3 bed house in Stockton under £200k" autocomplete="off">
           <button type="submit" aria-label="Send">➤</button>
         </form>
@@ -800,6 +806,8 @@
   function rescard(L){ var pr=money(L.price)+(L.kind==='let'?' pcm':''); var img=L.image?' style="background-image:url(\''+L.image+'\')"':''; return '<a class="ai-res" href="property.html?id='+encodeURIComponent(L.id)+'"><div class="rimg"'+img+'></div><div class="rb"><div class="rp">'+pr+'</div>'+((L.address||'').split(',').slice(0,2).join(', '))+'</div></a>'; }
   window.askChip=function(btn){ doAsk(btn.textContent); };
   window.askGR=function(e){ if(e) e.preventDefault(); var inp=document.getElementById('aiq'); var t=(inp.value||'').trim(); if(!t) return false; inp.value=''; doAsk(t); return false; };
+  window.openAG=function(t){ if(window.AskGeorgina){ window.AskGeorgina.open(t&&t.trim?t.trim():t); } };
+  window.openAGForm=function(e){ if(e) e.preventDefault(); var i=document.getElementById('aiq'); var t=((i&&i.value)||'').trim(); if(i) i.value=''; if(window.AskGeorgina) window.AskGeorgina.open(t||undefined); return false; };
   window.askSeeAll=function(){ var q=window._lastAskQ||{}; window.searchKind=q.kind||''; var s=function(id,v){var el=document.getElementById(id); if(el)el.value=(v==null?'':v);}; s('loc',q.q||''); s('rbeds',q.beds||''); s('rmin',q.min||''); s('rmax',q.max||''); s('rtype',q.type||''); var b=document.getElementById('buy'); if(b)b.scrollIntoView({behavior:'smooth'}); if(window.applyRefine) window.applyRefine(); return false; };
   function doAsk(t){
     add(t,'u'); window._lastAskQ=null;
@@ -834,5 +842,6 @@
   (function(){ try{ if(!localStorage.getItem('grCookies')){ var b=document.getElementById('cookieBanner'); if(b) b.style.display='block'; } }catch(e){} })();
   window.cookieChoice=function(c){ try{ localStorage.setItem('grCookies',c); }catch(e){} var b=document.getElementById('cookieBanner'); if(b) b.style.display='none'; };
 </script>
+<script src="ask-georgina.js" defer></script>
 </body>
 </html>

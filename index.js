@@ -756,7 +756,19 @@ async function searchForAI(env, f) {
   if (Number.isFinite(f.min)) { where.push("price >= ?"); args.push(f.min); }
   if (Number.isFinite(f.max)) { where.push("price <= ?"); args.push(f.max); }
   if (Number.isFinite(f.beds)) { where.push("beds >= ?"); args.push(f.beds); }
-  if (f.type) { where.push("LOWER(type) LIKE ?"); args.push("%" + String(f.type).toLowerCase() + "%"); }
+  if (f.type) {
+    const t = String(f.type).toLowerCase();
+    let syn = [t];
+    if (t.indexOf("flat") >= 0 || t.indexOf("apartment") >= 0) syn = ["flat", "apartment", "maisonette"];
+    else if (t.indexOf("bungalow") >= 0) syn = ["bungalow"];
+    else if (t.indexOf("detached") >= 0) syn = ["detached"];
+    else if (t.indexOf("semi") >= 0) syn = ["semi"];
+    else if (t.indexOf("terrace") >= 0) syn = ["terrace"];
+    else if (t.indexOf("house") >= 0) syn = ["house", "terrace", "semi", "detached", "cottage"];
+    const parts = syn.map(function () { return "(LOWER(type) LIKE ? OR LOWER(style) LIKE ?)"; });
+    where.push("(" + parts.join(" OR ") + ")");
+    syn.forEach(function (s) { args.push("%" + s + "%", "%" + s + "%"); });
+  }
   if (f.location) { const like = "%" + String(f.location).toLowerCase() + "%"; where.push("(LOWER(address) LIKE ? OR LOWER(town) LIKE ? OR LOWER(postcode) LIKE ?)"); args.push(like, like, like); }
   const clause = where.length ? ("WHERE " + where.join(" AND ")) : "";
   const order = f.sort === "price_desc" ? "ORDER BY (price IS NULL OR price = 0), price DESC" : "ORDER BY (price IS NULL OR price = 0), price ASC";
