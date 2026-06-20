@@ -1380,7 +1380,7 @@ export default {
       return respond(JSON.stringify({ ok: true, model: ASK_MODEL, health: h, likely_recovered: (h.status === "credit" && stale) }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
     }
 
-    if (!["GET", "HEAD"].includes(request.method)) {
+    if (!["GET", "HEAD"].includes(request.method) && !path.startsWith("/api/")) {
       return respond("method not allowed\n", 405, {
         "content-type": "text/plain; charset=utf-8",
         "allow": "GET, HEAD"
