@@ -1523,6 +1523,25 @@ export default {
       return respond(JSON.stringify(lout), 200, { "content-type": "application/json; charset=utf-8" });
     }
 
+    // Admin: list captured website leads (the KV safety-net copies). Locked behind the LEADS_KEY secret.
+    if (path === "/api/leads" && request.method === "GET") {
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, { "content-type": "application/json; charset=utf-8" });
+      const key = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (key !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, { "content-type": "application/json; charset=utf-8" });
+      const leads = [];
+      try {
+        if (env.LISTINGS) {
+          const listed = await env.LISTINGS.list({ prefix: "lead:", limit: 1000 });
+          for (const k of (listed.keys || [])) {
+            if (k.name === "lead:err") continue;
+            try { const v = await env.LISTINGS.get(k.name); if (v) leads.push(JSON.parse(v)); } catch (_) {}
+          }
+        }
+      } catch (_) {}
+      leads.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200) }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+    }
+
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
     if (path === "/api/social") {
       let data = null;

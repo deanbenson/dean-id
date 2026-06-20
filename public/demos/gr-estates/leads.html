@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Leads · G.R. Estates (admin)</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+ :root{--ink:#2c2e33;--orange:#e2672a;--orange-deep:#c2541d;--cream:#edeae6;--paper:#fff;--line:#e1dace;--muted:#76726b;--panel:#e7e1d8;--sans:'Inter',-apple-system,sans-serif;--serif:'Quicksand',sans-serif}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.5;-webkit-font-smoothing:antialiased}
+ .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+ header{background:var(--panel);border-bottom:1px solid #ddd5c8}
+ header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+ .ttl{font-family:var(--serif);font-weight:700;font-size:1.15rem}.ttl .k{color:var(--orange)}
+ .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer}
+ .btn:hover{border-color:var(--orange)}
+ .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
+ .gate{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+ .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}
+ .gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+ .gate input{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;margin-bottom:12px}
+ .bar{display:flex;align-items:center;gap:12px;margin:24px 0 14px}
+ .bar h2{font-family:var(--serif);font-size:1.35rem}.bar .ct{color:var(--muted);font-size:.9rem}.bar .sp{flex:1}
+ table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.88rem;box-shadow:0 8px 26px rgba(44,46,51,.06)}
+ th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+ th{background:#faf7f2;font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+ tr:last-child td{border-bottom:0}
+ .kind{display:inline-block;font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:6px;background:rgba(226,103,42,.12);color:var(--orange-deep);text-transform:capitalize;white-space:nowrap}
+ .msg{color:#43464d;max-width:300px}
+ .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
+ a{color:var(--orange)}
+ .empty{text-align:center;color:var(--muted);padding:54px;background:#fff;border:1px solid var(--line);border-radius:12px}
+ @media(max-width:760px){.msg{max-width:120px}th:nth-child(5),td:nth-child(5){display:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><span class="ttl">G.<span class="k">R.</span> Estates · Leads inbox</span><button class="btn" onclick="logout()">Lock</button></div></header>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+  var app=document.getElementById('app');
+  function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmt(ts){ if(!ts) return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+  window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} render(); };
+  function gate(err){
+    app.innerHTML='<div class="gate"><h1>Leads inbox</h1><p>Enter the admin key to view captured enquiries.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="save()">View leads</button></div>';
+    var i=document.getElementById('k'); if(i){ i.focus(); i.addEventListener('keydown',function(e){ if(e.key==="Enter") save(); }); }
+  }
+  window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
+  window.render=function(){
+    if(!key()){ gate(); return; }
+    app.innerHTML='<div class="bar"><h2>Enquiries</h2><span class="ct" id="ct">Loading…</span><span class="sp"></span><button class="btn" onclick="render()">Refresh</button></div><div id="rows"></div>';
+    fetch('/api/leads',{headers:{'x-admin-key':key()}}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }).then(function(d){
+      var leads=(d&&d.leads)||[];
+      document.getElementById('ct').textContent=leads.length+' enquir'+(leads.length===1?'y':'ies');
+      if(!leads.length){ document.getElementById('rows').innerHTML='<div class="empty">No enquiries yet — they’ll appear here the moment someone uses a form on the site.</div>'; return; }
+      var rows=leads.map(function(L){
+        var contact=[L.email,L.phone].filter(Boolean).map(esc).join('<br>');
+        var inStreet=L.streetOk?'<span class="ok">✓ in Street</span>':'<span class="no">backup only</span>';
+        return '<tr><td>'+esc(fmt(L.at))+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(contact||'—')+'</td><td class="msg">'+esc((L.message||'').slice(0,220))+'</td><td>'+inStreet+'</td></tr>';
+      }).join('');
+      document.getElementById('rows').innerHTML='<table><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }).catch(function(e){ if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); } else { app.innerHTML='<div class="empty">Couldn’t load leads right now.</div>'; } });
+  };
+  render();
+})();
+</script>
+</body>
+</html>
