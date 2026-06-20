@@ -1285,7 +1285,7 @@ async function refreshGoogleReviews(env, force) {
   if (!env || !env.GOOGLE_API_KEY || !env.LISTINGS) return;
   try {
     if (!force) {
-      const cur = await env.LISTINGS.get("google:reviewsv2");
+      const cur = await env.LISTINGS.get("google:reviewsv3");
       if (cur) { try { const c = JSON.parse(cur); if (c && c.generated_at && (Date.now() - new Date(c.generated_at).getTime()) < 12 * 3600000) return; } catch (_) {} }
     }
     const KEY = env.GOOGLE_API_KEY;
@@ -1336,12 +1336,13 @@ async function refreshGoogleReviews(env, force) {
       const rr = await fetch("https://places.googleapis.com/v1/places:searchText", {
         method: "POST",
         headers: { "content-type": "application/json", "X-Goog-Api-Key": KEY, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.location,places.reviews" },
-        body: JSON.stringify({ textQuery: "G.R. Removal Services, Stockton-on-Tees", maxResultCount: 8, regionCode: "GB", languageCode: "en", locationBias: { circle: { center: { latitude: 54.5622734, longitude: -1.1123651 }, radius: 1500 } } })
+        body: JSON.stringify({ textQuery: "G.R. Removal Services", maxResultCount: 10, regionCode: "GB", languageCode: "en", locationBias: { circle: { center: { latitude: 54.5622734, longitude: -1.1123651 }, radius: 6000 } } })
       });
       const rj = await rr.json().catch(function () { return null; });
       if (rr.ok && rj && rj.places) {
-        let rp = rj.places.find(function (p) { const L = p.location; return L && Math.abs(L.latitude - 54.5622734) < 0.0025 && Math.abs(L.longitude - (-1.1123651)) < 0.0025; });
-        if (!rp) rp = rj.places.find(function (p) { const n = ((p.displayName && p.displayName.text) || "").toLowerCase(); return n.indexOf("removal") >= 0 && (n.indexOf("g.r") >= 0 || n.indexOf("g r") >= 0); });
+        const isGRrem = function (p) { const n = ((p.displayName && p.displayName.text) || "").toLowerCase(); return n.indexOf("removal") >= 0 && (n.indexOf("g.r") >= 0 || n.indexOf("g r") >= 0); };
+        let rp = rj.places.find(isGRrem);
+        if (!rp) rp = rj.places.find(function (p) { const L = p.location; return L && Math.abs(L.latitude - 54.5622734) < 0.004 && Math.abs(L.longitude - (-1.1123651)) < 0.004; });
         if (rp) {
           const rrevs = [];
           ((rp.reviews) || []).forEach(function (rv) {
@@ -1353,7 +1354,7 @@ async function refreshGoogleReviews(env, force) {
         }
       }
     } catch (e) {}
-    await env.LISTINGS.put("google:reviewsv2", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
+    await env.LISTINGS.put("google:reviewsv3", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
     try { await env.LISTINGS.delete("google:err"); } catch (_) {}
   } catch (e) {
     try { if (env.LISTINGS) await env.LISTINGS.put("google:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
@@ -1445,14 +1446,21 @@ export default {
     // Live Google reviews aggregated across branches (cached in KV, refreshed daily by cron).
     if (path === "/api/reviews") {
       let data = null;
-      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviewsv2"); if (v) data = JSON.parse(v); } catch (_) {} }
+      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviewsv3"); if (v) data = JSON.parse(v); } catch (_) {} }
       if ((!data || !data.reviews || !data.reviews.length || typeof data.removals === "undefined") && env && env.GOOGLE_API_KEY) {
-        try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviewsv2"); if (v) data = JSON.parse(v); } catch (_) {}
+        try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviewsv3"); if (v) data = JSON.parse(v); } catch (_) {}
       }
       const out = data || { ok: true, total: 0, average: 0, branches: [], reviews: [] };
       if (url.searchParams.get("debug") === "1") {
         let gerr = null; if (env && env.LISTINGS) { try { const e2 = await env.LISTINGS.get("google:err"); if (e2) gerr = JSON.parse(e2); } catch (_) {} }
         out.debug = { keySet: !!(env && env.GOOGLE_API_KEY), lastError: gerr };
+      }
+      if (url.searchParams.get("rdebug") === "1" && env && env.GOOGLE_API_KEY) {
+        try {
+          const rr2 = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", headers: { "content-type": "application/json", "X-Goog-Api-Key": env.GOOGLE_API_KEY, "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.userRatingCount,places.rating,places.formattedAddress" }, body: JSON.stringify({ textQuery: "G.R. Removal Services", maxResultCount: 10, regionCode: "GB", locationBias: { circle: { center: { latitude: 54.5622734, longitude: -1.1123651 }, radius: 6000 } } }) });
+          const rj2 = await rr2.json();
+          out.rdebug = ((rj2 && rj2.places) || []).map(function (p) { return { name: (p.displayName && p.displayName.text) || "", addr: p.formattedAddress || "", lat: p.location && p.location.latitude, lng: p.location && p.location.longitude, count: p.userRatingCount || 0, rating: p.rating || 0 }; });
+        } catch (e) { out.rdebug = String(e); }
       }
       return respond(JSON.stringify(out), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=1800" });
     }
