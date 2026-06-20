@@ -716,7 +716,7 @@ function errorResponse(request, url, code) {
 
 
 // ---- "Ask Georgina" AI assistant (Cloudflare Workers AI) -------------------
-const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+const ASK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
 
@@ -795,27 +795,39 @@ async function askGeorgina(request, env, url) {
   });
   messages.push({ role: "user", content: q });
 
-  let properties = [], reply = "";
+  let properties = [], reply = "", dbg = {};
+  const plain = async function () {
+    try { const r = await env.AI.run(ASK_MODEL, { messages: messages, max_tokens: 500, temperature: 0.5 }); return (r && (r.response || r.result || "")) || ""; }
+    catch (e) { dbg.plainErr = String((e && e.message) || e); return ""; }
+  };
   try {
-    const r1 = await env.AI.run(ASK_MODEL, { messages, tools, max_tokens: 600, temperature: 0.4 });
+    const r1 = await env.AI.run(ASK_MODEL, { messages: messages, tools: tools, max_tokens: 600, temperature: 0.3 });
+    dbg.r1keys = r1 ? Object.keys(r1) : null;
     const tc = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
     if (tc && tc.name === "search_properties") {
-      const a = tc.arguments || {};
+      let a = tc.arguments || {};
+      if (typeof a === "string") { try { a = JSON.parse(a); } catch (_) { a = {}; } }
+      dbg.args = a;
       properties = await searchForAI(env, { kind: a.kind, location: a.location, min: toNum(a.min_price), max: toNum(a.max_price), beds: toNum(a.min_beds), type: a.property_type, limit: 6 });
       const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
       messages.push({ role: "assistant", content: JSON.stringify(tc) });
       messages.push({ role: "tool", content: JSON.stringify({ count: properties.length, results: brief }) });
-      const r2 = await env.AI.run(ASK_MODEL, { messages, max_tokens: 500, temperature: 0.5 });
-      reply = (r2 && r2.response) || "";
+      reply = await plain();
     } else {
-      reply = (r1 && r1.response) || "";
+      reply = (r1 && (r1.response || r1.result || "")) || "";
+      if (!reply) reply = await plain();
     }
-  } catch (e) { reply = ""; }
+  } catch (e) {
+    dbg.toolErr = String((e && e.message) || e);
+    reply = await plain();
+  }
 
   if (!reply || !reply.trim()) {
     reply = "Sorry, I had a little hiccup there. Give the team a call on 01642 378022 or book a free valuation and we'll help you straight away.";
   }
-  return respond(JSON.stringify({ ok: true, reply: reply.trim(), properties: properties }), 200, CORS);
+  const out = { ok: true, reply: reply.trim(), properties: properties };
+  if (url.searchParams.get("debug") === "1") out.debug = dbg;
+  return respond(JSON.stringify(out), 200, CORS);
 }
 
 // Property detail page: served as a static asset, but the Worker runs first
