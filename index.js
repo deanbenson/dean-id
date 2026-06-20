@@ -1387,6 +1387,28 @@ export default {
       });
     }
 
+    // Early-access signups for the "My G.R. Estates" coming-soon page. Stored in KV as waitlist:<email>.
+    if (path === "/api/waitlist" && request.method === "POST") {
+      if (!originOk(request)) return respond(JSON.stringify({ ok: false }), 403, { "content-type": "application/json; charset=utf-8" });
+      let email = "";
+      try { const b = await request.json(); email = String((b && b.email) || "").trim().toLowerCase().slice(0, 120); } catch (_) {}
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return respond(JSON.stringify({ ok: false, error: "invalid email" }), 400, { "content-type": "application/json; charset=utf-8" });
+      }
+      if (env && env.LISTINGS) {
+        try {
+          const ip = request.headers.get("cf-connecting-ip") || "";
+          const rk = "wlrate:" + ip;
+          const rc = parseInt((await env.LISTINGS.get(rk)) || "0", 10);
+          if (rc <= 20) {
+            await env.LISTINGS.put(rk, String(rc + 1), { expirationTtl: 600 });
+            await env.LISTINGS.put("waitlist:" + email, JSON.stringify({ email, at: Date.now() }));
+          }
+        } catch (_) {}
+      }
+      return respond(JSON.stringify({ ok: true }), 200, { "content-type": "application/json; charset=utf-8" });
+    }
+
     // Property search over D1 (SQL) — filters + pagination.
     if (path === "/api/search") {
       if (!env || !env.gr_estates) {
