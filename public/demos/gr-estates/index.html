@@ -164,10 +164,21 @@
   .ai-res .rp{font-weight:800}.ai-res .rb{font-size:.84rem;line-height:1.3}
 
   /* Social */
-  .social-wrap{display:grid;grid-template-columns:minmax(0,500px) minmax(280px,330px);gap:30px;align-items:stretch;justify-content:center}
-  .fb-embed{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);min-height:520px}
-  .fb-embed iframe{width:100%;border:0;display:block}
-  .social-side{display:flex;flex-direction:column;justify-content:center;gap:14px}
+  .social-feature{display:grid;grid-template-columns:1.55fr 1fr;gap:28px;align-items:stretch}
+  .ig-wall{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-content:start}
+  .ig-tile{position:relative;aspect-ratio:1/1;border-radius:16px;overflow:hidden;display:block;background:#ece5db;box-shadow:var(--shadow)}
+  .ig-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease}
+  .ig-tile:hover img{transform:scale(1.07)}
+  .ig-tile .ov{position:absolute;inset:0;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(15,20,28,.8),rgba(15,20,28,0) 54%);opacity:0;transition:opacity .25s}
+  .ig-tile:hover .ov{opacity:1}
+  .ig-tile .ov b{color:#fff;font-size:.84rem;font-weight:700;line-height:1.25}
+  .ig-tile .ov span{color:#ffd9c2;font-size:.78rem;font-weight:700}
+  .ig-tile .glyph{position:absolute;top:9px;right:9px;width:25px;height:25px;border-radius:8px;background:rgba(255,255,255,.9);display:grid;place-items:center}
+  .follow-panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;gap:13px;justify-content:center}
+  .fp-head{display:flex;align-items:center;gap:13px;margin-bottom:2px}
+  .fp-ava{width:54px;height:54px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--orange),var(--orange-deep));color:#fff;display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:1.12rem}
+  .fp-head b{font-size:1.06rem;display:block;line-height:1.2}
+  .fp-head .sub{color:var(--muted);font-size:.84rem}
   .social-link{display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:16px;color:#fff;text-decoration:none;box-shadow:0 8px 22px rgba(27,36,48,.16);transition:transform .18s,box-shadow .18s}
   .social-link:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(27,36,48,.26)}
   .social-link .si{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.2);display:grid;place-items:center;flex:none}
@@ -180,8 +191,9 @@
   .social-link.fb{background:#1877f2}
   .social-link.ig{background:linear-gradient(135deg,#f9ce34 0%,#ee2a7b 48%,#6228d7 100%)}
   .social-link.li{background:#0a66c2}
-  .social-side .note{font-size:.85rem;color:var(--muted);margin-top:2px}
-  @media(max-width:760px){.social-wrap{grid-template-columns:1fr!important}}
+  .follow-panel .note{font-size:.84rem;color:var(--muted);margin-top:2px}
+  @media(max-width:860px){.social-feature{grid-template-columns:1fr}}
+  @media(max-width:520px){.ig-wall{grid-template-columns:repeat(2,1fr)}}
 
   /* Valuation CTA */
   .val{background:var(--orange);color:#fff;border-radius:24px;padding:52px;text-align:center}
@@ -513,11 +525,13 @@
       <h2>Follow the journey</h2>
       <p>New listings, sold boards and the team in action. Come and say hello.</p>
     </div>
-    <div class="social-wrap">
-      <div class="fb-embed">
-        <iframe title="G.R. Estates on Facebook" src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FGREstatesEstateAgency&tabs=timeline&width=500&height=560&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true" height="560" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" loading="lazy"></iframe>
-      </div>
-      <div class="social-side">
+    <div class="social-feature">
+      <div class="ig-wall" id="igWall" aria-label="Latest homes from G.R. Estates"></div>
+      <aside class="follow-panel">
+        <div class="fp-head">
+          <span class="fp-ava">G.R</span>
+          <div><b>@g.r.estates</b><span class="sub">Across Instagram &amp; Facebook</span></div>
+        </div>
         <a class="social-link ig" href="https://www.instagram.com/g.r.estates/" target="_blank" rel="noopener" aria-label="G.R. Estates on Instagram">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="#fff" stroke="none"/></svg></span>
           <span class="st"><b>Instagram</b><span>@g.r.estates</span></span>
@@ -533,8 +547,8 @@
           <span class="st"><b>LinkedIn</b><span>Follow the company</span></span>
           <svg class="sarrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
-        <p class="note">New listings, sold boards and behind-the-scenes, first on our socials.</p>
-      </div>
+        <p class="note">A peek at what's moving right now. Follow along for new listings, sold boards and the team in action.</p>
+      </aside>
     </div>
   </div>
 </section>
@@ -645,6 +659,22 @@
     grid.innerHTML = use.map(card).join('') + (live && use.length>3 ? '<a class="card cta-card" href="#buy" onclick="showAll();return false;"><div class="cta-inner"><span class="cta-arrow">→</span><b>See all properties</b><span>Browse the full list</span></div></a>' : '');
     note.innerHTML = (live ? '🟢 Updated live' : 'Updated regularly') + ' · ' + use.length + ' featured homes';
   }
+  function renderSocial(list){
+    var wall=document.getElementById('igWall'); if(!wall) return;
+    var imgs=(list||[]).filter(function(L){return L.image;}).slice(0,9);
+    if(!imgs.length){ var sec=document.getElementById('social'); if(sec) sec.style.display='none'; return; }
+    wall.innerHTML = imgs.map(function(L){
+      var town = L.town || ((L.address||'').split(',').slice(-2,-1)[0]||'').trim() || 'Teesside';
+      var kindLbl = L.kind==='let' ? 'To let' : 'For sale';
+      var price = L.price ? ('£'+Number(L.price).toLocaleString('en-GB')+(L.kind==='let'?' pcm':'')) : '';
+      var href = L.id ? ('property.html?id='+encodeURIComponent(L.id)) : 'https://www.instagram.com/g.r.estates/';
+      return '<a class="ig-tile" href="'+href+'" aria-label="'+town+'">'
+        +'<img src="'+L.image+'" alt="'+town+'" referrerpolicy="no-referrer" loading="lazy" onerror="var t=this.closest(\'.ig-tile\'); if(t) t.style.display=\'none\'">'
+        +'<span class="glyph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e2672a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.3" fill="#e2672a" stroke="none"/></svg></span>'
+        +'<span class="ov"><b>'+kindLbl+' · '+town+'</b>'+(price?'<span>'+price+'</span>':'')+'</span>'
+        +'</a>';
+    }).join('');
+  }
   var SS = { qs:'', page:1, total:0, shown:0, kind:'sale' };
   function runSearch(append){
     fetch('/api/search?'+SS.qs+'&page='+SS.page).then(function(r){return r.json();}).then(function(d){
@@ -698,10 +728,10 @@
 
   fetch('/api/listings').then(function(r){return r.json();}).then(function(d){
     var L=(d && d.listings) || [];
-    if(L.length && L[0].id){ render(L, true); } else { throw 0; }
+    if(L.length && L[0].id){ render(L, true); renderSocial(L); } else { throw 0; }
   }).catch(function(){
     fetch('listings-snapshot.json').then(function(r){return r.json();}).then(function(d){
-      render((d && d.listings) || [], false);
+      var sl=(d && d.listings) || []; render(sl, false); renderSocial(sl);
     }).catch(function(){ note.textContent = 'Listings unavailable right now.'; });
   });
 })();
