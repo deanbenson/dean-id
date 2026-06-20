@@ -716,7 +716,15 @@ function errorResponse(request, url, code) {
 
 
 // ---- "Ask Georgina" AI assistant (Cloudflare Workers AI) -------------------
-const ASK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const ASK_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+
+// Run a Workers AI call with a hard timeout so the endpoint can never hang the UI.
+async function aiRun(env, opts, ms) {
+  return await Promise.race([
+    env.AI.run(ASK_MODEL, opts),
+    new Promise(function (_, rej) { setTimeout(function () { rej(new Error("ai_timeout")); }, ms || 18000); })
+  ]);
+}
 
 const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
 
@@ -797,11 +805,11 @@ async function askGeorgina(request, env, url) {
 
   let properties = [], reply = "", dbg = {};
   const plain = async function () {
-    try { const r = await env.AI.run(ASK_MODEL, { messages: messages, max_tokens: 500, temperature: 0.5 }); return (r && (r.response || r.result || "")) || ""; }
+    try { const r = await aiRun(env, { messages: messages, max_tokens: 380, temperature: 0.5 }, 16000); return (r && (r.response || r.result || "")) || ""; }
     catch (e) { dbg.plainErr = String((e && e.message) || e); return ""; }
   };
   try {
-    const r1 = await env.AI.run(ASK_MODEL, { messages: messages, tools: tools, max_tokens: 600, temperature: 0.3 });
+    const r1 = await aiRun(env, { messages: messages, tools: tools, max_tokens: 500, temperature: 0.3 }, 18000);
     dbg.r1keys = r1 ? Object.keys(r1) : null;
     const tc = (r1 && r1.tool_calls && r1.tool_calls[0]) || null;
     if (tc && tc.name === "search_properties") {
