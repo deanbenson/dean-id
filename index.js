@@ -788,6 +788,60 @@ async function streamClaude(env, system, messages, tools, model, onText) {
   return { stoppedForTool: stoppedForTool, toolName: toolName, toolUseId: toolUseId, toolInput: toolInput };
 }
 
+// Detect when the Anthropic account is out of credits (vs a transient error).
+function isCreditError(e) {
+  const m = String((e && e.message) || e || "").toLowerCase();
+  return m.indexOf("credit balance") >= 0 || m.indexOf("too low") >= 0 || m.indexOf("_402_") >= 0 || m.indexOf("insufficient") >= 0 || (m.indexOf("billing") >= 0 && m.indexOf("anthropic") >= 0);
+}
+
+// Record a health incident in KV and (if a webhook is configured) push an alert, deduped to once/hour.
+async function aiAlert(env, ctx, detail) {
+  try {
+    if (!env || !env.LISTINGS) return;
+    const now = Date.now();
+    let notify = true;
+    try { const prev = await env.LISTINGS.get("ai:health"); if (prev) { const p = JSON.parse(prev); if (p && p.status === "credit" && (now - (p.at || 0)) < 3600000) notify = false; } } catch (_) {}
+    await env.LISTINGS.put("ai:health", JSON.stringify({ status: "credit", at: now, detail: String(detail || "").slice(0, 200) }));
+    if (notify && env.ALERT_WEBHOOK) {
+      const p = fetch(env.ALERT_WEBHOOK, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "Ask Georgina: Anthropic credits look exhausted, so the assistant has switched to the free fallback model and the site keeps working. Top up at console.anthropic.com to restore Opus. (" + new Date(now).toISOString() + ")" }) }).catch(function () {});
+      if (ctx && ctx.waitUntil) ctx.waitUntil(p);
+    }
+  } catch (_) {}
+}
+
+// Free Cloudflare Workers AI fallback so the assistant keeps working if Claude is unavailable.
+// Property search is deterministic (D1 + keyword parse), so only the wording comes from the cheaper model.
+async function workersFallback(env, q, history) {
+  let properties = [];
+  const hf = heuristicFilters(q);
+  let note = "";
+  if (looksLikeSearch(q, hf)) {
+    properties = await searchForAI(env, { kind: hf.kind, location: hf.location, min: hf.min, max: hf.max, beds: hf.beds, type: hf.type, limit: 6 });
+    note = properties.length
+      ? ("\n\nContext: a live search found " + properties.length + " matching listings, shown to the user as cards below your message. Say you have found some good options below and invite a viewing or a call to 01642 378022. Do not name specific properties or prices in your text.")
+      : "\n\nContext: a live search found no exact matches. Say there is no exact match right now, suggest widening the search or a free valuation, and do not name any property.";
+  }
+  let reply = "";
+  if (env && env.AI) {
+    try {
+      const msgs = [{ role: "system", content: GEORGINA_SYSTEM + note }];
+      history.slice(-4).forEach(function (m) { if (m && m.role && m.content) msgs.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 500) }); });
+      msgs.push({ role: "user", content: q });
+      const r = await Promise.race([
+        env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: msgs, max_tokens: 350, temperature: 0.5 }),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error("t")); }, 15000); })
+      ]);
+      reply = (r && (r.response || r.result || "")) || "";
+    } catch (_) {}
+  }
+  if (!reply || !reply.trim()) {
+    reply = properties.length
+      ? "I've found a few that could be a good fit, have a look just below. To arrange a viewing, give us a call on 01642 378022."
+      : "I can help with buying, renting, selling or letting across Teesside. For anything specific right now, the team will be glad to help on 01642 378022.";
+  }
+  return { reply: deDash(reply.trim()), properties: properties };
+}
+
 const GEORGINA_SYSTEM = `You are "Georgina", the friendly AI assistant for G.R. Estates, an award-winning independent estate and letting agency in Teesside, North East England. You are an AI assistant trained on the agency's knowledge. If anyone asks, say you are G.R. Estates' AI helper, here to help any time, not a real person.
 
 Voice: warm, modern, plain English, no jargon, no nonsense. Keep replies short and helpful (2 to 4 sentences). Sound like a genuine, honest local agent who knows the area. Use UK English. Never use the word "CRM" or long dashes.
@@ -802,6 +856,9 @@ Rules:
 - To find a property for someone, you MUST use the search_properties tool. Only describe properties returned by the tool. Never invent listings, prices, addresses or property details.
 - If you do not know something (exact fees, or a property that is not in the results), say so honestly and offer to get the team to help, book a free valuation, or call 01642 378022.
 - Never mention a specific property, address or asking price unless it appears in a live search result given to you in this conversation. If you have no live results, do not name any property.
+- When you need to look up property, call the search_properties tool immediately. Do NOT write any words before calling the tool (no "let me take a look").
+- Keep replies short and to the point, usually 1 to 3 sentences. Do not repeat information you have already given earlier in this conversation.
+- Search one area at a time. If an area has nothing, suggest the single nearest alternative rather than listing several.
 - Gently guide people to a next step: book a free valuation, arrange a viewing, or give the team a call.
 - Be warm and encouraging about helping them buy, sell, rent or let.`;
 
@@ -949,18 +1006,38 @@ async function askGeorgina(request, env, url, ctx) {
           const brief = props.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
           messages.push({ role: "assistant", content: [{ type: "tool_use", id: first.toolUseId, name: first.toolName, input: a }] });
           messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: first.toolUseId, content: JSON.stringify({ count: props.length, listings: brief, note: "These are the ONLY real G.R. Estates listings that match. Reply warmly in 2 to 3 sentences. If count is above 0, you may mention one or two by area and price, and tell the user they can see them as cards just below and book a viewing or call 01642 378022. If count is 0, say there is no exact match right now, suggest widening the search or a free valuation, and do not name any property. Never invent a listing." }) }] });
+          if (any) emit({ d: "\n\n" });
           emit({ p: props });
           await withTimeout(streamClaude(env, GEORGINA_SYSTEM, messages, tools, model, onText), 30000);
         }
         if (!any) emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away." });
         emit({ done: true });
       } catch (e) {
-        emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away." });
+        if (isCreditError(e)) {
+          await aiAlert(env, ctx, String((e && e.message) || e));
+          try {
+            const fb = await workersFallback(env, q, history);
+            if (fb.properties && fb.properties.length) emit({ p: fb.properties });
+            const parts = fb.reply.split(/(\s+)/);
+            for (let i = 0; i < parts.length; i++) { if (parts[i]) emit({ d: parts[i] }); }
+          } catch (_) { emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022." }); }
+        } else {
+          emit({ d: "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away." });
+        }
         emit({ done: true });
       } finally { try { await writer.close(); } catch (_) {} }
     })();
     if (ctx && ctx.waitUntil) ctx.waitUntil(pump);
     return new Response(stream.readable, { status: 200, headers: ndHeaders });
+  }
+
+  // Test hook: force the free fallback path so we can verify graceful downgrade without draining credits.
+  if (url.searchParams.get("forcefb") === "1") {
+    await aiAlert(env, ctx, "forced test");
+    const fb = await workersFallback(env, q, history);
+    const out = { ok: true, reply: fb.reply, properties: fb.properties };
+    if (url.searchParams.get("debug") === "1") out.debug = { model: "fallback-forced", fallback: "workers-ai" };
+    return respond(JSON.stringify(out), 200, CORS);
   }
 
   if (!env || !env.ANTHROPIC_API_KEY) {
@@ -988,7 +1065,13 @@ async function askGeorgina(request, env, url, ctx) {
     } else {
       reply = claudeText(r1);
     }
-  } catch (e) { dbg.err = String((e && e.message) || e); }
+  } catch (e) {
+    dbg.err = String((e && e.message) || e);
+    if (isCreditError(e)) {
+      await aiAlert(env, ctx, dbg.err);
+      try { const fb = await workersFallback(env, q, history); reply = fb.reply; properties = fb.properties; dbg.fallback = "workers-ai"; } catch (_) {}
+    }
+  }
 
   if (!reply || !reply.trim()) {
     reply = "Sorry, I had a little hiccup there. Please call the team on 01642 378022 or book a free valuation and we'll help you straight away.";
@@ -1084,6 +1167,14 @@ export default {
     // "Ask Georgina" AI assistant — accepts GET (?q=) and POST (JSON) + CORS preflight.
     if (path === "/api/ask") {
       return await askGeorgina(request, env, url, ctx);
+    }
+
+    // Health of the AI assistant (records when Anthropic credits run out and we fall back).
+    if (path === "/api/ai-status") {
+      let h = { status: "ok" };
+      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("ai:health"); if (v) h = JSON.parse(v); } catch (_) {} }
+      const stale = h && h.at ? (Date.now() - h.at > 1800000) : true;
+      return respond(JSON.stringify({ ok: true, model: ASK_MODEL, health: h, likely_recovered: (h.status === "credit" && stale) }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
     }
 
     if (!["GET", "HEAD"].includes(request.method)) {
