@@ -886,12 +886,19 @@ async function askGeorgina(request, env, url) {
     };
     dbg.filters = f;
     properties = await searchForAI(env, f);
-    const brief = properties.map(function (p) { return { address: p.address, town: p.town, price: p.price, kind: p.kind, beds: p.beds, baths: p.baths, type: p.type, status: p.status }; });
-    const cmsgs = [{ role: "system", content: GEORGINA_SYSTEM }];
-    history.slice(-4).forEach(function (m) { if (m && m.role && m.content) cmsgs.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 600) }); });
-    cmsgs.push({ role: "user", content: q });
-    cmsgs.push({ role: "user", content: "(These are the ONLY live G.R. Estates listings that match, " + properties.length + " found: " + JSON.stringify(brief) + ". Answer warmly in 2 to 3 sentences using ONLY these. Mention one or two by area and price, then invite me to view them below or call 01642 378022. If the list is empty, say there is no exact match right now, suggest widening the search or booking a free valuation, and do NOT name any property.)" });
-    reply = await gen(cmsgs);
+    dbg.found = properties.length;
+    if (properties.length) {
+      // The real listings render as cards in the UI. The model only writes a warm intro,
+      // with NO specific property facts, so it can never invent a listing.
+      const cmsgs = [{ role: "system", content: GEORGINA_SYSTEM }];
+      history.slice(-4).forEach(function (m) { if (m && m.role && m.content) cmsgs.push({ role: m.role === "assistant" ? "assistant" : "user", content: (m.content + "").slice(0, 600) }); });
+      cmsgs.push({ role: "user", content: q });
+      cmsgs.push({ role: "user", content: "(We found " + properties.length + " live G.R. Estates listings that match. They are shown to me as cards right below your message, with photos and prices. Write a warm, natural reply of 1 to 2 sentences: acknowledge what I am looking for and say you have found some good options below. Do NOT list any specific property, address or price in your text, the cards already show those. Finish by inviting me to take a look or call 01642 378022.)" });
+      reply = await gen(cmsgs);
+      if (!reply || !reply.trim()) reply = "Good news, I've found " + properties.length + " that could be a great fit, have a look just below. Fancy a viewing? Give us a call on 01642 378022.";
+    } else {
+      reply = "I couldn't find an exact match for that right now, but our list changes all the time. It's worth widening your search a little, or I can get the team to help, you can book a free valuation or call us on 01642 378022.";
+    }
   } else {
     reply = directReply || await gen(messages);
   }
