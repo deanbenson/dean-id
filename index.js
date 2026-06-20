@@ -1276,11 +1276,73 @@ async function refreshSocial(env) {
   }
 }
 
+// Live Google reviews aggregated across G.R. Estates branches, via the Places API (New). Cached in KV, refreshed by cron.
+const REVIEW_BRANCHES = [
+  { name: "Stockton-on-Tees", query: "G.R. Estates Award Winning Estate Agency, 19 Bishop Street, Stockton-on-Tees TS18 1SY", postcode: "TS18 1SY" },
+  { name: "Normanby", query: "G.R. Estates Award Winning Estate Agency, 8c High Street, Normanby TS6 0JZ", postcode: "TS6 0JZ" }
+];
+async function refreshGoogleReviews(env, force) {
+  if (!env || !env.GOOGLE_API_KEY || !env.LISTINGS) return;
+  try {
+    if (!force) {
+      const cur = await env.LISTINGS.get("google:reviews");
+      if (cur) { try { const c = JSON.parse(cur); if (c && c.generated_at && (Date.now() - new Date(c.generated_at).getTime()) < 12 * 3600000) return; } catch (_) {} }
+    }
+    const KEY = env.GOOGLE_API_KEY;
+    const branches = [];
+    let allReviews = [];
+    for (const b of REVIEW_BRANCHES) {
+      try {
+        const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "X-Goog-Api-Key": KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.googleMapsUri,places.reviews"
+          },
+          body: JSON.stringify({ textQuery: b.query, maxResultCount: 3, regionCode: "GB", languageCode: "en" })
+        });
+        const j = await r.json().catch(function () { return null; });
+        if (!r.ok) { try { await env.LISTINGS.put("google:err", JSON.stringify({ branch: b.name, status: r.status, err: JSON.stringify((j && j.error) || j).slice(0, 240), at: Date.now() })); } catch (_) {} continue; }
+        const places = (j && j.places) || [];
+        const place = places.find(function (p) { return (p.formattedAddress || "").toUpperCase().indexOf(b.postcode.toUpperCase()) >= 0; }) || places[0];
+        if (!place) continue;
+        branches.push({ name: b.name, rating: place.rating || 0, count: place.userRatingCount || 0, url: place.googleMapsUri || "" });
+        let reviews = place.reviews;
+        if ((!reviews || !reviews.length) && place.id) {
+          try {
+            const dr = await fetch("https://places.googleapis.com/v1/places/" + encodeURIComponent(place.id), { headers: { "X-Goog-Api-Key": KEY, "X-Goog-FieldMask": "reviews" } });
+            const dj = await dr.json().catch(function () { return null; });
+            if (dr.ok && dj && dj.reviews) reviews = dj.reviews;
+          } catch (e) {}
+        }
+        (reviews || []).forEach(function (rv) {
+          const aa = rv.authorAttribution || {};
+          const txt = (rv.text && rv.text.text) || (rv.originalText && rv.originalText.text) || "";
+          if (txt) allReviews.push({ branch: b.name, author: aa.displayName || "Google user", photo: aa.photoUri || "", rating: rv.rating || 5, when: rv.relativePublishTimeDescription || "", publishTime: rv.publishTime || "", text: txt });
+        });
+      } catch (e) { try { await env.LISTINGS.put("google:err", JSON.stringify({ branch: b.name, err: String((e && e.message) || e), at: Date.now() })); } catch (_) {} }
+    }
+    if (!branches.length) return;
+    const total = branches.reduce(function (s, x) { return s + (x.count || 0); }, 0);
+    const wsum = branches.reduce(function (s, x) { return s + (x.rating || 0) * (x.count || 0); }, 0);
+    const average = total ? Math.round((wsum / total) * 10) / 10 : 0;
+    allReviews.sort(function (a, c) { return (c.rating - a.rating) || String(c.publishTime).localeCompare(String(a.publishTime)); });
+    let reviews = allReviews.filter(function (rv) { return rv.rating >= 4 && rv.text.length > 40; });
+    if (reviews.length < 6) reviews = allReviews;
+    await env.LISTINGS.put("google:reviews", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), generated_at: new Date().toISOString() }));
+    try { await env.LISTINGS.delete("google:err"); } catch (_) {}
+  } catch (e) {
+    try { if (env.LISTINGS) await env.LISTINGS.put("google:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(refreshListings(env).catch(() => {}));
     ctx.waitUntil(refreshD1(env).catch(() => {}));
     ctx.waitUntil(refreshSocial(env).catch(() => {}));
+    ctx.waitUntil(refreshGoogleReviews(env).catch(() => {}));
   },
   async fetch(request, env, ctx) {
    try {
@@ -1357,6 +1419,21 @@ export default {
     }
 
     // On-market listings, served fast from KV (refreshed hourly by the scheduled job).
+    // Live Google reviews aggregated across branches (cached in KV, refreshed daily by cron).
+    if (path === "/api/reviews") {
+      let data = null;
+      if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("google:reviews"); if (v) data = JSON.parse(v); } catch (_) {} }
+      if ((!data || !data.reviews || !data.reviews.length) && env && env.GOOGLE_API_KEY) {
+        try { await refreshGoogleReviews(env, true); const v = await env.LISTINGS.get("google:reviews"); if (v) data = JSON.parse(v); } catch (_) {}
+      }
+      const out = data || { ok: true, total: 0, average: 0, branches: [], reviews: [] };
+      if (url.searchParams.get("debug") === "1") {
+        let gerr = null; if (env && env.LISTINGS) { try { const e2 = await env.LISTINGS.get("google:err"); if (e2) gerr = JSON.parse(e2); } catch (_) {} }
+        out.debug = { keySet: !!(env && env.GOOGLE_API_KEY), lastError: gerr };
+      }
+      return respond(JSON.stringify(out), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=1800" });
+    }
+
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
     if (path === "/api/social") {
       let data = null;
