@@ -200,7 +200,16 @@
   function scard(L){ var isLet=L.kind==='let'; var pr=(!L.price)?'POA':(money(L.price)+(isLet?' pcm':'')); var ph=L.image?'<div class="sph" style="background:#2b3645 url(\''+L.image+'\') center/cover no-repeat"></div>':'<div class="sph"></div>'; return '<a class="scard" href="property.html?id='+encodeURIComponent(L.id)+'">'+ph+'<div class="sbody"><div class="sprice">'+pr+'</div><div class="saddr">'+esc((L.address||'').split(',').slice(0,2).join(', '))+'</div><div class="smeta">'+(L.beds?L.beds+' bed · ':'')+esc(L.type||'')+'</div></div></a>'; }
   function loadSimilar(d){ var el=document.getElementById('similar'); if(!el) return; var qs='kind='+(d.kind||'sale')+'&pageSize=7'; if(d.beds) qs+='&beds='+Math.max(1,(Number(d.beds)||1)-1); fetch('/api/search?'+qs).then(function(r){return r.json();}).then(function(res){ var list=(((res&&res.results)||[]).filter(function(x){return x.id!==d.id;})).slice(0,3); if(!list.length) return; el.innerHTML='<h2 class="simh">More properties like this</h2><div class="similar">'+list.map(scard).join('')+'</div>'; }).catch(function(){}); }
   window.setMain=function(el,u){ var m=document.getElementById('mainimg'); if(m)m.src=u; var ts=document.querySelectorAll('.thumbs img'); for(var i=0;i<ts.length;i++)ts[i].classList.remove('active'); el.classList.add('active'); };
-  window.sendEnq=function(e){ e.preventDefault(); e.target.style.display='none'; var ok=document.getElementById('enqok'); if(ok)ok.style.display='block'; return false; };
+  window.sendEnq=function(e){
+    e.preventDefault(); var f=e.target;
+    try {
+      var fd={}; Array.prototype.forEach.call(f.elements, function(el){ if(el.name) fd[el.name]=el.value; });
+      var d=window.CUR||{};
+      var payload={ kind:'viewing', name:fd.name||'', email:fd.email||'', phone:fd.phone||'', message:fd.message||'', propertyId:d.id||null, address:d.address||'' };
+      fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    } catch(err){}
+    f.style.display='none'; var ok=document.getElementById('enqok'); if(ok)ok.style.display='block'; return false;
+  };
 })();
 </script>
 <script src="ask-georgina.js" defer></script>

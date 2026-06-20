@@ -170,7 +170,17 @@
 <footer>© 2026 G.R. Estates · Stockton, Normanby &amp; Redcar · <a href="tel:01642378022" style="color:var(--orange-deep)">01642 378022</a> <span style="opacity:.3;font-size:.7rem">v0.4</span></footer>
 
 <script>
-  function valDone(e){ e.preventDefault(); var f=e.target; f.style.display='none'; var t=f.parentNode.querySelector('.vthanks'); if(t) t.style.display='block'; return false; }
+  function valDone(e){
+    e.preventDefault(); var f=e.target;
+    try {
+      var fd={}; Array.prototype.forEach.call(f.elements, function(el){ if(el.name) fd[el.name]=el.value; });
+      var payload={ kind:'valuation', name:fd.name||'', email:fd.email||'', phone:fd.phone||'', address:fd.address||'' };
+      payload.intent = /let/i.test(fd.intent||'')?'let':'sell';
+      if(fd.when) payload.message = 'Free valuation request via the website (timescale: '+fd.when+').';
+      fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    } catch(err){}
+    f.style.display='none'; var t=f.parentNode.querySelector('.vthanks'); if(t) t.style.display='block'; return false;
+  }
 </script>
 <script src="ask-georgina.js" defer></script>
 </body>

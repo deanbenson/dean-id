@@ -424,6 +424,20 @@ async function streetGet(env, path) {
   return { ok: res.ok, status: res.status, body };
 }
 
+// Write helper: POST to the Street Open API (used for website lead capture → enquiries).
+async function streetPost(env, path, payload) {
+  const token = env && env.STREET_API_TOKEN;
+  if (!token) return { ok: false, status: 0, error: "STREET_API_TOKEN not set" };
+  const res = await fetch(STREET_API_BASE + path, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/vnd.api+json", "Accept": "application/vnd.api+json", "User-Agent": "dean.id-worker/1.0 (+https://dean.id)" },
+    body: JSON.stringify(payload)
+  });
+  let body = null;
+  try { body = await res.json(); } catch (_) { body = null; }
+  return { ok: res.ok, status: res.status, body };
+}
+
 // --- Live listings feed (Street Open API) --------------------------------
 const ON_SALE = new Set(["For Sale", "Under Offer", "Sold STC"]);
 const ON_LET = new Set(["To Let", "Let Agreed"]);
@@ -1443,6 +1457,70 @@ export default {
         } catch (e) { out.rdebug = String(e); }
       }
       return respond(JSON.stringify(out), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "public, max-age=1800" });
+    }
+
+    // Website lead capture -> Street CRM (POST /enquiries). Always stores a KV copy so a lead is never lost.
+    if (path === "/api/lead" && request.method === "POST") {
+      if (!originOk(request)) return respond(JSON.stringify({ ok: false }), 403, { "content-type": "application/json; charset=utf-8" });
+      try {
+        const ip = request.headers.get("cf-connecting-ip") || "";
+        if (env && env.LISTINGS && ip) {
+          const lk = "leadrate:" + ip;
+          const lc = parseInt((await env.LISTINGS.get(lk)) || "0", 10);
+          if (lc > 12) return respond(JSON.stringify({ ok: true }), 200, { "content-type": "application/json; charset=utf-8" });
+          await env.LISTINGS.put(lk, String(lc + 1), { expirationTtl: 600 });
+        }
+      } catch (_) {}
+      let f = {};
+      try { f = await request.json(); } catch (_) { f = {}; }
+      const email = String(f.email || "").trim().slice(0, 160);
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return respond(JSON.stringify({ ok: false, error: "A valid email is required." }), 400, { "content-type": "application/json; charset=utf-8" });
+      }
+      const kind = String(f.kind || "contact").toLowerCase();
+      const name = String(f.name || "").trim().slice(0, 120);
+      const sp = name.split(/\s+/).filter(Boolean);
+      const firstName = sp.shift() || null;
+      const lastName = sp.length ? sp.join(" ") : null;
+      const phone = String(f.phone || "").trim().slice(0, 40) || null;
+      const postcode = String(f.postcode || "").trim().slice(0, 8) || null;
+      const intent = String(f.intent || "").toLowerCase();
+      let message = String(f.message || "").trim();
+      const attrs = { email_address: email, custom_source: "website" };
+      if (firstName) attrs.first_name = firstName;
+      if (lastName) attrs.last_name = lastName;
+      if (phone) attrs.telephone_number = phone;
+      if (postcode) attrs.postcode = postcode;
+      if (kind === "valuation") {
+        attrs.request_valuation = true;
+        if (intent === "let") attrs.property_to_let = true; else attrs.property_to_sell = true;
+        if (!message) message = "Free valuation request via the website.";
+      } else if (kind === "viewing") {
+        attrs.request_viewing = true;
+        if (f.propertyId) attrs.property_uuid = String(f.propertyId).slice(0, 64);
+        if (!message) message = "Viewing request via the website.";
+      } else {
+        if (f.propertyId) attrs.property_uuid = String(f.propertyId).slice(0, 64);
+        if (!message) message = "Enquiry via the website.";
+      }
+      if (f.address) message += "\n\nProperty / address: " + String(f.address).slice(0, 300);
+      attrs.message = message.slice(0, 2000);
+      const payload = { data: { type: "enquiry", attributes: attrs, relationships: {} } };
+      let streetStatus = 0, streetOk = false, streetErr = null;
+      try {
+        const sr = await streetPost(env, "/enquiries", payload);
+        streetStatus = sr.status; streetOk = sr.ok;
+        if (!sr.ok) { streetErr = (sr.body && (sr.body.errors || sr.body.error)) || sr.error || null; if (env && env.LISTINGS) { try { await env.LISTINGS.put("lead:err", JSON.stringify({ status: sr.status, body: sr.body, at: Date.now() })); } catch (_) {} } }
+      } catch (e) { streetErr = String((e && e.message) || e); if (env && env.LISTINGS) { try { await env.LISTINGS.put("lead:err", JSON.stringify({ err: streetErr, at: Date.now() })); } catch (_) {} } }
+      try {
+        if (env && env.LISTINGS) {
+          const id = "lead:" + Date.now() + ":" + Math.random().toString(36).slice(2, 8);
+          await env.LISTINGS.put(id, JSON.stringify({ at: Date.now(), kind: kind, name: name, email: email, phone: phone, postcode: postcode, propertyId: f.propertyId || null, message: attrs.message, streetStatus: streetStatus, streetOk: streetOk }));
+        }
+      } catch (_) {}
+      const lout = { ok: true };
+      if (f._debug) { lout.streetStatus = streetStatus; lout.streetOk = streetOk; lout.streetErr = streetErr; }
+      return respond(JSON.stringify(lout), 200, { "content-type": "application/json; charset=utf-8" });
     }
 
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).

@@ -675,7 +675,17 @@
 <script>
   window.searchKind = 'sale';
   function logoFail(img){ img.style.display='none'; var a=img.parentNode; if(a && !a.querySelector('.mark')){ a.insertAdjacentHTML('beforeend','<span class="mark">GR</span> G.R. Estates'); } }
-  function formThanks(e, form){ e.preventDefault(); form.style.display='none'; var t=form.nextElementSibling; while(t && !(t.classList && t.classList.contains('thanks-msg'))) t=t.nextElementSibling; if(t) t.style.display='block'; return false; }
+  function formThanks(e, form){
+    e.preventDefault();
+    try {
+      var fd={}; Array.prototype.forEach.call(form.elements, function(el){ if(el.name) fd[el.name]=el.value; });
+      var isVal = form.classList.contains('vform');
+      var payload = { kind: isVal?'valuation':'contact', name: fd.name||'', email: fd.email||'', phone: fd.phone||'', message: fd.message||'', address: fd.address||'' };
+      if(isVal && fd.kind){ payload.intent = /let/i.test(fd.kind)?'let':'sell'; }
+      fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
+    } catch(err){}
+    form.style.display='none'; var t=form.nextElementSibling; while(t && !(t.classList && t.classList.contains('thanks-msg'))) t=t.nextElementSibling; if(t) t.style.display='block'; return false;
+  }
   function setMode(btn,mode){
     document.querySelectorAll('.toggle button').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
