@@ -1365,6 +1365,7 @@ export default {
         const r = await streetGet(env, "/users?page%5Bsize%5D=100");
         if (!r.ok || !r.body || !r.body.data) throw new Error("no data");
         const exclude = new Set(["arelly camacho"]);
+        const excludeFirst = new Set(["emma", "lewis", "rebecca", "nicola"]); // left G.R. Estates, still active in CRM
         const rankOf = function (t) {
           t = (t || "").toLowerCase();
           if (t.indexOf("director") >= 0) return 0;
@@ -1384,8 +1385,9 @@ export default {
           .map(function (d) { return d.attributes || {}; })
           .filter(function (a) {
             if (a.deactivated_at || a.deleted_at) return false;
+            const first = (a.first_name || "").toLowerCase().trim();
             const nm = ((a.first_name || "") + " " + (a.last_name || "")).toLowerCase().trim();
-            if (!nm || exclude.has(nm)) return false;
+            if (!nm || exclude.has(nm) || excludeFirst.has(first)) return false;
             return true;
           })
           .map(function (a) { return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: a.job_title || "" }; });
