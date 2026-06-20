@@ -1,0 +1,12 @@
+{
+  "name": "G.R. Estates",
+  "short_name": "G.R. Estates",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "theme_color": "#edeae6",
+  "background_color": "#fbf7f2",
+  "display": "standalone",
+  "start_url": "."
+}
