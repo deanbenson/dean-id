@@ -1616,6 +1616,44 @@ export default {
       return respond(JSON.stringify({ ok: true }), 200, { "content-type": "application/json; charset=utf-8" });
     }
 
+    // Instant valuation guide — indicative range from comparable live listings (D1). No PII, honest framing.
+    if (path === "/api/estimate") {
+      const J = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" };
+      if (!env || !env.gr_estates) return respond(JSON.stringify({ ok: false }), 200, J);
+      const p = url.searchParams;
+      const kind = p.get("kind") === "let" ? "let" : "sale";
+      const beds = parseInt(p.get("beds"), 10);
+      const type = (p.get("type") || "").trim().toLowerCase();
+      const area = (p.get("q") || p.get("area") || "").trim().toLowerCase();
+      const db = env.gr_estates;
+      async function comps(useBeds, useType, useArea) {
+        const where = ["kind = ?", "price IS NOT NULL", "price > 0"]; const args = [kind];
+        if (useBeds === 1 && !isNaN(beds)) { where.push("beds = ?"); args.push(beds); }
+        else if (useBeds === 2 && !isNaN(beds)) { where.push("beds BETWEEN ? AND ?"); args.push(beds - 1, beds + 1); }
+        if (useType && type) { where.push("LOWER(IFNULL(type,'')) LIKE ?"); args.push("%" + type + "%"); }
+        if (useArea && area) { where.push("(LOWER(IFNULL(town,'')) LIKE ? OR REPLACE(LOWER(IFNULL(postcode,'')),' ','') LIKE ?)"); args.push("%" + area + "%", "%" + area.replace(/\s+/g, "") + "%"); }
+        try {
+          const r = await db.prepare("SELECT price FROM listings WHERE " + where.join(" AND ")).bind(...args).all();
+          return ((r && r.results) || []).map(function (x) { return x.price; }).filter(function (v) { return v && v > 0; }).sort(function (a, b) { return a - b; });
+        } catch (e) { return []; }
+      }
+      const basis = { beds: !isNaN(beds), type: !!type, area: !!area, widened: false };
+      let prices = await comps(1, true, true);
+      if (prices.length < 4 && area) { basis.area = false; basis.widened = true; prices = await comps(1, true, false); }
+      if (prices.length < 4 && type) { basis.type = false; basis.widened = true; prices = await comps(1, false, false); }
+      if (prices.length < 4 && !isNaN(beds)) { basis.beds = "wide"; basis.widened = true; prices = await comps(2, false, false); }
+      if (prices.length < 3) { basis.beds = false; prices = await comps(0, false, false); }
+      const n = prices.length;
+      if (!n) return respond(JSON.stringify({ ok: true, count: 0, kind: kind }), 200, J);
+      const pct = function (q) { const i = Math.min(n - 1, Math.max(0, Math.round(q * (n - 1)))); return prices[i]; };
+      const median = n % 2 ? prices[(n - 1) / 2] : Math.round((prices[n / 2 - 1] + prices[n / 2]) / 2);
+      let low = pct(0.2), high = pct(0.8);
+      if (low >= high) { low = prices[0]; high = prices[n - 1]; }
+      const step = kind === "let" ? 25 : (median > 300000 ? 10000 : 5000);
+      const rnd = function (v) { return Math.max(step, Math.round(v / step) * step); };
+      return respond(JSON.stringify({ ok: true, kind: kind, count: n, low: rnd(low), high: rnd(high), mid: rnd(median), basis: basis }), 200, J);
+    }
+
     // Property search over D1 (SQL) — filters + pagination.
     if (path === "/api/search") {
       if (!env || !env.gr_estates) {

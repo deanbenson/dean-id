@@ -60,6 +60,15 @@
   .vform .btn{width:100%}
   .vthanks{display:none;text-align:center;padding:30px 10px}
   .vthanks .big{font-family:var(--serif);font-size:1.6rem;margin-bottom:.4rem}
+  .estResult{margin-top:14px}
+  .estCard{background:linear-gradient(155deg,#fff,#fbf1e9);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .estCard .lab{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--orange-deep)}
+  .estCard .rng{font-family:var(--serif);font-weight:700;font-size:1.95rem;letter-spacing:-.01em;margin:5px 0 2px}
+  .estCard .mid{color:var(--ink-soft);font-size:.95rem}
+  .estCard .basis{color:var(--muted);font-size:.82rem;margin:10px 0 14px;line-height:1.5}
+  .estCard .btn{width:100%}
+  .vdivide{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 18px}
+  .vdivide:before,.vdivide:after{content:"";flex:1;height:1px;background:var(--line)}
   /* steps */
   section{padding:70px 0}
   .sec-head{max-width:620px;margin:0 auto 44px;text-align:center}
@@ -125,7 +134,20 @@
     </div>
   </div>
   <div class="vcard">
-    <h2>Book your free valuation</h2>
+    <div id="estBox">
+      <h2>What's your home worth? <span style="color:var(--orange)">Instant guide</span></h2>
+      <p class="sub">A quick indicative range from homes like yours we're marketing right now. For the real figure, book a free valuation below.</p>
+      <form class="vform" onsubmit="return getEstimate(event)">
+        <div class="full"><label>Postcode or area</label><input name="earea" placeholder="e.g. Norton or TS20"></div>
+        <div><label>I'm looking to</label><select name="ekind"><option value="sale">Sell</option><option value="let">Let</option></select></div>
+        <div><label>Bedrooms</label><select name="ebeds"><option value="">Any</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="full"><label>Property type</label><select name="etype"><option value="">Any</option><option>Detached</option><option>Semi-detached</option><option>Terraced</option><option>Flat</option><option>Bungalow</option></select></div>
+        <button class="btn btn-primary full" type="submit">Get my instant guide</button>
+      </form>
+      <div id="estResult" class="estResult"></div>
+    </div>
+    <div class="vdivide">then book the real thing</div>
+    <h2 id="bookHead">Book your free valuation</h2>
     <p class="sub">Pop your details in and we'll be in touch to arrange a time that suits you.</p>
     <form class="vform" onsubmit="return valDone(event)">
       <div class="full"><label>Your name</label><input required name="name"></div>
@@ -170,13 +192,45 @@
 <footer>© 2026 G.R. Estates · Stockton, Normanby &amp; Redcar · <a href="tel:01642378022" style="color:var(--orange-deep)">01642 378022</a> <span style="opacity:.3;font-size:.7rem">v0.4</span></footer>
 
 <script>
+  function money0(n){ return '£'+Number(n).toLocaleString('en-GB'); }
+  window.getEstimate=function(e){
+    e.preventDefault(); var f=e.target;
+    var area=(f.earea.value||'').trim(), kind=f.ekind.value, beds=f.ebeds.value, type=f.etype.value;
+    var qs='kind='+encodeURIComponent(kind); if(beds)qs+='&beds='+encodeURIComponent(beds); if(type)qs+='&type='+encodeURIComponent(type); if(area)qs+='&q='+encodeURIComponent(area);
+    var box=document.getElementById('estResult');
+    box.innerHTML='<div class="estCard"><div class="lab">Working it out…</div></div>';
+    fetch('/api/estimate?'+qs).then(function(r){return r.json();}).then(function(d){ renderEstimate(d,area,kind,beds,type); }).catch(function(){ box.innerHTML='<div class="estCard"><div class="basis">Couldn\'t fetch a guide just now — book a free valuation below and we\'ll give you a proper figure.</div></div>'; });
+    return false;
+  };
+  function renderEstimate(d,area,kind,beds,type){
+    var box=document.getElementById('estResult'); var isLet=kind==='let'; var suff=isLet?' pcm':'';
+    var ad=document.querySelector('form[onsubmit*="valDone"] input[name=address]');
+    var it=document.querySelector('form[onsubmit*="valDone"] select[name=intent]');
+    if(ad&&area&&!ad.value) ad.value=area;
+    if(it) it.value=isLet?'Let':'Sell';
+    if(!d||!d.ok||!d.count){
+      box.innerHTML='<div class="estCard"><div class="lab">Indicative guide</div><div class="mid" style="margin-top:6px">We don\'t have enough similar homes on right now to guide you online — but we\'d love to value yours properly.</div><a class="btn btn-primary" href="#bookHead" onclick="return toBooking()" style="margin-top:14px">Book my free valuation →</a></div>';
+      window.__estCtx='Used instant guide (no comparables): '+[beds&&beds+' bed',type,area].filter(Boolean).join(', ');
+      return;
+    }
+    var bits=[]; if(beds)bits.push(beds+' bed'); if(type)bits.push(type); if(area)bits.push('in '+area);
+    var desc=bits.length?('homes like yours ('+bits.join(', ')+')'):'similar homes';
+    box.innerHTML='<div class="estCard"><div class="lab">Indicative guide · to '+(isLet?'let':'sell')+'</div>'
+      +'<div class="rng">'+money0(d.low)+suff+' – '+money0(d.high)+suff+'</div>'
+      +'<div class="mid">'+desc+' typically around <b>'+money0(d.mid)+suff+'</b></div>'
+      +'<div class="basis">Based on '+d.count+' similar propert'+(d.count===1?'y':'ies')+' we\'re currently marketing. This is a rough online guide, not a valuation — for an accurate figure, book a free visit.</div>'
+      +'<a class="btn btn-primary" href="#bookHead" onclick="return toBooking()">Book my free valuation →</a></div>';
+    window.__estCtx='Instant guide shown: '+money0(d.low)+suff+'–'+money0(d.high)+suff+' ('+[(isLet?'let':'sale'),beds&&beds+' bed',type,area].filter(Boolean).join(', ')+', '+d.count+' comps)';
+  }
+  window.toBooking=function(){ var h=document.getElementById('bookHead'); if(h) h.scrollIntoView({behavior:'smooth'}); var ad=document.querySelector('form[onsubmit*="valDone"] input[name=address]'); if(ad) setTimeout(function(){ ad.focus(); },300); return false; };
   function valDone(e){
     e.preventDefault(); var f=e.target;
     try {
       var fd={}; Array.prototype.forEach.call(f.elements, function(el){ if(el.name) fd[el.name]=el.value; });
       var payload={ kind:'valuation', name:fd.name||'', email:fd.email||'', phone:fd.phone||'', address:fd.address||'' };
       payload.intent = /let/i.test(fd.intent||'')?'let':'sell';
-      if(fd.when) payload.message = 'Free valuation request via the website (timescale: '+fd.when+').';
+      var mp=[]; if(fd.when) mp.push('timescale: '+fd.when); if(window.__estCtx) mp.push(window.__estCtx);
+      if(mp.length) payload.message='Free valuation request via the website ('+mp.join('; ')+').';
       fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).catch(function(){});
     } catch(err){}
     f.style.display='none'; var t=f.parentNode.querySelector('.vthanks'); if(t) t.style.display='block'; return false;
