@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Hub · G.R. Estates (command centre)</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+ :root{--ink:#2c2e33;--orange:#e2672a;--orange-deep:#c2541d;--cream:#edeae6;--paper:#fff;--line:#e1dace;--muted:#76726b;--panel:#e7e1d8;--sans:'Inter',-apple-system,sans-serif;--serif:'Quicksand',sans-serif}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.5;-webkit-font-smoothing:antialiased}
+ .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+ header{background:var(--panel);border-bottom:1px solid #ddd5c8}
+ header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+ .ttl{font-family:var(--serif);font-weight:700;font-size:1.15rem}.ttl .k{color:var(--orange)}
+ .ttl small{font-weight:600;color:var(--muted);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
+ .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer;text-decoration:none;display:inline-block}
+ .btn:hover{border-color:var(--orange)}
+ .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
+ .gate{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+ .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}
+ .gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+ .gate input{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;margin-bottom:12px}
+ .intro{margin:26px 0 6px}
+ .intro h1{font-family:var(--serif);font-weight:700;font-size:1.7rem;letter-spacing:-.01em}
+ .intro p{color:var(--muted);margin-top:4px;max-width:60ch}
+ .secttl{font-family:var(--serif);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+ .secttl .ln{flex:1;height:1px;background:var(--line)}
+ .sysgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:13px}
+ .sys{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 6px 18px rgba(44,46,51,.05);position:relative}
+ .sys h3{font-family:var(--serif);font-size:1.02rem;margin-bottom:3px;padding-right:74px}
+ .sys .what{color:#54585f;font-size:.85rem;line-height:1.45}
+ .sys .where{color:var(--muted);font-size:.74rem;margin-top:9px}
+ .sys .live{display:inline-block;margin-top:9px;font-size:.78rem;font-weight:700;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.15rem .5rem;border-radius:6px}
+ .pill{position:absolute;top:15px;right:16px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.18rem .5rem;border-radius:20px}
+ .p-live{background:rgba(29,158,117,.14);color:#157a59}
+ .p-conn{background:rgba(59,130,196,.14);color:#2f6aa0}
+ .p-pend{background:rgba(226,103,42,.14);color:var(--orange-deep)}
+ .p-plan{background:rgba(118,114,107,.14);color:#5f5b53}
+ .road{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+ .rcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+ .rcol h4{font-family:var(--serif);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;font-weight:700}
+ .rdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+ .ritem{font-size:.85rem;padding:7px 0;border-top:1px solid var(--line);color:#43464d}
+ .ritem:first-of-type{border-top:0}
+ .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}
+ .tool{display:block;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;text-decoration:none;color:inherit;transition:.15s;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .tool:hover{border-color:var(--orange);transform:translateY(-2px)}
+ .tool b{font-family:var(--serif);font-size:1rem;display:block;margin-bottom:2px}
+ .tool span{color:var(--muted);font-size:.84rem}
+ .tool .ar{color:var(--orange);font-weight:700;float:right}
+ .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:30px 0 44px}
+ @media(max-width:760px){.road{grid-template-columns:repeat(2,1fr)}}
+ @media(max-width:480px){.road{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><span class="ttl">G.<span class="k">R.</span> Estates · Hub<small>command centre</small></span><span><a class="btn" href="leads.html" id="enqLink" style="display:none">Enquiries →</a> <button class="btn" onclick="logout()">Lock</button></span></div></header>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+  var app=document.getElementById('app');
+  function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} var el=document.getElementById('enqLink'); if(el) el.style.display='none'; render(); };
+  function gate(err){
+    var el=document.getElementById('enqLink'); if(el) el.style.display='none';
+    app.innerHTML='<div class="gate"><h1>G.R. Estates Hub</h1><p>Your command centre. Enter the admin key to continue.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="save()">Open hub</button></div>';
+    var i=document.getElementById('k'); if(i){ i.focus(); i.addEventListener('keydown',function(e){ if(e.key==="Enter") save(); }); }
+  }
+  window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
+
+  var SYSTEMS=[
+    {n:"Website",w:"Your public site — listings, valuation, reviews, alerts",where:"Cloudflare (demo on dean.id)",s:"live",live:"site"},
+    {n:"Street CRM",w:"The single source of truth — listings, contacts, enquiries, team",where:"Street (cloud)",s:"live",live:"portfolio"},
+    {n:"Google reviews",w:"Live ratings across your branches",where:"Google Business Profile",s:"live",live:"reviews"},
+    {n:"Website leads",w:"Every enquiry captured and pushed into Street",where:"Worker → Street",s:"live",live:"leads"},
+    {n:"Be-first alerts",w:"Buyer alert signups, sent into Street as applicants",where:"Worker → Street",s:"live",live:"alerts"},
+    {n:"Ask Georgina (AI)",w:"24/7 assistant answering buyer & seller questions",where:"Claude",s:"live"},
+    {n:"Portals",w:"Rightmove, Zoopla & OnTheMarket listing feeds",where:"via Street",s:"conn"},
+    {n:"Payments & compliance",w:"Client money, statements, AML, certificates",where:"Street",s:"conn"},
+    {n:"Maintenance & inventory",w:"Works orders and tenancy operations",where:"Street",s:"conn"},
+    {n:"Phone system",w:"Calls today — the foundation for the AI front desk",where:"Telephony",s:"conn"},
+    {n:"Social (Instagram/Facebook)",w:"Live feed on the site",where:"Meta",s:"pend",note:"needs Facebook reconnected"},
+    {n:"AI front desk",w:"24/7 calls answered, booked and routed",where:"Planned",s:"plan"},
+    {n:"Per-user logins",w:"Staff roles and secure sign-in",where:"Planned",s:"plan"}
+  ];
+  var PLAN=[
+    {t:"New website + live listings",s:"live"},
+    {t:"Leads captured into Street",s:"live"},
+    {t:"Live Google reviews",s:"live"},
+    {t:"Ask Georgina (AI assistant)",s:"live"},
+    {t:"Saved + recently viewed homes",s:"live"},
+    {t:"Instant valuation funnel",s:"live"},
+    {t:"Be-first property alerts → Street",s:"live"},
+    {t:"This Hub command centre",s:"now"},
+    {t:"Branch routing for leads",s:"next"},
+    {t:"Company feed — live wins",s:"next"},
+    {t:"Owner BI / reporting in the Hub",s:"next"},
+    {t:"AI front desk — phone + web 24/7",s:"later"},
+    {t:"Per-user logins + staff roles",s:"later"},
+    {t:"Connect Instagram / Facebook",s:"later"},
+    {t:"Make it G.R.-owned + go live",s:"later"}
+  ];
+  var TOOLS=[
+    {t:"Enquiries inbox",d:"Every website lead, with stats",href:"leads.html"},
+    {t:"The live website",d:"Your public site",href:"/demos/gr-estates/"},
+    {t:"Valuation funnel",d:"Instant guide + booking",href:"valuation.html"},
+    {t:"My G.R. Estates",d:"Saved + recently viewed",href:"saved-homes.html"}
+  ];
+
+  function liveVal(sys,D){
+    if(sys.live==='site') return 'Live now';
+    if(sys.live==='portfolio') return (D.portfolio&&D.portfolio.total!=null)? (D.portfolio.total+' on the market') : '';
+    if(sys.live==='reviews') return (D.reviews&&D.reviews.average)? (D.reviews.average+'★ · '+(D.reviews.total||0)+' reviews') : '';
+    if(sys.live==='leads') return (D.leadsCount!=null)? (D.leadsCount+' captured') : '';
+    if(sys.live==='alerts') return (D.stats&&D.stats.alerts!=null)? (D.stats.alerts+' signed up') : '';
+    return '';
+  }
+  function pill(s){ var m={live:['p-live','Live'],conn:['p-conn','Connected'],pend:['p-pend','Pending'],plan:['p-plan','Planned']}; var x=m[s]||m.plan; return '<span class="pill '+x[0]+'">'+x[1]+'</span>'; }
+  function sysCard(sys,D){
+    var lv=liveVal(sys,D);
+    return '<div class="sys">'+pill(sys.s)+'<h3>'+esc(sys.n)+'</h3><div class="what">'+esc(sys.w)+'</div>'
+      +(lv?'<span class="live">'+esc(lv)+'</span>':'')
+      +'<div class="where">'+esc(sys.where)+(sys.note?(' · '+esc(sys.note)):'')+'</div></div>';
+  }
+  function roadmap(){
+    var groups=[['live','Live','#1d9e75'],['now','Building now','#e2672a'],['next','Next up','#3b82c4'],['later','Later','#9a958c']];
+    return '<div class="road">'+groups.map(function(g){
+      var items=PLAN.filter(function(r){ return r.s===g[0]; });
+      var li=items.map(function(r){ return '<div class="ritem">'+esc(r.t)+'</div>'; }).join('')||'<div class="ritem" style="color:#9a958c">—</div>';
+      return '<div class="rcol"><h4><span class="rdot" style="background:'+g[2]+'"></span>'+g[1]+'</h4>'+li+'</div>';
+    }).join('')+'</div>';
+  }
+  function tools(){
+    return '<div class="tools">'+TOOLS.map(function(t){ return '<a class="tool" href="'+t.href+'"><span class="ar">→</span><b>'+esc(t.t)+'</b><span>'+esc(t.d)+'</span></a>'; }).join('')+'</div>';
+  }
+  function paint(D){
+    var live=0; for(var i=0;i<SYSTEMS.length;i++){ if(SYSTEMS[i].s==='live') live++; }
+    app.innerHTML='<div class="intro"><h1>Good to see you 👋</h1><p>Your whole operation on one screen: every connected system and its status, and the master plan for what we\'re building. '+live+' systems live and feeding the business.</p></div>'
+      +'<div class="secttl">Connected systems<span class="ln"></span></div><div class="sysgrid">'+SYSTEMS.map(function(s){ return sysCard(s,D); }).join('')+'</div>'
+      +'<div class="secttl">The master plan<span class="ln"></span></div>'+roadmap()
+      +'<div class="secttl">Jump into the tools<span class="ln"></span></div>'+tools()
+      +'<div class="foot">Live from your site, Street and Google. This is the start — more systems and dashboards plug in here over time.</div>';
+  }
+  window.render=function(){
+    if(!key()){ gate(); return; }
+    var el=document.getElementById('enqLink'); if(el) el.style.display='';
+    app.innerHTML='<div class="intro"><h1>Loading…</h1></div>';
+    var hKey={'x-admin-key':key()};
+    Promise.all([
+      fetch('/api/leads',{headers:hKey}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
+      fetch('/api/hub',{headers:hKey}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch('/api/reviews').then(function(r){ return r.json(); }).catch(function(){ return null; })
+    ]).then(function(res){
+      var d=res[0]||{};
+      var D={ leadsCount:(d&&d.count!=null)?d.count:null, stats:(d&&d.stats)||{}, portfolio:(res[1]&&res[1].portfolio)||null, reviews:res[2]||null };
+      paint(D);
+    }).catch(function(e){
+      if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); }
+      else { app.innerHTML='<div class="intro"><h1>Couldn’t load the hub</h1><p>Please try again in a moment.</p></div>'; }
+    });
+  };
+  render();
+})();
+</script>
+</body>
+</html>
