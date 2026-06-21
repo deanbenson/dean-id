@@ -1646,12 +1646,12 @@ function schemaRes(name, path, fields, opts) {
 // (activity, documents, notes, maintenance-requests) and non-list resources are excluded — zero wrong paths.
 function extrasReg() {
   return [
-    { name: "viewings", path: "/viewings", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
-    { name: "valuations", path: "/valuations", ddl: VAL_DDL, map: mVal, opts: { incr: false } },
+    { name: "viewings", path: "/viewings?include=branch", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
+    { name: "valuations", path: "/valuations?include=branch", ddl: VAL_DDL, map: mVal, opts: { incr: false } },
     { name: "sales_applicants", path: "/sales-applicants", ddl: APP_DDL, map: mApp("sale"), opts: { incr: true } },
     { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let"), opts: { incr: true } },
-    { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
-    { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
+    { name: "sales_offers", path: "/sales-offers?include=branch", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
+    { name: "lettings_offers", path: "/lettings-offers?include=branch", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
     { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } },
     schemaRes("tenancies", "/tenancies", ["active", "start_date", "end_date", "original_term_start_date", "status", "tenancy_type", "tenancy_term_type", "rent_amount", "rent_frequency", "deposit_amount", "service_level", "service_level_type", "management_fee", "deleted_at", "created_at", "updated_at"]),
     schemaRes("landlords", "/landlords", ["full_name", "title", "first_name", "last_name", "address", "telephone_numbers", "email_addresses", "marketing_consent", "contact_preferences", "landlord_status", "deleted_at", "created_at", "updated_at"]),
