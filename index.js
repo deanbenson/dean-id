@@ -1378,7 +1378,7 @@ function mEnq(db, d, inc) {
 async function syncEnquiries(env) {
   if (!env || !env.gr_estates) return 0;
   try { await env.gr_estates.prepare("CREATE INDEX IF NOT EXISTS idx_enq_created ON enquiries(created_at)").run(); } catch (e) {}
-  return await syncStreetResource(env, "enquiries", "/enquiries", ENQ_DDL, mEnq, { chunk: 10, incr: true });
+  return await syncStreetResource(env, "enquiries", "/enquiries", ENQ_DDL, mEnq, { chunk: 16, incr: true });
 }
 
 // Sync a Street list resource into a D1 table so the Hub reads a fast, COMPLETE local copy.
@@ -1468,22 +1468,16 @@ function _t(v) {
 // One-time schema migration. Adds the `raw` full-record column everywhere; drops the empty
 // viewings/valuations/offers tables so they recreate cleanly from the current schema (killing any column
 // drift that was failing inserts); and resets every backfill so the full history re-walks into the new shape.
+// Non-destructive from here on. Earlier versions dropped tables and reset backfill cursors on every schema
+// bump, which wiped progress and kept the backfill restarting from page 1 — that's why coverage never grew.
+// We now only ensure the bespoke tables carry a raw column. Generic tables already hold their full schema from
+// their own CREATE statement; nothing is ever dropped or reset, so the backfill just keeps climbing to 100%.
 async function migrateSchema(env) {
   if (!env || !env.gr_estates) return;
-  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v5"))) return; } catch (_) { return; }
+  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v6"))) return; } catch (_) { return; }
   const db = env.gr_estates;
-  for (const t of ["enquiries", "applicants", "contacts", "listings"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
-  for (const t of ["viewings", "valuations", "offers"]) {
-    try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + t).first(); if (!c || !c.n) { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } else { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} } }
-    catch (_) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (__) {} }
-  }
-  // Full-schema (generic) tables are pure mirrors — drop them so they recreate with one column per API field,
-  // then re-backfill from Street. Also clean up the old wrong-named tables from earlier path guesses.
-  const rebuild = ["tenancies", "landlords", "vendors", "tenants", "inspections", "sales", "properties_all", "interested_applicants", "property_keys", "maintenance_jobs", "move_outs", "solicitors", "todos", "todo_types", "follow_ups", "invoices", "photo_and_measures", "sales_instructions", "lettings_instructions", "areas", "brands", "companies", "branches_all", "users_all",
-    "tasks", "task_types", "portal_listings", "e_sign_documents", "questionnaire_responses", "activity", "lettings_applications", "maintenance_requests", "network_settings"];
-  for (const t of rebuild) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (_) {} }
-  try { if (env.LISTINGS) { const names = ["enquiries", "viewings", "valuations", "sales_applicants", "lettings_applicants", "sales_offers", "lettings_offers", "contacts"].concat(rebuild); for (const n of names) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } } } catch (_) {}
-  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v5", "1"); } catch (_) {}
+  for (const t of ["enquiries", "applicants", "contacts", "listings", "viewings", "valuations", "offers"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
+  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v6", "1"); } catch (_) {}
 }
 const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
 const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
@@ -1594,7 +1588,7 @@ export default {
     // in rotation. Light enough to never exhaust the budget; the whole set backfills within ~1 hour.
     ctx.waitUntil((async () => {
       await syncEnquiries(env).catch(() => {});
-      await syncExtrasRotating(env, 2).catch(() => {});
+      await syncExtrasRotating(env, 3).catch(() => {});
     })());
   },
   async fetch(request, env, ctx) {
