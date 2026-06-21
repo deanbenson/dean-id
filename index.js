@@ -1741,7 +1741,7 @@ export default {
     const min = new Date((event && event.scheduledTime) || Date.now()).getUTCMinutes();
     ctx.waitUntil((async () => {
       if (min % 30 < 15) await syncEnquiries(env).catch(() => {});
-      else await syncExtrasRotating(env, 8, 25).catch(() => {});
+      else await syncExtrasRotating(env, 6, 20).catch(() => {});
     })());
   },
   async fetch(request, env, ctx) {
@@ -2182,7 +2182,7 @@ export default {
       // Run the extras INLINE (awaited) so the response proves what actually happened — the background path
       // can be cut short. enquiries keeps backfilling on its own cron; kick it in the background too.
       let threw = null;
-      try { await syncExtrasRotating(env, 5, 25); } catch (e) { threw = String((e && e.message) || e).slice(0, 200); }
+      try { await syncExtrasRotating(env, 4, 20); } catch (e) { threw = String((e && e.message) || e).slice(0, 200); }
       let lastrun = null; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:lastrun"); if (v) lastrun = JSON.parse(v); } } catch (_) {}
       if (ctx && ctx.waitUntil) ctx.waitUntil(syncEnquiries(env).catch(function () {}));
       return respond(JSON.stringify({ ok: true, started: true, ran: true, threw: threw, lastrun: lastrun }), 200, J);
