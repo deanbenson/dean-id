@@ -1672,30 +1672,17 @@ async function syncOneExtra(env, name) { const e = extrasReg().find(function (x)
 //      partially-filled), so a dataset stuck at 0 races to 100% instead of waiting hours for its slot.
 //      Once everything is complete it falls back to a light round-robin top-up so changes still flow in.
 async function syncExtrasRotating(env, count) {
-  const reg = extrasReg(); const db = env && env.gr_estates; const n = Math.max(1, count || 1);
-  if (!db) return;
-  try { // catch-all: if the bookkeeping loop itself hits a Cloudflare limit, record it instead of dying silently
-  const meta = [];
-  for (let i = 0; i < reg.length; i++) {
-    const e = reg[i];
-    const tbl = ddlTable(e.ddl) || e.name;
-    let total = null, local = 0;
-    try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); local = (c && c.n) || 0; } catch (_) {}
-    try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + e.name + ":total"); if (t != null) total = parseInt(t, 10); } } catch (_) {}
-    try { await healTable(env, db, e.name, e.ddl, local); } catch (_) {}
-    meta.push({ e: e, i: i, local: local, complete: (total != null && local >= total) });
-  }
-  const behind = meta.filter(function (m) { return !m.complete; });
-  behind.sort(function (a, b) { if ((a.local === 0) !== (b.local === 0)) return a.local === 0 ? -1 : 1; return a.i - b.i; });
-  let picks = behind.slice(0, n).map(function (m) { return m.e; });
-  if (!picks.length) { // everything complete — light round-robin top-up
+  const reg = extrasReg(); const n = Math.max(1, count || 1);
+  if (!env || !env.gr_estates) return;
+  try {
+    // Light rotation: pick the next N in order, write a heartbeat FIRST (so even a mid-run kill leaves a
+    // trail), then sync them. Each resource heals itself inside syncStreetResource — no heavy pre-pass that
+    // could time the invocation out before anything runs. Empties fill as the cursor comes round.
     let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
-    for (let k = 0; k < n; k++) picks.push(reg[(idx + k) % reg.length]);
-    try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
-  }
-  // Record what this run is attempting, so even a mid-run failure leaves a trail.
-  try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:lastrun", JSON.stringify({ at: new Date().toISOString(), behind: behind.length, picked: picks.map(function (p) { return p.name; }) })); } catch (_) {}
-  for (let k = 0; k < picks.length; k++) { const e = picks[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (ex) { await logSyncError(env, e.name, "run", String((ex && ex.message) || ex).slice(0, 200)); } }
+    const picked = [];
+    for (let i = 0; i < n; i++) picked.push(reg[(idx + i) % reg.length]);
+    try { if (env.LISTINGS) { await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); await env.LISTINGS.put("sync:extras:lastrun", JSON.stringify({ at: new Date().toISOString(), picked: picked.map(function (p) { return p.name; }) })); } } catch (_) {}
+    for (let k = 0; k < picked.length; k++) { const e = picked[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (ex) { await logSyncError(env, e.name, "run", String((ex && ex.message) || ex).slice(0, 200)); } }
   } catch (eFatal) { await logSyncError(env, "extras-rotate", "fatal", String((eFatal && eFatal.message) || eFatal).slice(0, 200)); }
 }
 // Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
@@ -1715,11 +1702,13 @@ export default {
       })());
       return;
     }
-    // Every 15 minutes: enquiries (always, they're time-critical) + the datasets furthest behind, prioritised
-    // so empty ones fill fast. Bounded per tick so the subrequest budget is safe.
+    // Every 15 minutes, but ALTERNATE so enquiries and the extras never share one invocation's budget (that
+    // sharing is what was timing the extras sync out). enquiries runs at :00/:30, extras at :15/:45 — each
+    // gets a full, clean budget. Both still get a turn twice an hour.
+    const min = new Date((event && event.scheduledTime) || Date.now()).getUTCMinutes();
     ctx.waitUntil((async () => {
-      await syncEnquiries(env).catch(() => {});
-      await syncExtrasRotating(env, 5).catch(() => {});
+      if (min % 30 < 15) await syncEnquiries(env).catch(() => {});
+      else await syncExtrasRotating(env, 6).catch(() => {});
     })());
   },
   async fetch(request, env, ctx) {
@@ -2158,9 +2147,11 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       if (ctx && ctx.waitUntil) {
+        // Drive the extras (the ones that get stuck) on their own clean budget; enquiries keeps backfilling on
+        // its own cron. Two passes advance the rotation further per click.
         ctx.waitUntil((async () => {
-          await syncEnquiries(env).catch(function () {});
-          await syncExtrasRotating(env, 8).catch(function () {});
+          await syncExtrasRotating(env, 6).catch(function () {});
+          await syncExtrasRotating(env, 6).catch(function () {});
         })());
       }
       return respond(JSON.stringify({ ok: true, started: true }), 200, J);
