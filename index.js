@@ -1389,6 +1389,47 @@ function ddlColumns(ddl) {
   return m[1].split(",").map(function (s) { return s.trim().replace(/^"/, "").split(/["\s(]/)[0]; })
     .filter(function (c) { const u = c.toUpperCase(); return c && u !== "PRIMARY" && u !== "FOREIGN" && u !== "UNIQUE" && u !== "CHECK"; });
 }
+// Self-heal schema drift. CREATE TABLE IF NOT EXISTS will NOT widen a table that already exists with an
+// older, narrower column set — e.g. a resource first mirrored generically as (id, created_at, updated_at, raw)
+// and later promoted to one column per field. The INSERT then names columns the table doesn't have, every
+// batch throws, and the resource stores 0 forever. THAT is exactly why tenancies/landlords/vendors/tenants/
+// inspections/offers fetched rows but held none while sales (whose table happened to match) filled to 534/534.
+// We read the table's REAL definition from sqlite_master (always available in D1, unlike some PRAGMAs); if it's
+// missing any column the current shape needs, we rebuild it and reset its backfill so the whole history
+// re-walks in. No data is lost (Street is the source of truth) and a table already in the right shape is never
+// touched. enquiries is left alone (huge, known-good, its own column set). Returns true if it rebuilt.
+async function _resetBackfill(env, name) {
+  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify({ done: false, page: 1 })); await env.LISTINGS.delete("sync:" + name + ":cursor"); } } catch (_) {}
+}
+async function healTable(env, db, name, ddl) {
+  if (!db || name === "enquiries") return false;
+  try {
+    const row = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
+    if (!row || !row.sql) return false; // table doesn't exist yet — it'll be created in the right shape
+    const have = {}; ddlColumns(row.sql).forEach(function (c) { have[c] = 1; });
+    const missing = ddlColumns(ddl).filter(function (c) { return c && !have[c]; });
+    if (missing.length) { // schema drift: rebuild to the current shape and re-arm a full backfill
+      await db.prepare("DROP TABLE IF EXISTS " + name).run();
+      await db.prepare(ddl).run();
+      await _resetBackfill(env, name);
+      return true;
+    }
+    // No drift. But if Street has rows for this resource while we hold none and the backfill is already marked
+    // complete, the table is stuck — an earlier run finished the walk without ever storing (e.g. while the old
+    // schema was rejecting every insert), so the top-up now finds nothing new and it can never catch up. Re-arm
+    // the full backfill so the whole history walks in again. Guarded by total>0 so a genuinely-empty resource
+    // (e.g. invoices, 0 in Street) never loops.
+    let total = null; try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + name + ":total"); if (t != null) total = parseInt(t, 10) || 0; } } catch (_) {}
+    if (total && total > 0) {
+      const cnt = await db.prepare("SELECT COUNT(*) AS n FROM " + name).first();
+      if (!cnt || !cnt.n) {
+        let done = false; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); done = !!(p && p.done); } } } catch (_) {}
+        if (done) { await _resetBackfill(env, name); return true; }
+      }
+    }
+    return false;
+  } catch (_) { return false; }
+}
 // Sync a Street list resource into a D1 table so the Hub reads a fast, COMPLETE local copy.
 // Two phases, tracked per resource in KV:
 //   1. backfill — page through the ENTIRE collection a chunk at a time across ticks (no date window),
@@ -1408,29 +1449,10 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   try { await db.prepare(ddl).run(); } catch (e) {}
   let bf = { done: false, page: 1 };
   try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
-  // Self-heal schema drift. CREATE TABLE IF NOT EXISTS will NOT widen a table that already exists with an
-  // older, narrower column set — e.g. a resource first mirrored generically as (id, created_at, updated_at,
-  // raw) and later promoted to one column per field. The INSERT then names columns the table doesn't have,
-  // every batch throws, and the resource stores 0 forever. THAT is exactly why tenancies/landlords/vendors/
-  // tenants/inspections/offers fetched rows but held none while sales (whose table happened to match) filled.
-  // Fix: compare the table's real columns to the ones this resource needs; if any are missing, rebuild the
-  // table to the current shape and reset its backfill so the full history re-walks in. enquiries is left
-  // alone (huge, known-good, its own column set). Tables with a matching schema are never touched.
-  let healed = false;
-  if (name !== "enquiries") {
-    try {
-      const want = ddlColumns(ddl);
-      const info = await db.prepare("PRAGMA table_info(" + name + ")").all();
-      const have = {}; (((info && info.results) || [])).forEach(function (r) { if (r && r.name) have[r.name] = 1; });
-      const missing = want.filter(function (c) { return c && !have[c]; });
-      if (Object.keys(have).length && missing.length) {
-        await db.prepare("DROP TABLE IF EXISTS " + name).run();
-        await db.prepare(ddl).run();
-        bf = { done: false, page: 1 }; healed = true;
-        try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf)); await env.LISTINGS.delete("sync:" + name + ":cursor"); } } catch (_) {}
-      }
-    } catch (_) {}
-  }
+  // Self-heal schema drift before reading/writing (see healTable). If the table was rebuilt, its backfill
+  // was reset, so re-read bf as a fresh full walk.
+  const healed = await healTable(env, db, name, ddl);
+  if (healed) bf = { done: false, page: 1 };
   const mode = !bf.done ? "backfill" : (incr ? "topup" : "recycle");
   const inc = {}, all = [], seen = {};
   let status = 0, err = null, pages = 0, totalPages = null, totalRecords = null, reachedEnd = false;
@@ -1595,6 +1617,11 @@ async function syncOneExtra(env, name) { const e = extrasReg().find(function (x)
 // never blow the Worker subrequest budget — over a few ticks everything backfills, then stays incremental.
 async function syncExtrasRotating(env, count) {
   const reg = extrasReg(); const n = Math.max(1, count || 1);
+  // Up-front heal sweep: repair every drifted table in one pass (cheap schema-only ops, no Street calls), so a
+  // single tick or one "Sync now" corrects ALL datasets at once instead of waiting for the rotation to crawl
+  // round to each. Tables already in the right shape are skipped; rebuilt ones get their backfill reset and
+  // refill on their rotation turn. Runs before the fetch loop so it never competes for the subrequest budget.
+  if (env && env.gr_estates) { for (let i = 0; i < reg.length; i++) { try { await healTable(env, env.gr_estates, reg[i].name, reg[i].ddl); } catch (_) {} } }
   let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
   for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
   try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
