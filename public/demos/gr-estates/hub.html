@@ -76,6 +76,7 @@
  .soonbadge{margin-left:auto;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:rgba(118,114,107,.14);padding:.06rem .34rem;border-radius:5px;flex:none}
  .nv.isoon{opacity:.5}.nv.isoon:hover{opacity:.78}
  .verline{font-size:.7rem;color:var(--muted);text-align:center;margin-top:9px;cursor:pointer}.verline:hover{color:var(--orange-deep)}
+ .assumebar{background:var(--orange);color:#fff;border-radius:9px;padding:.45rem .7rem;font-size:.74rem;font-weight:600;text-align:center;cursor:pointer;margin-bottom:9px}.assumebar:hover{background:var(--orange-deep)}
  .view{padding:20px 22px 64px;max-width:1080px}
  h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
  .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
@@ -208,10 +209,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.13', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.14', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
   var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.0',changelog:'1.0'};
   var CHANGELOG=[
+    {v:'0.14',d:'21 Jun 2026',items:['All core Street data now syncs into the local copy on a cron: viewings, valuations, applicants, offers and contacts','Connections shows what is in the local copy, per dataset','Role preview moved into your profile as Assume a colleague\'s view']},
     {v:'0.13',d:'21 Jun 2026',items:['Enquiries now read from a fast local copy synced from Street every 15 minutes, instant and always newest','Connections shows what data is flowing in and the split across systems','Cross-links to the real systems throughout']},
     {v:'0.12',d:'21 Jun 2026',items:['Cross-links: Connections opens each system, Reviews open in Google, enquiries link to the property, home tiles jump to their page']},
     {v:'0.11',d:'21 Jun 2026',items:['Enquiries now reads every enquiry in Street, website, portals and phone, not just our captures','Company feed streams the real Street enquiry activity']},
@@ -302,11 +304,9 @@
 
   function footHTML(){
     var who=WHO[ROLE]||['Georgina','Owner'];
+    var banner=(ROLE!=='owner')?'<div class="assumebar" onclick="grGo(\'profile\')" title="Manage in your profile">Assuming '+esc((WHO[ROLE]||['',''])[1])+' · manage</div>':'';
     var user='<div class="userblock" onclick="grGo(\'profile\')" title="Your profile"><span class="av">'+esc(initials(who[0]))+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
-    var ctrl;
-    if(ROLE==='owner'){ ctrl='<select class="rolesel" onchange="grRole(this.value)" title="Preview a role dashboard (admin only)"><option value="owner" selected>Preview a role…</option>'+Object.keys(ROLES).filter(function(k){return k!=='owner';}).map(function(k){ return '<option value="'+k+'">'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>'; }
-    else { ctrl='<button class="btn exitp" onclick="grRole(\'owner\')">Exit '+esc((WHO[ROLE]||['','']) [1])+' preview</button>'; }
-    return '<div class="sidefoot">'+user+'<div class="footrow">'+ctrl+'<button class="btn signout" onclick="grLogout()" title="Sign out" aria-label="Sign out">⎋</button></div><div class="verline" onclick="grGo(\'changelog\')" title="What\'s new">Hub v'+HUB_VERSION+' · '+BUILD+'</div></div>';
+    return '<div class="sidefoot">'+banner+user+'<div class="footrow"><button class="btn signout" onclick="grLogout()" style="flex:1" title="Sign out">Sign out</button></div><div class="verline" onclick="grGo(\'changelog\')" title="What\'s new">Hub v'+HUB_VERSION+' · '+BUILD+'</div></div>';
   }
   function tile(n,l,acc,sub,route){ return '<div class="tile'+(acc?' acc':'')+(route?' tclick':'')+'"'+(route?' onclick="grGo(\''+route+'\')"':'')+'><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
@@ -406,7 +406,9 @@
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
     var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect</div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div></div>';
-    return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split
+    var syncRows='';
+    if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records</div><div class="fr">'+(s.at?('synced '+ago(new Date(s.at).getTime())):'awaiting first sync')+'</div></div>'; }).join('')+'</div>'; }
+    return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split+syncRows
       +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
       +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
@@ -511,8 +513,13 @@
     var allowed=ROLES[ROLE].nav; var mods=[];
     NAV.forEach(function(g){ g.items.forEach(function(it){ if(allowed==='all'||allowed.indexOf(it.id)>=0) mods.push(it.l); }); });
     var chips='<div class="chips">'+mods.map(function(m){ return '<span class="chip" style="cursor:default">'+esc(m)+'</span>'; }).join('')+'</div>';
+    var assumeOpts=[['manager','a manager'],['negotiator','a negotiator'],['marketing','Tia (marketing)'],['accounts','Rosie (accounts)']];
+    var aBtns=assumeOpts.map(function(o){ return '<button class="chip'+(ROLE===o[0]?' on':'')+'" onclick="grRole(\''+o[0]+'\')">Assume '+esc(o[1])+'</button>'; }).join('');
+    var aExit=(ROLE!=='owner')?'<button class="btn btn-p" style="margin-top:12px" onclick="grRole(\'owner\')">Back to my own view</button>':'';
+    var assume='<div class="secttl">Assume a colleague\'s view</div><div class="card"><div style="color:var(--muted);font-size:.86rem;margin-bottom:11px">See the Hub exactly as a colleague would, a preview for building and testing, not a real login. '+(ROLE!=='owner'?('You\'re currently assuming <b>'+esc((WHO[ROLE]||['',''])[1])+'</b>.'):'')+'</div><div class="chips">'+aBtns+'</div>'+aExit+'</div>';
     return '<h2 class="vt">Your profile</h2><div class="vsub">Who you are in the Hub, and what you can see.</div>'
       +'<div class="card" style="display:flex;align-items:center;gap:14px"><span class="av" style="width:48px;height:48px;font-size:1rem">'+esc(ini)+'</span><div><div style="font-family:var(--serif);font-weight:700;font-size:1.2rem">'+esc(who[0])+'</div><div style="color:var(--muted)">'+esc(who[1])+(allowed==='all'?' · full access':'')+'</div></div></div>'
+      +assume
       +'<div class="secttl">What this role can access</div>'+chips
       +'<div class="card" style="margin-top:16px;color:var(--muted);font-size:.86rem">Truthfully: you\'re signed in on the shared admin key that you and Georgina use to build this out, so this is a role preview, not a personal account yet. Individual logins, each person with their own secure sign-in and exactly their role\'s access, are on the roadmap. Use "View as" at the top to preview any role.</div>'
       +'<button class="btn" style="margin-top:16px" onclick="grLogout()">Sign out</button>';
@@ -571,6 +578,7 @@
       var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
       fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
+      fetch('/api/sync-status',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.sync=(d&&d.datasets)||null; if(ROUTE==='connections') renderView(false); }).catch(function(){});
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }
       else { gate('Couldn\'t load the hub, try again.'); }
