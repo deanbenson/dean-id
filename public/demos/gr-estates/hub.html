@@ -273,6 +273,20 @@
       setTimeout(function(){ refreshSyncStatus(); if(ROUTE==='viewings'||ROUTE==='valuations'||ROUTE==='contacts'||ROUTE==='enquiries'||ROUTE==='feed') afterBoundary(); var bb=document.getElementById('syncnowbtn'); if(bb){ bb.disabled=false; bb.textContent='Sync now'; } }, 9000);
     }).catch(function(){ var bb=document.getElementById('syncnowbtn'); if(bb){ bb.disabled=false; bb.textContent='Sync now'; } });
   };
+  window.grProbe=function(){
+    var b=document.getElementById('probebtn'); if(b){b.disabled=true;b.textContent='Probing…';}
+    var out=document.getElementById('probeout'); if(out)out.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-top:10px">Asking Street directly…</div>';
+    fetch('/api/sync-probe',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      if(b){b.disabled=false;b.textContent='Probe Street';}
+      if(!out)return;
+      if(!d||!d.probe){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Probe failed.</div>'; return; }
+      var rows=d.probe.map(function(p){
+        var hit=(p.count>0); var c=hit?'#1d9e75':(p.status===200?'#9a9089':'#c2541d');
+        return '<tr><td style="font-family:monospace;font-size:.73rem">'+esc(p.q)+'</td><td style="color:'+c+';font-weight:700">'+(p.status||'—')+'</td><td style="font-weight:700">'+(p.count||0)+(p.total!=null?(' / '+p.total):'')+'</td><td style="font-size:.73rem">'+esc(p.type||p.error||'')+'</td><td style="font-size:.71rem;color:var(--muted)">'+esc((p.keys||[]).join(', '))+'</td></tr>';
+      }).join('');
+      out.innerHTML='<div class="secttl">Street probe — what each endpoint actually returns</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Query</th><th>HTTP</th><th>Rows / total</th><th>Type / error</th><th>Fields</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">A green HTTP with rows is the call we wire. If everything reads 0, those records simply aren\'t in Street.</div>';
+    }).catch(function(){ if(b){b.disabled=false;b.textContent='Probe Street';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Probe error.</div>'; });
+  };
   var TBL={}, TBLDATA={};
   function dtRender(vid){
     var d=TBLDATA[vid], st=TBL[vid], cols=d.cols, q=(st.q||'').toLowerCase();
@@ -490,10 +504,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.22', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.23', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.23',d:'21 Jun 2026',items:['Enquiries backfill confirmed working (climbing past 2,890 and counting)','Added a Probe Street button on Connections: asks Street directly what its viewings, valuations and offers endpoints actually return, so we wire them from fact instead of guesswork']},
     {v:'0.22',d:'21 Jun 2026',items:['The local copy now holds EVERYTHING: each dataset backfills its entire history from Street a chunk at a time, then just tops up with new and changed records','Connections shows backfill progress live as it walks each dataset','Hub pages now read up to 2,000 rows (was 200); the top-bar search still covers the full set']},
     {v:'0.21',d:'21 Jun 2026',items:['Viewings and valuations now sync too: those Street endpoints quietly ignore the incremental filter, so we now pull their most recent records directly when it comes back empty','Applicants (617) and contacts (800) confirmed flowing after the staggered-sync fix']},
     {v:'0.20',d:'21 Jun 2026',items:['Fixed the first sync: the viewings, valuations, applicants, offers and contacts feeds now backfill reliably by spreading the work across cron ticks instead of overwhelming one run','Each dataset now reports exactly what Street returned (status, rows, any error) so nothing fails silently','The cursor only moves forward once data actually lands, so a failed run retries instead of skipping']},
@@ -710,7 +725,7 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly what it returns for viewings, valuations and offers">Probe Street</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div></div>';
     var syncRows='';
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');

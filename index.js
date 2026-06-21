@@ -1908,6 +1908,50 @@ export default {
       return respond(JSON.stringify({ ok: true, started: true }), 200, J);
     }
 
+    // Diagnostic probe: hit the real Street API with several endpoint/parameter variations and report what
+    // comes back (status, rows, total, JSON:API type, first record's attribute keys). Tells us, from fact,
+    // whether viewings/valuations/offers exist for this account and exactly how to pull them. Admin-gated.
+    if (path === "/api/sync-probe" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const cands = [
+        "/viewings?page%5Bsize%5D=3",
+        "/viewings?sort=-created_at&page%5Bsize%5D=3",
+        "/viewings?filter%5Bstart_from%5D=2019-01-01&page%5Bsize%5D=3",
+        "/viewings?filter%5Bcreated_from%5D=2019-01-01&page%5Bsize%5D=3",
+        "/valuations?page%5Bsize%5D=3",
+        "/valuations?filter%5Bcreated_from%5D=2019-01-01&page%5Bsize%5D=3",
+        "/valuations?sort=-created_at&page%5Bsize%5D=3",
+        "/sales-offers?page%5Bsize%5D=3",
+        "/lettings-offers?page%5Bsize%5D=3",
+        "/diary-events?page%5Bsize%5D=3",
+        "/appointments?page%5Bsize%5D=3",
+        "/property-viewings?page%5Bsize%5D=3",
+        "/market-appraisals?page%5Bsize%5D=3",
+        "/valuation-bookings?page%5Bsize%5D=3"
+      ];
+      const out = [];
+      for (const c of cands) {
+        try {
+          const r = await streetGet(env, c);
+          const b = r.body || {};
+          const meta = (b.meta && b.meta.pagination) || {};
+          const first = (b.data && b.data[0]) || null;
+          out.push({
+            q: c, status: r.status,
+            count: (b.data || []).length,
+            total: (meta.total != null ? meta.total : (meta.total_count != null ? meta.total_count : (meta.count != null ? meta.count : null))),
+            type: first ? first.type : null,
+            keys: first ? Object.keys(first.attributes || {}).slice(0, 14) : null,
+            error: (!r.ok && b.errors) ? JSON.stringify(b.errors).slice(0, 200) : undefined
+          });
+        } catch (e) { out.push({ q: c, error: String((e && e.message) || e).slice(0, 160) }); }
+      }
+      return respond(JSON.stringify({ ok: true, probe: out }, null, 2), 200, J);
+    }
+
     // Intelligent cross-data search for the hub: properties, enquiries, contacts, viewings, valuations. Admin-gated (PII).
     if (path === "/api/hub-search" && request.method === "GET") {
       const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
