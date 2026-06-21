@@ -134,7 +134,7 @@
 
   function render(d){
     var isLet=d.kind==='let';
-    window.CUR=d; var imgs=d.images||[];
+    window.CUR=d; recordRecent(d); var imgs=d.images||[];
     var chip=d.status||(isLet?'To Let':'For Sale');
     var price=money(d.price)+(isLet&&d.price?'<span class="pcm"> pcm</span>':'');
     var facts=[];
@@ -194,6 +194,7 @@
   }
   function mortgageMonthly(p){ var loan=p*0.9, r=0.045/12, n=300; var M=loan*r/(1-Math.pow(1+r,-n)); return money(Math.round(M)); }
   function savedMap(){ try{ return JSON.parse(localStorage.getItem('grSaved')||'{}'); }catch(e){ return {}; } }
+  function recordRecent(d){ if(!d||!d.id) return; try{ var a=JSON.parse(localStorage.getItem('grRecent')||'[]'); if(!Array.isArray(a)) a=[]; a=a.filter(function(x){ return x&&x.id!==d.id; }); a.unshift({id:d.id,kind:d.kind,status:d.status,price:d.price,address:d.address,beds:d.beds,baths:d.baths,type:d.type,image:(d.images&&d.images[0])||null,at:Date.now()}); localStorage.setItem('grRecent',JSON.stringify(a.slice(0,12))); }catch(e){} }
   window.toggleSave=function(){ if(!window.CUR) return; var m=savedMap(), d=window.CUR; if(m[d.id]){ delete m[d.id]; } else { m[d.id]={id:d.id,kind:d.kind,status:d.status,price:d.price,address:d.address,beds:d.beds,baths:d.baths,type:d.type,image:(d.images&&d.images[0])||null}; } localStorage.setItem('grSaved',JSON.stringify(m)); syncSaveBtn(); };
   function syncSaveBtn(){ var btn=document.getElementById('saveBtn'); if(!btn||!window.CUR) return; var on=!!savedMap()[window.CUR.id]; btn.classList.toggle('on',on); var hh=btn.querySelector('.hh'); if(hh)hh.textContent=on?'♥':'♡'; var lbl=btn.querySelector('.lbl'); if(lbl)lbl.textContent=on?'Saved':'Save'; }
   window.shareProp=function(){ var url=location.href; if(navigator.share){ navigator.share({title:document.title,url:url}).catch(function(){}); } else if(navigator.clipboard){ navigator.clipboard.writeText(url); var b=event&&event.currentTarget; if(b){ var o=b.innerHTML; b.innerHTML='✓ Copied'; setTimeout(function(){ b.innerHTML=o; },1500); } } };

@@ -43,6 +43,9 @@
  .btn{display:inline-block;background:var(--orange);color:#fff;font-weight:600;text-decoration:none;padding:.7rem 1.2rem;border-radius:10px}
  .btn:hover{background:var(--orange-deep)}
  .muted{color:var(--muted)}
+ .sec{font-family:var(--serif);font-weight:700;font-size:1.2rem;margin:34px 0 2px}
+ .sec.first{margin-top:24px}
+ .fav.off{background:rgba(255,255,255,.92);color:var(--orange-deep)}
  @media(max-width:860px){.listings{grid-template-columns:repeat(2,1fr)}}
  @media(max-width:560px){.listings{grid-template-columns:1fr}}
 </style>
@@ -53,7 +56,7 @@
   <a class="back" href="index.html">← Back to site</a>
 </div></header>
 <div class="wrap">
-  <div class="hd"><div class="ey">My G.R. Estates</div><h1>Saved homes</h1><p id="sub" class="muted">Loading your saved properties…</p></div>
+  <div class="hd"><div class="ey">My G.R. Estates</div><h1>Saved &amp; recently viewed</h1><p id="sub" class="muted">Loading…</p></div>
   <div id="out"></div>
 </div>
 <script>
@@ -61,14 +64,18 @@
   var out=document.getElementById('out'), sub=document.getElementById('sub');
   function savedMap(){ try{ var m=JSON.parse(localStorage.getItem('grSaved')||'{}'); return (m&&typeof m==='object'&&!Array.isArray(m))?m:{}; }catch(e){ return {}; } }
   function setMap(m){ try{ localStorage.setItem('grSaved',JSON.stringify(m)); }catch(e){} }
+  function recentList(){ try{ var a=JSON.parse(localStorage.getItem('grRecent')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function isFav(id){ return !!savedMap()[String(id)]; }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function money(n,isLet){ if(n==null||n===''||isNaN(n)) return 'POA'; var s='£'+Number(n).toLocaleString('en-GB'); return isLet?s+' <span>pcm</span>':s; }
+  function findDetail(id){ var r=recentList(); for(var i=0;i<r.length;i++){ if(String(r[i].id)===String(id)) return r[i]; } return savedMap()[String(id)]||null; }
   window.rm=function(e,id){ if(e){e.preventDefault();e.stopPropagation();} var m=savedMap(); delete m[String(id)]; setMap(m); load(); return false; };
+  window.toggleSave=function(e,id){ if(e){e.preventDefault();e.stopPropagation();} id=String(id); var m=savedMap(); if(m[id]){ delete m[id]; } else { m[id]=findDetail(id)||{id:id}; } setMap(m); load(); return false; };
   function emptyState(){
-    out.innerHTML='<div class="empty"><div class="big">🤍</div><h2>No saved homes yet</h2><p>Tap the heart on any property and it’ll be kept here, ready when you are. Saved on this device.</p><a class="btn" href="index.html#buy">Browse properties</a></div>';
+    out.innerHTML='<div class="empty"><div class="big">🤍</div><h2>Nothing here yet</h2><p>Tap the heart on any property to save it, and homes you view will show up under Recently viewed. All kept on this device.</p><a class="btn" href="index.html#buy">Browse properties</a></div>';
     sub.textContent='Your shortlist lives here.';
   }
-  function cardHTML(p){
+  function cardHTML(p,mode){
     var isLet=p.kind==='let';
     var img=p.image||(p.images&&p.images[0])||'';
     var ph=img?'<div class="ph" style="background-image:url(\''+esc(img)+'\')">':'<div class="ph">';
@@ -76,19 +83,26 @@
     if(p.beds) meta.push('<span><b>'+p.beds+'</b> bed'+(p.beds>1?'s':'')+'</span>');
     if(p.baths) meta.push('<span><b>'+p.baths+'</b> bath'+(p.baths>1?'s':'')+'</span>');
     if(p.type) meta.push('<span><b>'+esc(p.type)+'</b></span>');
+    var heart;
+    if(mode==='saved'){ heart='<span class="fav" role="button" tabindex="0" aria-label="Remove from saved" onclick="return rm(event,\''+esc(p.id)+'\')">♥</span>'; }
+    else { var on=isFav(p.id); heart='<span class="fav'+(on?'':' off')+'" role="button" tabindex="0" aria-label="'+(on?'Saved':'Save')+'" onclick="return toggleSave(event,\''+esc(p.id)+'\')">'+(on?'♥':'♡')+'</span>'; }
     return '<a class="card" href="property.html?id='+encodeURIComponent(p.id)+'">'+ph
-      +'<span class="chip">'+(isLet?'To let':'For sale')+'</span>'
-      +'<span class="fav" role="button" tabindex="0" aria-label="Remove from saved" onclick="return rm(event,\''+esc(p.id)+'\')">♥</span></div>'
+      +'<span class="chip">'+(isLet?'To let':'For sale')+'</span>'+heart+'</div>'
       +'<div class="body"><div class="price">'+money(p.price,isLet)+'</div>'
       +'<div class="addr">'+esc(p.address||'')+'</div>'
       +'<div class="meta">'+meta.join('')+'</div></div></a>';
   }
+  function grid(items,mode){ return '<div class="listings">'+items.map(function(p){ return cardHTML(p,mode); }).join('')+'</div>'; }
   function load(){
-    var m=savedMap(), list=[], k; for(k in m){ if(m.hasOwnProperty(k)) list.push(m[k]); }
-    if(!list.length){ emptyState(); return; }
-    out.innerHTML='<div class="listings">'+list.map(cardHTML).join('')+'</div>';
-    var n=list.length;
-    sub.textContent=n+' saved home'+(n===1?'':'s')+' · kept on this device';
+    var m=savedMap(), saved=[], k; for(k in m){ if(m.hasOwnProperty(k)) saved.push(m[k]); }
+    var recent=recentList();
+    if(!saved.length && !recent.length){ emptyState(); return; }
+    var html='<h2 class="sec first">Saved homes</h2>';
+    if(saved.length){ html+=grid(saved,'saved'); }
+    else { html+='<p class="muted" style="margin:2px 0 4px">Nothing saved yet — tap the heart on any home to keep it here.</p>'; }
+    if(recent.length){ html+='<h2 class="sec">Recently viewed</h2>'+grid(recent,'recent'); }
+    out.innerHTML=html;
+    sub.textContent=saved.length+' saved · '+recent.length+' recently viewed · kept on this device';
   }
   load();
 })();
