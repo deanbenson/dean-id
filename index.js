@@ -1402,8 +1402,8 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
   const mode = !bf.done ? "backfill" : (incr ? "topup" : "recycle");
   const inc = {}, all = [], seen = {};
-  let status = 0, err = null, pages = 0, totalPages = null, reachedEnd = false;
-  function absorb(b) { if (!b) return; const pg = (b.meta && b.meta.pagination) || {}; if (pg.total_pages) totalPages = pg.total_pages; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
+  let status = 0, err = null, pages = 0, totalPages = null, totalRecords = null, reachedEnd = false;
+  function absorb(b) { if (!b) return; const pg = (b.meta && b.meta.pagination) || {}; if (pg.total_pages) totalPages = pg.total_pages; const tr = (pg.total != null) ? pg.total : ((pg.total_count != null) ? pg.total_count : ((pg.count != null) ? pg.count : null)); if (tr != null) totalRecords = tr; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
   let qbase, startPage;
   if (mode === "topup") {
     let since = null; try { if (env.LISTINGS) since = await env.LISTINGS.get("sync:" + name + ":cursor"); } catch (_) {}
@@ -1445,6 +1445,7 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
     }
     await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
     await env.LISTINGS.put("sync:" + name + ":delta", String(stored));
+    if (totalRecords != null) await env.LISTINGS.put("sync:" + name + ":total", String(totalRecords));
     await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, mapped: mapped, stored: stored, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err || writeErr }));
   } } catch (_) {}
   return stored;
@@ -1985,8 +1986,9 @@ export default {
         try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + t[3] + ":at"); } catch (_) {}
         try { if (env.LISTINGS) { const d = await env.LISTINGS.get("sync:" + t[3] + ":delta"); if (d != null) delta = parseInt(d, 10) || 0; } } catch (_) {}
         let diag = null; try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + t[3] + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
+        let streetTotal = null; try { if (env.LISTINGS) { const st = await env.LISTINGS.get("sync:" + t[3] + ":total"); if (st != null) streetTotal = parseInt(st, 10); } } catch (_) {}
         if (dateCol[t[0]] && env.gr_estates) { try { const c2 = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0] + " WHERE datetime(" + dateCol[t[0]] + ") >= datetime('now','start of day')").first(); today = (c2 && c2.n) || 0; } catch (_) {} }
-        out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta, diag: diag });
+        out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta, streetTotal: streetTotal, diag: diag });
       }
       return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
     }
