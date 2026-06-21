@@ -533,10 +533,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.26', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.27', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.27',d:'21 Jun 2026',items:['Probe confirmed the full Street surface — now importing all of it: every property (1,556, not just the 180 on-market), vendors (1,783), tenants (562), landlords (255), sales/completions (534), tenancies (378) and inspections (163), every field of each','Dropped the endpoints Street does not expose for this account (progressions, keys, maintenance, certificates — those live in Fixflo and the other systems)','That is the whole of Street that holds data, now mirrored locally']},
     {v:'0.26',d:'21 Jun 2026',items:['Push for Street 100%: Probe Street now tests every candidate endpoint (progressions, tenancies, landlords, keys, maintenance, inspections, notes, documents, transactions and more) and shows up to 40 fields each','New generic capture mirrors any Street resource in full — every field — so nothing is left out; started wiring sales progressions, tenancies and landlords','Corrected the wording: Street and Google are the external systems, the rest is your own website and hub capture']},
     {v:'0.25',d:'21 Jun 2026',items:['We now keep the COMPLETE raw Street record for every row, so every field is captured even ones we have no column for','Click any row on Enquiries, Viewings, Valuations or Contacts to open a drawer showing every single field','Empty viewings/valuations/offers tables rebuilt cleanly and the sync now reports the exact database error if an insert ever fails (no more silent failures)']},
     {v:'0.24',d:'21 Jun 2026',items:['Found it: viewings (7,117), valuations (1,071) and offers (1,248) were fetching fine but failing to store because Street sends the address as a structured object — binding that to a text column silently killed every insert','Now coerced to clean text, and those datasets reset to re-pull their full history from the start']},
