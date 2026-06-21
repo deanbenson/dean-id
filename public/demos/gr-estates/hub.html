@@ -155,7 +155,7 @@
 
   function ragColor(c){ return c==='g'?'var(--g)':c==='a'?'var(--a)':c==='r'?'var(--r)':'var(--muted)'; }
   function findItem(id){ for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++) if(NAV[i].items[j].id===id) return NAV[i].items[j]; return null; }
-  function roleAllows(id){ var n=ROLES[ROLE].nav; return n==='all'||n.indexOf(id)>=0; }
+  function roleAllows(id){ if(id==='profile') return true; var n=ROLES[ROLE].nav; return n==='all'||n.indexOf(id)>=0; }
   function computeRag(){
     for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++){ var it=NAV[i].items[j];
       if(it.id==='connections') it.rag=(D.socialOk?'g':'a');
@@ -171,7 +171,7 @@
 
   function onHash(){
     var id=(location.hash||'').replace(/^#/,'')||'home';
-    if(!findItem(id)) id='home';
+    if(id!=='profile' && !findItem(id)) id='home';
     if(!roleAllows(id)) id='home';
     ROUTE=id; NAVOPEN=false;
     var s=document.getElementById('side'); if(s)s.classList.remove('open');
@@ -250,19 +250,27 @@
   }
 
   function viewConnections(){
-    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[]; var lastLead=leads.length?ago(leads[0].at):'none yet';
-    var sys=[
-      {nm:'Street CRM',rag:'g',st:'Healthy',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff · '+(D.branches?D.branches.length:'—')+' offices',fr:'live, source of truth'},
-      {nm:'Google reviews',rag:'g',st:'Healthy',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rv&&rv.generated_at?('updated '+ago(new Date(rv.generated_at).getTime())):'live'},
-      {nm:'Website + leads',rag:'g',st:'Live',dta:leads.length+' leads captured, flowing to Street',fr:'last lead '+lastLead},
-      {nm:'Be-first alerts',rag:'g',st:'Live',dta:(st.alerts!=null?st.alerts:0)+' buyers signed up',fr:'into Street as applicants'},
-      {nm:'Ask Georgina (AI)',rag:'g',st:'Online',dta:'on the site and in this hub',fr:'responding now'},
-      {nm:'My G.R. Estates',rag:'g',st:'Live',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'saved + alerts'},
-      {nm:'Social (Meta)',rag:(D.socialOk?'g':'r'),st:(D.socialOk?'Live':'Offline'),dta:(D.socialOk?'feed showing on site':'Instagram / Facebook feed not showing'),fr:(D.socialOk?'connected':'needs Facebook reconnect')},
-      {nm:'Phone system',rag:'n',st:'Connected',dta:'calls today, AI front desk to come',fr:'ready to wire'}
+    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[];
+    function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
+    var wired=[
+      {nm:'Street CRM',st:'Live',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0)},
+      {nm:'Google reviews',st:'Live',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rel(rv&&rv.generated_at?new Date(rv.generated_at).getTime():0)},
+      {nm:'Website + leads',st:'Live',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet'))},
+      {nm:'Be-first alerts',st:'Live',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet')},
+      {nm:'Ask Georgina (AI)',st:'Live',dta:'on the site and in this hub',fr:'answers on demand'},
+      {nm:'My G.R. Estates',st:'Live',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live'}
     ];
-    var cards=sys.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag '+s.rag+'">'+esc(s.st)+'</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
-    return '<h2 class="vt">Connections</h2><div class="vsub">Everything wired in, whether it\'s healthy, and the data it holds.</div><div class="sysg">'+cards+'</div>';
+    if(D.socialOk) wired.push({nm:'Social (Meta)',st:'Live',dta:'feed showing on the site',fr:'connected'});
+    var known=[];
+    if(!D.socialOk) known.push({nm:'Social (Meta + others)',rag:'r',st:'Not connected',dta:'Instagram, Facebook, LinkedIn, TikTok accounts',fr:'feed not pulled in yet'});
+    known.push({nm:'Rightmove + OnTheMarket',rag:'n',st:'Not wired',dta:'listed on, per your own site',fr:'not connected to the hub'});
+    known.push({nm:'Phone',rag:'n',st:'Not connected',dta:'01642 378022, no integration',fr:'planned, the basis for the AI front desk'});
+    known.push({nm:'G.R. Removals',rag:'n',st:'Partial',dta:'Google reviews only',fr:'jobs and bookings not wired'});
+    function card(s,liveFlag){ var rag=liveFlag?'g':(s.rag||'n'); return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag '+rag+'">'+esc(s.st)+'</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }
+    return '<h2 class="vt">Connections</h2><div class="vsub">Every system, whether its data is flowing, and when it last came in. Only what\'s true, nothing assumed.</div>'
+      +'<div class="secttl">Wired in · live data</div><div class="sysg">'+wired.map(function(s){return card(s,true);}).join('')+'</div>'
+      +'<div class="secttl">Known, not yet wired</div><div class="sysg">'+known.map(function(s){return card(s,false);}).join('')+'</div>'
+      +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">Your full system list, accounts, compliance, maintenance, deposits and the rest, lives in your credentials tracker. Rather than guess at them, we\'ll pull the real inventory in here so each shows its true status and last sync.</div>';
   }
 
   function viewListings(){
@@ -294,7 +302,19 @@
 
   function viewSoon(id){ var it=findItem(id); return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>'; }
 
+  function viewProfile(){
+    var who=WHO[ROLE]||['Georgina','Owner']; var ini=who[0].split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase();
+    var allowed=ROLES[ROLE].nav; var mods=[];
+    NAV.forEach(function(g){ g.items.forEach(function(it){ if(allowed==='all'||allowed.indexOf(it.id)>=0) mods.push(it.l); }); });
+    var chips='<div class="chips">'+mods.map(function(m){ return '<span class="chip" style="cursor:default">'+esc(m)+'</span>'; }).join('')+'</div>';
+    return '<h2 class="vt">Your profile</h2><div class="vsub">Who you are in the Hub, and what you can see.</div>'
+      +'<div class="card" style="display:flex;align-items:center;gap:14px"><span class="av" style="width:48px;height:48px;font-size:1rem">'+esc(ini)+'</span><div><div style="font-family:var(--serif);font-weight:700;font-size:1.2rem">'+esc(who[0])+'</div><div style="color:var(--muted)">'+esc(who[1])+(allowed==='all'?' · full access':'')+'</div></div></div>'
+      +'<div class="secttl">What this role can access</div>'+chips
+      +'<div class="card" style="margin-top:16px;color:var(--muted);font-size:.86rem">Truthfully: you\'re signed in on the shared admin key that you and Georgina use to build this out, so this is a role preview, not a personal account yet. Individual logins, each person with their own secure sign-in and exactly their role\'s access, are on the roadmap. Use "View as" at the top to preview any role.</div>'
+      +'<button class="btn" style="margin-top:16px" onclick="grLogout()">Sign out</button>';
+  }
   function viewFor(id){
+    if(id==='profile')return viewProfile();
     if(id==='home')return roleHome(); if(id==='connections')return viewConnections(); if(id==='ask')return viewAsk();
     if(id==='enquiries')return viewEnquiries(); if(id==='listings')return viewListings(); if(id==='reviews')return viewReviews(); if(id==='roadmap')return viewRoadmap();
     return viewSoon(id);
@@ -313,7 +333,7 @@
   function renderShell(){
     computeRag();
     var who=WHO[ROLE]||['Georgina','Owner']; var ini=who[0].split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase();
-    var acct='<div class="acct"><span class="av">'+esc(ini)+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
+    var acct='<div class="acct" onclick="grGo(\'profile\')" style="cursor:pointer" title="Your profile"><span class="av">'+esc(ini)+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
     var rs='<label class="vlab">View as</label><select class="rolesel" onchange="grRole(this.value)" title="Preview a role view">'+Object.keys(ROLES).map(function(k){ return '<option value="'+k+'"'+(k===ROLE?' selected':'')+'>'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>';
     root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+'</aside><div class="main">'
       +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div>'+acct+rs+'<button class="btn" onclick="grLogout()">Sign out</button></div>'
@@ -334,9 +354,9 @@
       fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
-      D.portfolio=(res[1]&&res[1].portfolio)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
+      D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
-      var id=(location.hash||'').replace(/^#/,''); if(id&&findItem(id)&&roleAllows(id)) ROUTE=id;
+      var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }

@@ -1539,10 +1539,11 @@ export default {
         }
       } catch (_) {}
       leads.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
-      let waitlist = 0, alerts = 0;
+      let waitlist = 0, alerts = 0, lastAlertAt = 0;
       try { if (env.LISTINGS) { const wl = await env.LISTINGS.list({ prefix: "waitlist:", limit: 1000 }); waitlist = (wl.keys || []).length; } } catch (_) {}
-      try { if (env.LISTINGS) { const al = await env.LISTINGS.list({ prefix: "alert:", limit: 1000 }); alerts = (al.keys || []).length; } } catch (_) {}
-      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist, alerts: alerts } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      try { if (env.LISTINGS) { const al = await env.LISTINGS.list({ prefix: "alert:", limit: 1000 }); alerts = (al.keys || []).length; (al.keys || []).forEach(function (k) { const t = parseInt(String(k.name).split(":")[1], 10); if (t && t > lastAlertAt) lastAlertAt = t; }); } } catch (_) {}
+      const lastLeadAt = leads.length ? (leads[0].at || 0) : 0;
+      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist, alerts: alerts, lastAlertAt: lastAlertAt, lastLeadAt: lastLeadAt } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
     // Admin: portfolio intelligence for the Hub — live counts + averages from D1. Same key as /api/leads.
@@ -1562,7 +1563,9 @@ export default {
           portfolio.byType = ((ty && ty.results) || []).map(function (r) { return { type: r.type, n: r.n }; });
         }
       } catch (_) {}
-      return respond(JSON.stringify({ ok: true, portfolio: portfolio, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      let listings_at = null;
+      try { if (env.LISTINGS) { const cur = await env.LISTINGS.get("current"); if (cur) { const c = JSON.parse(cur); listings_at = c.generated_at || null; } } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, portfolio: portfolio, listings_at: listings_at, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
     // Ask Georgina, inside the Hub — a plain-language copilot over the live business data. Admin-gated.
