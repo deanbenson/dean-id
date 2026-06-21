@@ -135,6 +135,10 @@
  .dtbar:focus-within{border-color:var(--orange)}
  .dtbar .dtmag{color:var(--muted);font-size:1.05rem;line-height:1}
  .dtsearch{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink)}
+ .dsum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+ .dstile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;box-shadow:0 5px 14px rgba(44,46,51,.04);min-width:92px}
+ .dstile b{display:block;font-family:var(--serif);font-weight:700;font-size:1.35rem;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.15}
+ .dstile span{font-size:.73rem;color:var(--muted)}
  .dtcount{font-size:.76rem;color:var(--muted);margin:0 0 8px 2px}
  table.dt th.dtsort{cursor:pointer;user-select:none;white-space:nowrap}table.dt th.dtsort:hover{color:var(--ink)}
  .dtar{margin-left:4px;color:var(--orange-deep);font-weight:700}
@@ -430,10 +434,22 @@
     var body=rows.length?rows.map(function(r){ return '<tr>'+cols.map(function(c){ return '<td>'+(c.html?c.html(r):esc((c.get?c.get(r):'')==null?'':c.get(r)))+'</td>'; }).join('')+(det&&r.id?'<td class="dtx"><button class="rowbtn" title="View all fields" onclick="grRow(\''+det+'\',\''+r.id+'\')">⤢</button></td>':(det?'<td class="dtx"></td>':''))+'</tr>'; }).join(''):'<tr><td colspan="'+(cols.length+(det?1:0))+'" style="color:var(--muted);padding:18px;text-align:center">No matches.</td></tr>';
     return '<div class="dtcount">'+rows.length+(d.rows.length!==rows.length?(' of '+d.rows.length):'')+'</div><table class="enq dt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
   }
+  function statusOf(r){ if(r.status!=null&&r.status!=='') return r.status; if(Array.isArray(r.statuses)&&r.statuses.length) return r.statuses[0]; for(var k in r){ if(/(^|_)status$/.test(k)&&r[k]!=null&&r[k]!=='') return r[k]; } return null; }
+  function dataSummary(rows){
+    if(!rows||rows.length<3) return '';
+    var tiles=[], m0=new Date(); m0.setDate(1); m0.setHours(0,0,0,0); var mt=m0.getTime(), hasDate=false, monthN=0;
+    rows.forEach(function(r){ var d=r.created_at||r.start||r.due_date; if(d){ var t=new Date(d).getTime(); if(!isNaN(t)){ hasDate=true; if(t>=mt) monthN++; } } });
+    if(hasDate) tiles.push(['Added this month', monthN]);
+    var c={}, anyStatus=false;
+    rows.forEach(function(r){ var s=statusOf(r); if(s!=null&&s!==''){ anyStatus=true; s=String(s).replace(/_/g,' '); s=s.charAt(0).toUpperCase()+s.slice(1); c[s]=(c[s]||0)+1; } });
+    if(anyStatus){ Object.keys(c).sort(function(a,b){return c[b]-c[a];}).slice(0,3).forEach(function(s){ tiles.push([s,c[s]]); }); }
+    if(!tiles.length) return '';
+    return '<div class="dsum">'+tiles.map(function(t){return '<div class="dstile"><b>'+t[1].toLocaleString('en-GB')+'</b><span>'+esc(t[0])+'</span></div>';}).join('')+'</div>';
+  }
   function dataTable(vid, rows, cols, placeholder, detail){
     if(!TBL[vid]) TBL[vid]={q:'',sort:cols[0].key,dir:-1};
     TBLDATA[vid]={rows:rows,cols:cols,detail:detail||null};
-    return '<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dts_'+vid+'" placeholder="'+esc(placeholder||'Search…')+'" value="'+esc(TBL[vid].q)+'" oninput="grTblFilter(\''+vid+'\')"></div><div id="dtw_'+vid+'">'+dtRender(vid)+'</div>';
+    return dataSummary(rows)+'<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dts_'+vid+'" placeholder="'+esc(placeholder||'Search…')+'" value="'+esc(TBL[vid].q)+'" oninput="grTblFilter(\''+vid+'\')"></div><div id="dtw_'+vid+'">'+dtRender(vid)+'</div>';
   }
   window.grTblFilter=function(vid){ var inp=document.getElementById('dts_'+vid); if(TBL[vid])TBL[vid].q=inp?inp.value:''; var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
   window.grTblSort=function(vid,key){ var st=TBL[vid]; if(!st)return; if(st.sort===key)st.dir=-st.dir; else{st.sort=key;st.dir=-1;} var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
@@ -637,11 +653,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.47', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.48', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.48',d:'21 Jun 2026',items:['Every data screen (Viewings, Valuations, Contacts, Sales, Tenancies and the rest) now opens with an at-a-glance summary above the table — added this month, plus the main status split — so you read the shape of it before the detail, the same idea as the new Connections page','Done once in the shared table component, so it lands consistently across the whole hub']},
     {v:'0.47',d:'21 Jun 2026',items:['Redesigned the Connections page around the person using it, not the engineer who built it. It opens with a plain status — connected and syncing, how many records held — then your live connections, the business numbers your hub holds (properties, contacts, enquiries, viewings, valuations, sales, tenancies), and the wider stack still to plug in','All the technical detail (coverage per dataset, backfill progress, errors) now lives behind the Data health button, on demand, instead of filling the page']},
     {v:'0.46',d:'21 Jun 2026',items:['Right-sized the pulls so a single sync run stays comfortably under the 1,000-call ceiling. The previous setting was so aggressive (8 big datasets at once) it occasionally blew even the paid limit, which is why the last dataset in a run (valuations) showed "too many subrequests". Now 6 datasets a run with big pulls — fast, and safely within budget']},
     {v:'0.45',d:'21 Jun 2026',items:['Now on the Cloudflare paid plan, which lifts the per-run call ceiling from 50 to 1,000. That was the real wall behind the "too many subrequests" error the diagnostics caught','With the headroom, the pulls are turned right up: each sync now works more datasets and pulls far more pages per run, so the remaining back-history (contacts especially) lands in just a few passes','The earlier red "build failed" was only the cron-schedule step on the free plan; the worker code itself deployed fine throughout']},
