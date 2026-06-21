@@ -1605,6 +1605,26 @@ export default {
       return respond(JSON.stringify({ ok: true, answer: answer }), 200, J);
     }
 
+    // Live branches from Street (no hardcoding the office list). Admin-gated.
+    if (path === "/api/branches" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=1800" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      let branches = [];
+      try {
+        const r = await streetGet(env, "/branches");
+        if (r && r.ok && r.body && r.body.data) {
+          branches = (r.body.data || []).map(function (b) {
+            const a = b.attributes || {};
+            const addr = a.address || {};
+            return { id: b.id, name: a.name || a.branch_name || a.display_name || a.title || "", town: a.town || addr.town || addr.city || "", postcode: a.postcode || addr.postcode || "" };
+          }).filter(function (b) { return b.name; });
+        }
+      } catch (_) {}
+      return respond(JSON.stringify({ ok: true, count: branches.length, branches: branches }), 200, J);
+    }
+
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
     if (path === "/api/social") {
       let data = null;

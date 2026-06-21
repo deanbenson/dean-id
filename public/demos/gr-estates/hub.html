@@ -29,12 +29,18 @@
  .nv .ic{width:17px;text-align:center;flex:none;opacity:.8}
  .dot{width:7px;height:7px;border-radius:50%;margin-left:auto;flex:none}
  .main{min-width:0;display:flex;flex-direction:column}
- .askwrap{position:sticky;top:0;background:rgba(237,234,230,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:11px 22px;z-index:5;display:flex;align-items:center;gap:10px}
+ .askwrap{position:sticky;top:0;background:rgba(237,234,230,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:11px 22px;z-index:5;display:flex;align-items:center;gap:9px}
  .menu-b{display:none}
- .ask{flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:.5rem .8rem;max-width:640px}
+ .ask{flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:.5rem .8rem;max-width:600px}
  .ask input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink)}
  .ask .sp{color:var(--orange)}
  .ask button{border:0;background:var(--orange);color:#fff;font:inherit;font-weight:600;font-size:.82rem;border-radius:8px;padding:.35rem .8rem;cursor:pointer}
+ .rolesel{font:inherit;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:9px;padding:.42rem .5rem;color:var(--ink);max-width:130px}
+ .vlab{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+ .acct{display:flex;align-items:center;gap:8px}
+ .av{width:30px;height:30px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.72rem;font-family:var(--serif);flex:none}
+ .who{display:flex;flex-direction:column;line-height:1.15}.who b{font-size:.82rem;font-weight:600}.who span{font-size:.68rem;color:var(--muted)}
+ @media(max-width:680px){.who{display:none}.vlab{display:none}}
  .view{padding:20px 22px 64px;max-width:1080px}
  h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
  .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
@@ -51,6 +57,12 @@
  .row{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:.86rem}.row:first-of-type{border-top:0}
  .row .ic{width:16px;flex:none;opacity:.7;margin-top:1px}.row .tm{margin-left:auto;color:var(--muted);font-size:.78rem;white-space:nowrap}
  .kind{font-size:.7rem;font-weight:700;padding:.1rem .45rem;border-radius:6px;background:rgba(226,103,42,.12);color:var(--orange-deep);text-transform:capitalize}
+ table.enq{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.86rem;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ table.enq th,table.enq td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+ table.enq th{background:#faf7f2;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+ table.enq tr:last-child td{border-bottom:0}
+ .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
+ .efilt{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
  .sysg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
  .sys{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
  .sys .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -67,9 +79,9 @@
  .branch{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}.branch:first-of-type{border-top:0}
  .branch .sc{font-family:var(--serif);font-weight:700}.branch .sc b{color:var(--orange)}
  .chips{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 2px}
- .chip{font-size:.78rem;color:#54585f;background:#faf7f2;border:1px solid var(--line);border-radius:20px;padding:.3rem .7rem;cursor:pointer}.chip:hover{border-color:var(--orange)}
+ .chip{font-size:.78rem;color:#54585f;background:#faf7f2;border:1px solid var(--line);border-radius:20px;padding:.3rem .7rem;cursor:pointer}.chip:hover{border-color:var(--orange)}.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
  .qa{margin:14px 0}.qq{font-weight:600;margin-bottom:5px}.aa{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;white-space:pre-wrap;font-size:.92rem;line-height:1.6}
- .soon{background:#fff;border:1px dashed var(--line);border-radius:16px;padding:48px 30px;text-align:center;color:var(--muted)}
+ .soon{background:#fff;border:1px dashed var(--line);border-radius:16px;padding:46px 30px;text-align:center;color:var(--muted)}
  .soon .bg{font-family:var(--serif);font-size:1.3rem;color:var(--ink);margin:6px 0}
  .soon .tag{display:inline-block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.2rem .6rem;border-radius:20px;margin-top:10px}
  .ovl{display:none}
@@ -78,7 +90,7 @@
   .side{position:fixed;left:0;top:0;bottom:0;width:240px;transform:translateX(-100%);transition:.22s;z-index:40}
   .side.open{transform:none}
   .menu-b{display:inline-flex}
-  .cols{grid-template-columns:1fr}.road{grid-template-columns:1fr 1fr}
+  .cols{grid-template-columns:1fr}.road{grid-template-columns:1fr 1fr}.rolesel{max-width:120px}
   .ovl.show{display:block;position:fixed;inset:0;background:rgba(20,20,20,.35);z-index:35}
  }
  @media(max-width:480px){.road{grid-template-columns:1fr}}
@@ -89,7 +101,7 @@
 <script>
 (function(){
   var root=document.getElementById('root');
-  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false;
+  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner';
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
@@ -104,94 +116,78 @@
   }
 
   var NAV=[
-    {g:'Overview',items:[
-      {id:'home',l:'Home',ic:'⌂',rag:'g'},
-      {id:'connections',l:'Connections',ic:'⚯',rag:'a'},
-      {id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}
-    ]},
-    {g:'Pipeline',items:[
-      {id:'enquiries',l:'Enquiries',ic:'✉',href:'leads.html',rag:'g'},
-      {id:'valuations',l:'Valuations',ic:'£',rag:'g'},
-      {id:'viewings',l:'Viewings',ic:'◷',rag:'g'},
-      {id:'progression',l:'Progression',ic:'↗',rag:'g'}
-    ]},
-    {g:'People',items:[
-      {id:'contacts',l:'Contacts',ic:'☰',rag:'g'},
-      {id:'calendar',l:'Calendar',ic:'▦',rag:'g'}
-    ]},
-    {g:'Property',items:[
-      {id:'listings',l:'Listings',ic:'⌂',rag:'g'},
-      {id:'marketing',l:'Marketing',ic:'◈',rag:'a'}
-    ]},
-    {g:'Lettings',items:[
-      {id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},
-      {id:'maintenance',l:'Maintenance',ic:'✸',rag:'a'}
-    ]},
-    {g:'Services',items:[
-      {id:'removals',l:'Removals',ic:'⊟',rag:'g'},
-      {id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}
-    ]},
-    {g:'Money',items:[
-      {id:'accounts',l:'Accounts',ic:'$',rag:'g'},
-      {id:'compliance',l:'Compliance',ic:'✓',rag:'a'}
-    ]},
-    {g:'Insight',items:[
-      {id:'analytics',l:'Analytics',ic:'▤',rag:'g'},
-      {id:'reviews',l:'Reviews',ic:'★',rag:'g'}
-    ]},
-    {g:'Team',items:[
-      {id:'staff',l:'Staff',ic:'☺',rag:'g'},
-      {id:'feed',l:'Company feed',ic:'❏',rag:'g'},
-      {id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}
-    ]},
-    {g:'',items:[ {id:'settings',l:'Settings',ic:'⚙',rag:'g'} ]}
+    {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
+    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
+    {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
+    {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
+    {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'maintenance',l:'Maintenance',ic:'✸',rag:'a'}]},
+    {g:'Services',items:[{id:'removals',l:'Removals',ic:'⊟',rag:'g'},{id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}]},
+    {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
+    {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'}]},
+    {g:'Team',items:[{id:'staff',l:'Staff',ic:'☺',rag:'g'},{id:'feed',l:'Company feed',ic:'❏',rag:'g'},{id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}]},
+    {g:'',items:[{id:'settings',l:'Settings',ic:'⚙',rag:'g'}]}
   ];
-  var LIVE={home:1,connections:1,ask:1,listings:1,reviews:1,roadmap:1};
   var SOON={
-    valuations:'Booked valuations, the diary and outcomes, from Street.',
-    viewings:'Every viewing, with feedback collected automatically.',
-    progression:'Sales from offer to completion, with chain status.',
-    contacts:'Buyers, sellers, landlords and tenants in one place.',
-    calendar:'Appointments, viewings, valuations and key dates.',
-    marketing:'Rightmove, OnTheMarket and social performance, plus what needs a post.',
-    tenancies:'Live tenancies, renewals and rent.',
-    maintenance:'Works orders and contractor jobs.',
-    removals:'G.R. Removals jobs, bookings and its 5.0-star reviews.',
-    mortgages:'Mortgage referrals and outcomes.',
-    accounts:'Client money, landlord statements and invoices.',
-    compliance:'Gas, EICR and EPC tracking, plus AML checks.',
-    analytics:'Trends, comparisons and snapshot views you can pin.',
-    staff:'The team, roles and performance.',
-    feed:'Live company wins, everyone sees their own feed.',
-    settings:'People and access, plus integrations.'
+    valuations:'Booked valuations, the diary and outcomes, from Street.',viewings:'Every viewing, with feedback collected automatically.',
+    progression:'Sales from offer to completion, with chain status.',contacts:'Buyers, sellers, landlords and tenants in one place.',
+    calendar:'Appointments, viewings, valuations and key dates.',marketing:'Rightmove, OnTheMarket and social performance, plus what needs a post.',
+    tenancies:'Live tenancies, renewals and rent.',maintenance:'Works orders and contractor jobs.',
+    removals:'G.R. Removals jobs, bookings and its 5.0-star reviews.',mortgages:'Mortgage referrals and outcomes.',
+    accounts:'Client money, landlord statements and invoices.',compliance:'Gas, EICR and EPC tracking, plus AML checks.',
+    analytics:'Trends, comparisons and snapshot views you can pin.',staff:'The team, roles and performance.',
+    feed:'Live company wins, everyone sees their own feed.',settings:'People and access, plus integrations.'
   };
   var PLAN=[
-    {t:'New website + live listings',s:'live'},{t:'Leads into Street',s:'live'},{t:'Live Google reviews',s:'live'},
-    {t:'Ask Georgina (AI)',s:'live'},{t:'Saved + recently viewed',s:'live'},{t:'Instant valuation funnel',s:'live'},
-    {t:'Be-first property alerts',s:'live'},{t:'The Hub command centre',s:'live'},
-    {t:'Ask Georgina inside the Hub',s:'now'},{t:'Connections / healthcheck',s:'now'},
+    {t:'New website + live listings',s:'live'},{t:'Leads into Street',s:'live'},{t:'Live Google reviews',s:'live'},{t:'Ask Georgina (AI)',s:'live'},
+    {t:'Saved + recently viewed',s:'live'},{t:'Instant valuation funnel',s:'live'},{t:'Be-first property alerts',s:'live'},{t:'The Hub app',s:'live'},
+    {t:'Ask Georgina inside the Hub',s:'now'},{t:'Connections / healthcheck',s:'now'},{t:'Shareable URLs + role views',s:'now'},
     {t:'Branch routing for leads',s:'next'},{t:'Role dashboards',s:'next'},{t:'Company feed',s:'next'},
     {t:'AI front desk (phone)',s:'later'},{t:'Per-user logins + roles',s:'later'},{t:'Make it G.R.-owned + go live',s:'later'}
   ];
+  var ROLES={
+    owner:{label:'Owner',nav:'all',home:'owner'},
+    manager:{label:'Manager',nav:['home','connections','ask','enquiries','valuations','viewings','progression','contacts','calendar','listings','marketing','tenancies','maintenance','removals','accounts','compliance','analytics','reviews','staff','feed','roadmap'],home:'owner'},
+    negotiator:{label:'Negotiator',nav:['home','ask','enquiries','viewings','contacts','calendar','listings','reviews','feed','roadmap'],home:'nego'},
+    marketing:{label:'Marketing',nav:['home','ask','marketing','listings','reviews','analytics','feed','roadmap'],home:'marketing'},
+    accounts:{label:'Accounts',nav:['home','ask','accounts','compliance','reviews','feed','roadmap'],home:'accounts'}
+  };
+  var WHO={owner:['Georgina','Owner'],manager:['Branch manager','Manager'],negotiator:['Negotiator','Sales / lettings'],marketing:['Tia','Marketing'],accounts:['Rosie','Accounts']};
 
   function ragColor(c){ return c==='g'?'var(--g)':c==='a'?'var(--a)':c==='r'?'var(--r)':'var(--muted)'; }
+  function findItem(id){ for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++) if(NAV[i].items[j].id===id) return NAV[i].items[j]; return null; }
+  function roleAllows(id){ var n=ROLES[ROLE].nav; return n==='all'||n.indexOf(id)>=0; }
   function computeRag(){
-    var e=null; for(var i=0;i<NAV.length;i++){ for(var j=0;j<NAV[i].items.length;j++){ if(NAV[i].items[j].id==='enquiries') e=NAV[i].items[j]; if(NAV[i].items[j].id==='connections'){ NAV[i].items[j].rag = (D.socialOk? 'g':'a'); } } }
-    if(e){ var pct=(D.leads&&D.leads.length)? Math.round(D.leads.filter(function(L){return L.streetOk;}).length/D.leads.length*100):100; e.rag = pct>=100?'g':'a'; }
+    for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++){ var it=NAV[i].items[j];
+      if(it.id==='connections') it.rag=(D.socialOk?'g':'a');
+      if(it.id==='marketing') it.rag=(D.socialOk?'g':'r');
+      if(it.id==='enquiries'){ var L=D.leads||[]; var pct=L.length?Math.round(L.filter(function(x){return x.streetOk;}).length/L.length*100):100; it.rag=pct>=100?'g':'a'; }
+    }
   }
 
-  function go(id){ var it=findItem(id); if(it&&it.href){ location.href=it.href; return; } ROUTE=id; NAVOPEN=false; renderShell(); }
-  window.grGo=go;
-  function findItem(id){ for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++) if(NAV[i].items[j].id===id) return NAV[i].items[j]; return null; }
+  window.grGo=function(id){ if(!roleAllows(id)) id='home'; if(('#'+id)===location.hash){ onHash(); } else { location.hash=id; } };
   window.grToggleNav=function(){ NAVOPEN=!NAVOPEN; var s=document.getElementById('side'); var o=document.getElementById('ovl'); if(s)s.classList.toggle('open',NAVOPEN); if(o)o.classList.toggle('show',NAVOPEN); };
+  window.grRole=function(v){ if(!ROLES[v]) return; ROLE=v; if(!roleAllows(ROUTE)) ROUTE='home'; ENQFILTER='all'; renderShell(); if(('#'+ROUTE)!==location.hash){ location.hash=ROUTE; } };
+  window.grEnqFilter=function(f){ ENQFILTER=f; renderView(false); };
+
+  function onHash(){
+    var id=(location.hash||'').replace(/^#/,'')||'home';
+    if(!findItem(id)) id='home';
+    if(!roleAllows(id)) id='home';
+    ROUTE=id; NAVOPEN=false;
+    var s=document.getElementById('side'); if(s)s.classList.remove('open');
+    var o=document.getElementById('ovl'); if(o)o.classList.remove('show');
+    updateActive(); renderView(true);
+  }
+  function updateActive(){ var ns=document.querySelectorAll('.nv'); for(var i=0;i<ns.length;i++){ ns[i].classList.toggle('on', ns[i].getAttribute('data-id')===ROUTE); } }
+  function renderView(scrollTop){ var v=document.getElementById('view'); if(!v) return; v.innerHTML=viewFor(ROUTE); if(scrollTop){ try{ window.scrollTo(0,0); }catch(e){} } }
 
   function navHTML(){
     var h='<div class="brand"><span>G.<span class="k">R.</span> Hub</span></div>';
     NAV.forEach(function(grp){
+      var vis=grp.items.filter(function(it){ return roleAllows(it.id); });
+      if(!vis.length) return;
       if(grp.g) h+='<div class="gl">'+grp.g+'</div>';
-      grp.items.forEach(function(it){
-        h+='<div class="nv'+(it.id===ROUTE?' on':'')+'" onclick="grGo(\''+it.id+'\')"><span class="ic">'+it.ic+'</span>'+esc(it.l)+'<span class="dot" style="background:'+ragColor(it.rag)+'"></span></div>';
-      });
+      vis.forEach(function(it){ h+='<div class="nv'+(it.id===ROUTE?' on':'')+'" data-id="'+it.id+'" onclick="grGo(\''+it.id+'\')"><span class="ic">'+it.ic+'</span>'+esc(it.l)+'<span class="dot" style="background:'+ragColor(it.rag)+'"></span></div>'; });
     });
     return h;
   }
@@ -199,35 +195,70 @@
   function tile(n,l,acc,sub){ return '<div class="tile'+(acc?' acc':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
   function viewHome(){
-    var leads=D.leads||[]; var today0=new Date(); today0.setHours(0,0,0,0); today0=today0.getTime(); var week0=Date.now()-6048e5;
-    var nT=0,nW=0,nS=0; leads.forEach(function(L){ if((L.at||0)>=today0)nT++; if((L.at||0)>=week0)nW++; if(L.streetOk)nS++; });
-    var pct=leads.length?Math.round(nS/leads.length*100):0;
+    var leads=D.leads||[]; var w0=Date.now()-6048e5; var nW=0; leads.forEach(function(L){ if((L.at||0)>=w0)nW++; });
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{};
-    var tiles=tile(leads.length,'Enquiries',true)+tile(nW,'This week')+tile(nT,'Today')+tile(pct+'%','Into Street')
-      +tile(pf?pf.total:'—','On the market')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews')+tile(st.alerts!=null?st.alerts:'—','Be-first alerts');
-    var acts=leads.slice(0,6).map(function(L){ return '<div class="row"><span class="ic">✉</span><span><span class="kind">'+esc(L.kind||'enquiry')+'</span> '+esc(L.name||'New enquiry')+'</span><span class="tm">'+ago(L.at)+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">No enquiries yet, they\'ll appear here live.</div>';
-    var backup=leads.filter(function(L){return !L.streetOk;}).length;
-    var needs='';
-    if(backup) needs+='<div class="row"><span class="ic" style="color:var(--a)">●</span>'+backup+' lead'+(backup>1?'s':'')+' to double-check (backup only)</div>';
-    if(st.alerts) needs+='<div class="row"><span class="ic" style="color:var(--orange)">●</span>'+st.alerts+' be-first buyer'+(st.alerts>1?'s':'')+' to match</div>';
-    if(!D.socialOk) needs+='<div class="row"><span class="ic" style="color:var(--r)">●</span>Social feed is offline, reconnect Facebook</div>';
-    if(!needs) needs='<div class="row" style="color:var(--g)">All clear. Nothing needs you right now.</div>';
-    return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">Your whole front-of-house, live. '+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+' · all branches</div>'
+    var staff=(D.team&&D.team.length)||null;
+    var branches=(D.branches&&D.branches.length)?D.branches:null;
+    var branchN=branches?branches.length:((rv&&rv.branches)?rv.branches.length:null);
+    var tiles=tile(pf?pf.total:'—','Properties live',true)+tile(pf?pf.sale:'—','For sale')+tile(pf?pf['let']:'—','To let')+tile(branchN!=null?branchN:'—','Branches')+tile(staff!=null?staff:'—','Team')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews');
+    var revByName={}; (rv&&rv.branches||[]).forEach(function(b){ revByName[(b.name||'').toLowerCase()]=b; });
+    var branchRows;
+    if(branches){ branchRows=branches.map(function(b){ var rb=revByName[(b.name||'').toLowerCase()]; var sc=rb?('<b>'+rb.rating+'★</b> · '+rb.count+' reviews'):'<span style="color:var(--muted)">reviews syncing</span>'; return '<div class="branch"><span>'+esc(b.name)+(b.town?' <span style="color:var(--muted);font-size:.8rem">'+esc(b.town)+'</span>':'')+'</span><span class="sc">'+sc+'</span></div>'; }).join(''); }
+    else if(rv&&rv.branches&&rv.branches.length){ branchRows=rv.branches.map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+b.rating+'★</b> · '+b.count+' reviews</span></div>'; }).join(''); }
+    else { branchRows='<div class="row" style="color:var(--muted)">Branches syncing from Street…</div>'; }
+    function svcChip(lab,val,on){ return '<span class="chip" style="cursor:default'+(on?'':';opacity:.55')+'">'+lab+(on?(' · '+val):' · connect')+'</span>'; }
+    var svc='<div class="chips">'+svcChip('Sales',(pf?pf.sale+' live':''),!!pf)+svcChip('Lettings',(pf?pf['let']+' live':''),!!pf)+svcChip('Property management','',false)+svcChip('Removals','',false)+svcChip('Mortgages','',false)+'</div>';
+    var max=0;(pf&&pf.byTown||[]).forEach(function(t){if(t.n>max)max=t.n;});
+    var areas=(pf&&pf.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">—</div>';
+    var chan='<div class="row"><span class="ic">✉</span><span>Website enquiries</span><span class="tm">'+leads.length+' total · '+nW+' this week</span></div><div class="row"><span class="ic">★</span><span>Be-first buyer alerts</span><span class="tm">'+(st.alerts!=null?st.alerts:0)+'</span></div><div class="row"><span class="ic">✦</span><span>My G.R. Estates signups</span><span class="tm">'+(st.waitlist!=null?st.waitlist:0)+'</span></div>';
+    var gaps='<div class="row" style="color:var(--muted)">Sales pipeline &amp; completions</div><div class="row" style="color:var(--muted)">Rent roll, arrears &amp; occupancy</div><div class="row" style="color:var(--muted)">Revenue &amp; fees</div><div class="row" style="color:var(--muted)">Phone &amp; portal enquiries</div><div style="font-size:.76rem;color:var(--muted);margin-top:8px">These light up as we wire Street\'s sales, lettings and finance feeds.</div>';
+    return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">'+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+(branchN!=null?(' · '+branchN+' branches'):'')+(staff!=null?(' · '+staff+' staff'):'')+'</div>'
       +'<div class="tiles">'+tiles+'</div>'
-      +'<div class="secttl">Today at a glance</div><div class="cols"><div class="card"><h3>Live activity</h3>'+acts+'</div><div class="card"><h3>Needs you</h3>'+needs+'</div></div>';
+      +'<div class="secttl">Service lines</div>'+svc
+      +'<div class="cols" style="margin-top:18px"><div class="card"><h3>Branches</h3>'+branchRows+'</div><div class="card"><h3>Stock by area</h3>'+areas+'</div></div>'
+      +'<div class="cols" style="margin-top:14px"><div class="card"><h3>Live channels</h3>'+chan+'</div><div class="card"><h3>Not connected yet</h3>'+gaps+'</div></div>';
+  }
+
+  function roleHome(){
+    var h=ROLES[ROLE].home; if(h==='owner') return viewHome();
+    var rv=D.reviews, pf=D.portfolio, leads=D.leads||[];
+    if(h==='nego'){
+      var work=leads.slice(0,6).map(function(L){ return '<div class="row"><span class="ic">✉</span><span><span class="kind">'+esc(L.kind||'enquiry')+'</span> '+esc(L.name||'New enquiry')+'</span><span class="tm">'+ago(L.at)+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">Nothing waiting.</div>';
+      return '<h2 class="vt">Your day</h2><div class="vsub">Your worklist and what needs chasing. Per-person assignment arrives with logins.</div><div class="tiles">'+tile(leads.length,'Open enquiries',true)+tile('—','Viewings today')+tile('—','Your valuations')+'</div><div class="secttl">To action</div><div class="card"><h3>Recent enquiries</h3>'+work+'</div>';
+    }
+    if(h==='marketing'){
+      var bran=(rv&&rv.branches||[]).map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">—</div>';
+      return '<h2 class="vt">Hi Tia</h2><div class="vsub">Your marketing dashboard. Portal and social stats fill in as we connect Meta and the portals, nothing here is invented.</div><div class="tiles">'+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews',true)+tile(pf?pf.total:'—','Live listings')+tile('—','Portal views')+tile('—','Posts this week')+'</div><div class="cols"><div class="card"><h3>Needs a post</h3><div class="row" style="color:var(--muted)">New instructions and price reductions will appear here to promote, once we wire Street\'s status feed.</div></div><div class="card"><h3>Reviews by branch</h3>'+bran+'</div></div>';
+    }
+    if(h==='accounts'){
+      return '<h2 class="vt">Hi Rosie</h2><div class="vsub">Your finance dashboard. The money modules connect through Street.</div><div class="tiles">'+tile('—','Rent due')+tile('—','Arrears')+tile('—','Landlord payouts')+tile('—','Invoices')+'</div><div class="card" style="color:var(--muted)">Client accounts, statements and compliance plug in here, fed by Street. Coming soon.</div>';
+    }
+    return viewHome();
+  }
+
+  function viewEnquiries(){
+    var leads=D.leads||[]; var byKind={valuation:0,viewing:0,contact:0,other:0}; leads.forEach(function(L){ var k=L.kind||'other'; byKind[k]=(byKind[k]||0)+1; });
+    function chip(f,lab){ return '<span class="chip'+(ENQFILTER===f?' on':'')+'" onclick="grEnqFilter(\''+f+'\')">'+lab+'</span>'; }
+    var chips='<div class="efilt">'+chip('all','All ('+leads.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')')+'</div>';
+    var shown=leads.filter(function(L){ return ENQFILTER==='all'||(L.kind||'contact')===ENQFILTER; });
+    var body;
+    if(!leads.length) body='<div class="card" style="color:var(--muted)">No enquiries yet. They\'ll appear here the moment someone uses a form on the site.</div>';
+    else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries yet.</div>';
+    else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var ins=L.streetOk?'<span class="ok">✓ Street</span>':'<span class="no">backup</span>'; return '<tr><td>'+esc(fmt(L.at))+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+esc((L.message||'').slice(0,180))+'</td><td>'+ins+'</td></tr>'; }).join('');
+      body='<table class="enq"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>'; }
+    return '<h2 class="vt">Enquiries</h2><div class="vsub">Every website lead, flowing into Street. Newest first.</div>'+chips+body;
   }
 
   function viewConnections(){
-    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[];
-    var lastLead=leads.length?ago(leads[0].at):'none yet';
+    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[]; var lastLead=leads.length?ago(leads[0].at):'none yet';
     var sys=[
-      {nm:'Street CRM',rag:'g',st:'Healthy',dta:(pf?pf.total:'—')+' listings · 13 staff · 3 offices',fr:'live, source of truth'},
+      {nm:'Street CRM',rag:'g',st:'Healthy',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff · '+(D.branches?D.branches.length:'—')+' offices',fr:'live, source of truth'},
       {nm:'Google reviews',rag:'g',st:'Healthy',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rv&&rv.generated_at?('updated '+ago(new Date(rv.generated_at).getTime())):'live'},
       {nm:'Website + leads',rag:'g',st:'Live',dta:leads.length+' leads captured, flowing to Street',fr:'last lead '+lastLead},
       {nm:'Be-first alerts',rag:'g',st:'Live',dta:(st.alerts!=null?st.alerts:0)+' buyers signed up',fr:'into Street as applicants'},
       {nm:'Ask Georgina (AI)',rag:'g',st:'Online',dta:'on the site and in this hub',fr:'responding now'},
       {nm:'My G.R. Estates',rag:'g',st:'Live',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'saved + alerts'},
-      {nm:'Social (Meta)',rag:'r',st:'Offline',dta:'Instagram / Facebook feed not showing',fr:'needs Facebook reconnect'},
+      {nm:'Social (Meta)',rag:(D.socialOk?'g':'r'),st:(D.socialOk?'Live':'Offline'),dta:(D.socialOk?'feed showing on site':'Instagram / Facebook feed not showing'),fr:(D.socialOk?'connected':'needs Facebook reconnect')},
       {nm:'Phone system',rag:'n',st:'Connected',dta:'calls today, AI front desk to come',fr:'ready to wire'}
     ];
     var cards=sys.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag '+s.rag+'">'+esc(s.st)+'</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
@@ -235,20 +266,15 @@
   }
 
   function viewListings(){
-    var p=D.portfolio;
-    if(!p) return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div><div class="card">Loading…</div>';
+    var p=D.portfolio; if(!p) return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div><div class="card">Loading…</div>';
     var max=0;(p.byTown||[]).forEach(function(t){if(t.n>max)max=t.n;});
     var towns=(p.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('');
-    var types=(p.byType||[]).slice(0,8).map(function(t){ return '<span class="chip">'+esc(t.type)+' · '+t.n+'</span>'; }).join('');
-    return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div>'
-      +'<div class="tiles">'+tile(p.total||0,'On the market',true)+tile(p.sale||0,'For sale')+tile(p.let||0,'To let')+tile(money(p.avgSale),'Avg asking')+tile(p.avgLetPcm!=null?money(p.avgLetPcm):'—','Avg rent pcm')+'</div>'
-      +'<div class="secttl">Where</div><div class="card">'+(towns||'No data')+'</div>'
-      +(types?'<div class="secttl">By type</div><div class="chips">'+types+'</div>':'');
+    var types=(p.byType||[]).slice(0,8).map(function(t){ return '<span class="chip" style="cursor:default">'+esc(t.type)+' · '+t.n+'</span>'; }).join('');
+    return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div><div class="tiles">'+tile(p.total||0,'On the market',true)+tile(p.sale||0,'For sale')+tile(p.let||0,'To let')+tile(money(p.avgSale),'Avg asking')+tile(p.avgLetPcm!=null?money(p.avgLetPcm):'—','Avg rent pcm')+'</div><div class="secttl">Where</div><div class="card">'+(towns||'No data')+'</div>'+(types?'<div class="secttl">By type</div><div class="chips">'+types+'</div>':'');
   }
 
   function viewReviews(){
-    var r=D.reviews;
-    if(!r) return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google.</div><div class="card">Loading…</div>';
+    var r=D.reviews; if(!r) return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google.</div><div class="card">Loading…</div>';
     var rows=(r.branches||[]).map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</span></div>'; }).join('');
     if(r.removals) rows+='<div class="branch"><span>'+esc(r.removals.name||'G.R. Removals')+' <span style="color:var(--muted);font-size:.8rem">(sister co.)</span></span><span class="sc"><b>'+(r.removals.rating||'—')+'★</b> · '+(r.removals.count||0)+'</span></div>';
     return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google · '+(r.average||'—')+'★ across '+(r.total||0)+' estate reviews.</div><div class="card"><h3>By branch</h3>'+rows+'</div>';
@@ -263,34 +289,36 @@
   function viewAsk(){
     var log=ASKLOG.map(function(x){ return '<div class="qa"><div class="qq">'+esc(x.q)+'</div><div class="aa">'+(x.a===null?'<span style="color:var(--muted)">Thinking…</span>':esc(x.a))+'</div></div>'; }).join('');
     var chips='<div class="chips">'+['Anything need my attention?','How many enquiries this week?','Which area has the most listings?','How are our reviews doing?'].map(function(c){ return '<span class="chip" onclick="grAsk(\''+c.replace(/'/g,"\\'")+'\')">'+c+'</span>'; }).join('')+'</div>';
-    return '<h2 class="vt">Ask Georgina</h2><div class="vsub">Ask anything about the business in plain English. She answers from your live data.</div>'+chips+(log||'<div class="card" style="color:var(--muted)">Try one of the suggestions above, or use the ask bar at the top of any page.</div>');
+    return '<h2 class="vt">Ask Georgina</h2><div class="vsub">Ask anything about the business in plain English. She answers from your live data.</div>'+chips+(log||'<div class="card" style="color:var(--muted)">Try a suggestion above, or use the ask bar at the top of any page.</div>');
   }
 
-  function viewSoon(id){
-    var it=findItem(id);
-    return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>';
-  }
+  function viewSoon(id){ var it=findItem(id); return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>'; }
 
   function viewFor(id){
-    if(id==='home')return viewHome(); if(id==='connections')return viewConnections(); if(id==='ask')return viewAsk();
-    if(id==='listings')return viewListings(); if(id==='reviews')return viewReviews(); if(id==='roadmap')return viewRoadmap();
+    if(id==='home')return roleHome(); if(id==='connections')return viewConnections(); if(id==='ask')return viewAsk();
+    if(id==='enquiries')return viewEnquiries(); if(id==='listings')return viewListings(); if(id==='reviews')return viewReviews(); if(id==='roadmap')return viewRoadmap();
     return viewSoon(id);
   }
 
   window.grAsk=function(q){
     q=(q==null?'':String(q)).trim(); if(!q||ASKING) return;
     var inp=document.getElementById('askin'); if(inp) inp.value='';
-    ASKLOG.unshift({q:q,a:null}); ASKING=true; ROUTE='ask'; renderShell();
+    ASKLOG.unshift({q:q,a:null}); ASKING=true;
+    if(ROUTE!=='ask'){ location.hash='ask'; } else { renderView(false); }
     fetch('/api/hub-ask',{method:'POST',headers:{'content-type':'application/json','x-admin-key':key()},body:JSON.stringify({q:q})})
       .then(function(r){return r.json();}).then(function(d){ ASKLOG[0].a=(d&&d.answer)||'No answer.'; }).catch(function(){ ASKLOG[0].a='Sorry, I couldn\'t reach the assistant just now.'; })
-      .then(function(){ ASKING=false; if(ROUTE==='ask') renderShell(); });
+      .then(function(){ ASKING=false; if(ROUTE==='ask') renderView(false); });
   };
 
   function renderShell(){
     computeRag();
+    var who=WHO[ROLE]||['Georgina','Owner']; var ini=who[0].split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase();
+    var acct='<div class="acct"><span class="av">'+esc(ini)+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
+    var rs='<label class="vlab">View as</label><select class="rolesel" onchange="grRole(this.value)" title="Preview a role view">'+Object.keys(ROLES).map(function(k){ return '<option value="'+k+'"'+(k===ROLE?' selected':'')+'>'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>';
     root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+'</aside><div class="main">'
-      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div><button class="btn" onclick="grLogout()">Lock</button></div>'
+      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div>'+acct+rs+'<button class="btn" onclick="grLogout()">Sign out</button></div>'
       +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
+    updateActive();
   }
 
   function boot(){
@@ -301,17 +329,21 @@
       fetch('/api/leads',{headers:hk}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
       fetch('/api/hub',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;}),
       fetch('/api/reviews').then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch('/api/social').then(function(r){return r.json();}).catch(function(){return null;})
+      fetch('/api/social').then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch('/api/team').then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
-      D.portfolio=(res[1]&&res[1].portfolio)||null; D.reviews=res[2]||null;
-      D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
+      D.portfolio=(res[1]&&res[1].portfolio)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
+      D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
+      var id=(location.hash||'').replace(/^#/,''); if(id&&findItem(id)&&roleAllows(id)) ROUTE=id;
       renderShell();
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }
       else { gate('Couldn\'t load the hub, try again.'); }
     });
   }
+  window.addEventListener('hashchange', function(){ if(document.getElementById('view')) onHash(); });
   boot();
 })();
 </script>
