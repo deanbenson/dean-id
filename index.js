@@ -1490,6 +1490,11 @@ function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INS
 function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc)), JSON.stringify(d)); }; }
 function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch,raw) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : (a.rent_amount != null ? Math.round(a.rent_amount) : null)), _t(a.status), _t(_branch(d, inc)), JSON.stringify(d)); }; }
 function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status,raw) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(nm), _t(em), _t(ph), _t(st), JSON.stringify(d)); }
+// Generic capture: any Street resource we don't have a bespoke table for is mirrored as id + dates + the
+// COMPLETE raw record, so every field is held even without dedicated columns. Lets us add any endpoint in one line.
+function genDDL(name) { return "CREATE TABLE IF NOT EXISTS " + name + " (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, raw TEXT)"; }
+function genMapFor(name) { return function (db, d) { const a = d.attributes || {}; return db.prepare("INSERT INTO " + name + " (id,created_at,updated_at,raw) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET created_at=excluded.created_at,updated_at=excluded.updated_at,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.updated_at), JSON.stringify(d)); }; }
+function genRes(name, path) { return { name: name, path: path, ddl: genDDL(name), map: genMapFor(name), opts: { incr: false }, generic: true }; }
 // The full set of Street list resources we mirror locally. Order is the rotation order.
 function extrasReg() {
   return [
@@ -1499,7 +1504,11 @@ function extrasReg() {
     { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let"), opts: { incr: true } },
     { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
     { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
-    { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } }
+    { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } },
+    // Additional Street resources captured in full (generic raw store). Pruned/expanded from probe results.
+    genRes("sales_progressions", "/sales-progressions"),
+    genRes("tenancies", "/tenancies"),
+    genRes("landlords", "/landlords")
   ];
 }
 async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
@@ -1854,7 +1863,7 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const name = String(url.searchParams.get("name") || "");
-      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, sales_progressions: 1, tenancies: 1, landlords: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
       let rows = [], total = 0, at = null;
       try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
@@ -1885,7 +1894,7 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const name = String(url.searchParams.get("name") || ""), id = String(url.searchParams.get("id") || "");
-      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, sales_progressions: 1, tenancies: 1, landlords: 1 };
       if (!allow[name] || !id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad request" }), 400, J);
       let row = null, raw = null;
       try { row = await env.gr_estates.prepare("SELECT * FROM " + name + " WHERE id = ?").bind(id).first(); } catch (_) {}
@@ -1920,8 +1929,8 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
-      const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings", "hourly", "listings"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["contacts", "Contacts", "hourly", "contacts"]];
-      const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at" };
+      const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings", "hourly", "listings"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["contacts", "Contacts", "hourly", "contacts"], ["sales_progressions", "Sales progressions", "15min", "sales_progressions"], ["tenancies", "Tenancies", "15min", "tenancies"], ["landlords", "Landlords", "15min", "landlords"]];
+      const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at", sales_progressions: "created_at", tenancies: "created_at", landlords: "created_at" };
       const out = [];
       for (const t of tables) {
         let count = 0, at = null, today = null, delta = null;
@@ -1959,21 +1968,15 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const cands = [
-        "/viewings?page%5Bsize%5D=3",
-        "/viewings?sort=-created_at&page%5Bsize%5D=3",
-        "/viewings?filter%5Bstart_from%5D=2019-01-01&page%5Bsize%5D=3",
-        "/viewings?filter%5Bcreated_from%5D=2019-01-01&page%5Bsize%5D=3",
-        "/valuations?page%5Bsize%5D=3",
-        "/valuations?filter%5Bcreated_from%5D=2019-01-01&page%5Bsize%5D=3",
-        "/valuations?sort=-created_at&page%5Bsize%5D=3",
-        "/sales-offers?page%5Bsize%5D=3",
-        "/lettings-offers?page%5Bsize%5D=3",
-        "/diary-events?page%5Bsize%5D=3",
-        "/appointments?page%5Bsize%5D=3",
-        "/property-viewings?page%5Bsize%5D=3",
-        "/market-appraisals?page%5Bsize%5D=3",
-        "/valuation-bookings?page%5Bsize%5D=3"
-      ];
+        "/properties", "/sales-instructions", "/lettings-instructions",
+        "/sales-progressions", "/lettings-progressions", "/progressions",
+        "/tenancies", "/tenancy-renewals", "/tenancy-agreements",
+        "/landlords", "/vendors", "/buyers", "/tenants", "/property-occupiers", "/occupiers",
+        "/keys", "/maintenance-issues", "/works-orders", "/inspections", "/property-inspections",
+        "/certificates", "/compliance", "/notes", "/tasks", "/documents",
+        "/transactions", "/payments", "/invoices", "/fees", "/chains",
+        "/sales", "/completions", "/offers", "/feedback", "/sources", "/property-types"
+      ].map(function (p) { return p + (p.indexOf("?") >= 0 ? "&" : "?") + "page%5Bsize%5D=2"; });
       const out = [];
       for (const c of cands) {
         try {
@@ -1986,7 +1989,7 @@ export default {
             count: (b.data || []).length,
             total: (meta.total != null ? meta.total : (meta.total_count != null ? meta.total_count : (meta.count != null ? meta.count : null))),
             type: first ? first.type : null,
-            keys: first ? Object.keys(first.attributes || {}).slice(0, 14) : null,
+            keys: first ? Object.keys(first.attributes || {}).slice(0, 40) : null,
             error: (!r.ok && b.errors) ? JSON.stringify(b.errors).slice(0, 200) : undefined
           });
         } catch (e) { out.push({ q: c, error: String((e && e.message) || e).slice(0, 160) }); }

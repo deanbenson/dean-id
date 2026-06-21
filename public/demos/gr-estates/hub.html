@@ -533,10 +533,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.25', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.26', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.26',d:'21 Jun 2026',items:['Push for Street 100%: Probe Street now tests every candidate endpoint (progressions, tenancies, landlords, keys, maintenance, inspections, notes, documents, transactions and more) and shows up to 40 fields each','New generic capture mirrors any Street resource in full — every field — so nothing is left out; started wiring sales progressions, tenancies and landlords','Corrected the wording: Street and Google are the external systems, the rest is your own website and hub capture']},
     {v:'0.25',d:'21 Jun 2026',items:['We now keep the COMPLETE raw Street record for every row, so every field is captured even ones we have no column for','Click any row on Enquiries, Viewings, Valuations or Contacts to open a drawer showing every single field','Empty viewings/valuations/offers tables rebuilt cleanly and the sync now reports the exact database error if an insert ever fails (no more silent failures)']},
     {v:'0.24',d:'21 Jun 2026',items:['Found it: viewings (7,117), valuations (1,071) and offers (1,248) were fetching fine but failing to store because Street sends the address as a structured object — binding that to a text column silently killed every insert','Now coerced to clean text, and those datasets reset to re-pull their full history from the start']},
     {v:'0.23',d:'21 Jun 2026',items:['Enquiries backfill confirmed working (climbing past 2,890 and counting)','Added a Probe Street button on Connections: asks Street directly what its viewings, valuations and offers endpoints actually return, so we wire them from fact instead of guesswork']},
@@ -756,7 +757,7 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly what it returns for viewings, valuations and offers">Probe Street</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div></div>';
     var syncRows='';
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
@@ -772,7 +773,7 @@
       var nxt=syncCd(s.cadence,' · next sync in ');
       return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records'+deltaTxt+diagHtml+'</div><div class="fr">'+when+nxt+'</div></div>'; }).join('')+'</div>'; }
     return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split+syncRows
-      +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
+      +'<div class="secttl">Live and feeding the hub ('+wired.length+')</div><div style="font-size:.78rem;color:var(--muted);margin:-4px 0 10px">Street and Google are the external systems; the rest is your own website and hub capturing data directly.</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
       +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
   }
