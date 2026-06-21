@@ -1505,14 +1505,33 @@ function extrasReg() {
     { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
     { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
     { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } },
-    // Additional Street resources, confirmed live by the probe, captured in full (generic raw store).
+    // Every GET-listable Street Open API resource, taken EXACTLY from the official OpenAPI spec
+    // (developers.street.co.uk). POST-only endpoints (activity, documents, notes, maintenance-requests)
+    // and non-list resources are deliberately excluded so there are zero wrong paths.
     genRes("tenancies", "/tenancies"),
     genRes("landlords", "/landlords"),
     genRes("vendors", "/vendors"),
     genRes("tenants", "/tenants"),
     genRes("inspections", "/inspections"),
     genRes("sales", "/sales"),
-    genRes("properties_all", "/properties")
+    genRes("properties_all", "/properties"),
+    genRes("interested_applicants", "/interested-applicants"),
+    genRes("property_keys", "/property-keys"),
+    genRes("maintenance_jobs", "/maintenance-jobs"),
+    genRes("move_outs", "/move-outs"),
+    genRes("solicitors", "/solicitors"),
+    genRes("todos", "/todos"),
+    genRes("todo_types", "/todo-types"),
+    genRes("follow_ups", "/follow-ups"),
+    genRes("invoices", "/invoices"),
+    genRes("photo_and_measures", "/photo-and-measures"),
+    genRes("sales_instructions", "/sales-instructions"),
+    genRes("lettings_instructions", "/lettings-instructions"),
+    genRes("areas", "/areas"),
+    genRes("brands", "/brands"),
+    genRes("companies", "/companies"),
+    genRes("branches_all", "/branches"),
+    genRes("users_all", "/users")
   ];
 }
 async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
@@ -1867,7 +1886,7 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const name = String(url.searchParams.get("name") || "");
-      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1 };
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1, interested_applicants: 1, property_keys: 1, maintenance_jobs: 1, move_outs: 1, solicitors: 1, todos: 1, todo_types: 1, follow_ups: 1, invoices: 1, photo_and_measures: 1, sales_instructions: 1, lettings_instructions: 1, areas: 1, brands: 1, companies: 1, branches_all: 1, users_all: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
       let rows = [], total = 0, at = null;
       try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
@@ -1898,7 +1917,7 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const name = String(url.searchParams.get("name") || ""), id = String(url.searchParams.get("id") || "");
-      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1 };
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1, interested_applicants: 1, property_keys: 1, maintenance_jobs: 1, move_outs: 1, solicitors: 1, todos: 1, todo_types: 1, follow_ups: 1, invoices: 1, photo_and_measures: 1, sales_instructions: 1, lettings_instructions: 1, areas: 1, brands: 1, companies: 1, branches_all: 1, users_all: 1 };
       if (!allow[name] || !id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad request" }), 400, J);
       let row = null, raw = null;
       try { row = await env.gr_estates.prepare("SELECT * FROM " + name + " WHERE id = ?").bind(id).first(); } catch (_) {}
@@ -1933,8 +1952,8 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
-      const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings (on-market)", "hourly", "listings"], ["properties_all", "Properties (all)", "15min", "properties_all"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["sales", "Sales", "15min", "sales"], ["tenancies", "Tenancies", "15min", "tenancies"], ["contacts", "Contacts", "hourly", "contacts"], ["landlords", "Landlords", "15min", "landlords"], ["vendors", "Vendors", "15min", "vendors"], ["tenants", "Tenants", "15min", "tenants"], ["inspections", "Inspections", "15min", "inspections"]];
-      const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at", tenancies: "created_at", landlords: "created_at", vendors: "created_at", tenants: "created_at", inspections: "created_at", sales: "created_at", properties_all: "created_at" };
+      const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings (on-market)", "hourly", "listings"], ["properties_all", "Properties (all)", "15min", "properties_all"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["sales", "Sales", "15min", "sales"], ["tenancies", "Tenancies", "15min", "tenancies"], ["contacts", "Contacts", "hourly", "contacts"], ["landlords", "Landlords", "15min", "landlords"], ["vendors", "Vendors", "15min", "vendors"], ["tenants", "Tenants", "15min", "tenants"], ["inspections", "Inspections", "15min", "inspections"], ["interested_applicants", "Interested applicants", "15min", "interested_applicants"], ["property_keys", "Property keys", "15min", "property_keys"], ["maintenance_jobs", "Maintenance jobs", "15min", "maintenance_jobs"], ["move_outs", "Move outs", "15min", "move_outs"], ["solicitors", "Solicitors", "15min", "solicitors"], ["todos", "Tasks / to-dos", "15min", "todos"]];
+      const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at", tenancies: "created_at", landlords: "created_at", vendors: "created_at", tenants: "created_at", inspections: "created_at", sales: "created_at", properties_all: "created_at", interested_applicants: "created_at", property_keys: "created_at", maintenance_jobs: "created_at", move_outs: "created_at", solicitors: "created_at", todos: "created_at" };
       const out = [];
       for (const t of tables) {
         let count = 0, at = null, today = null, delta = null;
@@ -1971,15 +1990,15 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      // Exact paths from the official Street Open API spec. GET-listable ones return 200; POST-only
+      // ones (activity, documents, notes, maintenance-requests) return 405 — included so the result is honest.
       const cands = [
-        "/properties", "/sales-instructions", "/lettings-instructions",
-        "/sales-progressions", "/lettings-progressions", "/progressions",
-        "/tenancies", "/tenancy-renewals", "/tenancy-agreements",
-        "/landlords", "/vendors", "/buyers", "/tenants", "/property-occupiers", "/occupiers",
-        "/keys", "/maintenance-issues", "/works-orders", "/inspections", "/property-inspections",
-        "/certificates", "/compliance", "/notes", "/tasks", "/documents",
-        "/transactions", "/payments", "/invoices", "/fees", "/chains",
-        "/sales", "/completions", "/offers", "/feedback", "/sources", "/property-types"
+        "/todos", "/todo-types", "/photo-and-measures", "/interested-applicants", "/property-keys",
+        "/maintenance-jobs", "/move-outs", "/solicitors", "/follow-ups", "/invoices",
+        "/sales-instructions", "/lettings-instructions", "/areas", "/brands", "/companies",
+        "/branches", "/users", "/network-settings", "/properties", "/sales", "/tenancies",
+        "/vendors", "/tenants", "/inspections",
+        "/activity", "/documents", "/notes", "/maintenance-requests"
       ].map(function (p) { return p + (p.indexOf("?") >= 0 ? "&" : "?") + "page%5Bsize%5D=2"; });
       const out = [];
       for (const c of cands) {
