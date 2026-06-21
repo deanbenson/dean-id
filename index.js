@@ -1646,7 +1646,7 @@ function schemaRes(name, path, fields, opts) {
 // (activity, documents, notes, maintenance-requests) and non-list resources are excluded — zero wrong paths.
 function extrasReg() {
   return [
-    { name: "viewings", path: "/viewings?include=branch", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
+    { name: "viewings", path: "/viewings?include=branch,property", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
     { name: "valuations", path: "/valuations?include=branch", ddl: VAL_DDL, map: mVal, opts: { incr: false } },
     { name: "sales_applicants", path: "/sales-applicants", ddl: APP_DDL, map: mApp("sale"), opts: { incr: true } },
     { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let"), opts: { incr: true } },
