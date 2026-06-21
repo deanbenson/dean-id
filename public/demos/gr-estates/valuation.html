@@ -67,6 +67,10 @@
   .estCard .mid{color:var(--ink-soft);font-size:.95rem}
   .estCard .basis{color:var(--muted);font-size:.82rem;margin:10px 0 14px;line-height:1.5}
   .estCard .btn{width:100%}
+  .estCard.estLoading{min-height:96px}
+  .loadrow{display:flex;align-items:center;gap:11px;margin-top:12px;color:var(--ink-soft);font-size:.95rem}
+  .spin{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--orange);border-radius:50%;display:inline-block;flex:none;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
   .vdivide{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 18px}
   .vdivide:before,.vdivide:after{content:"";flex:1;height:1px;background:var(--line)}
   /* steps */
@@ -198,8 +202,16 @@
     var area=(f.earea.value||'').trim(), kind=f.ekind.value, beds=f.ebeds.value, type=f.etype.value;
     var qs='kind='+encodeURIComponent(kind); if(beds)qs+='&beds='+encodeURIComponent(beds); if(type)qs+='&type='+encodeURIComponent(type); if(area)qs+='&q='+encodeURIComponent(area);
     var box=document.getElementById('estResult');
-    box.innerHTML='<div class="estCard"><div class="lab">Working it out…</div></div>';
-    fetch('/api/estimate?'+qs).then(function(r){return r.json();}).then(function(d){ renderEstimate(d,area,kind,beds,type); }).catch(function(){ box.innerHTML='<div class="estCard"><div class="basis">Couldn\'t fetch a guide just now — book a free valuation below and we\'ll give you a proper figure.</div></div>'; });
+    var msgs=['Searching comparable homes…','Looking at what\'s on the market…','Crunching the numbers…','Almost there…'];
+    var mi=0;
+    box.innerHTML='<div class="estCard estLoading"><div class="lab">Instant guide</div><div class="loadrow"><span class="spin"></span><span id="loadmsg">'+msgs[0]+'</span></div></div>';
+    var lm=document.getElementById('loadmsg');
+    var iv=setInterval(function(){ mi=(mi+1)%msgs.length; if(lm) lm.textContent=msgs[mi]; },700);
+    var t0=Date.now();
+    fetch('/api/estimate?'+qs).then(function(r){return r.json();}).then(function(d){
+      var wait=Math.max(0,1600-(Date.now()-t0));
+      setTimeout(function(){ clearInterval(iv); renderEstimate(d,area,kind,beds,type); },wait);
+    }).catch(function(){ clearInterval(iv); box.innerHTML='<div class="estCard"><div class="basis">Couldn\'t fetch a guide just now — book a free valuation below and we\'ll give you a proper figure.</div></div>'; });
     return false;
   };
   function renderEstimate(d,area,kind,beds,type){
@@ -215,10 +227,14 @@
     }
     var bits=[]; if(beds)bits.push(beds+' bed'); if(type)bits.push(type); if(area)bits.push('in '+area);
     var desc=bits.length?('homes like yours ('+bits.join(', ')+')'):'similar homes';
-    box.innerHTML='<div class="estCard"><div class="lab">Indicative guide · to '+(isLet?'let':'sell')+'</div>'
+    var widened=d.basis&&(d.basis.widened||(area&&d.basis.area===false));
+    var basisTxt=widened
+      ? 'We didn\'t have many exact matches'+(area?(' in '+area):'')+' on the market right now, so this is a very rough steer from similar homes more widely. Properties vary a lot, so book a free valuation for a figure you can trust.'
+      : 'Based on '+d.count+' similar propert'+(d.count===1?'y':'ies')+' we\'re currently marketing. A rough online guide, not a valuation, so book a free visit for an accurate figure.';
+    box.innerHTML='<div class="estCard"><div class="lab">Indicative guide · to '+(isLet?'let':'sell')+(widened?' · very rough':'')+'</div>'
       +'<div class="rng">'+money0(d.low)+suff+' – '+money0(d.high)+suff+'</div>'
       +'<div class="mid">'+desc+' typically around <b>'+money0(d.mid)+suff+'</b></div>'
-      +'<div class="basis">Based on '+d.count+' similar propert'+(d.count===1?'y':'ies')+' we\'re currently marketing. This is a rough online guide, not a valuation — for an accurate figure, book a free visit.</div>'
+      +'<div class="basis">'+basisTxt+'</div>'
       +'<a class="btn btn-primary" href="#bookHead" onclick="return toBooking()">Book my free valuation →</a></div>';
     window.__estCtx='Instant guide shown: '+money0(d.low)+suff+'–'+money0(d.high)+suff+' ('+[(isLet?'let':'sale'),beds&&beds+' bed',type,area].filter(Boolean).join(', ')+', '+d.count+' comps)';
   }

@@ -25,7 +25,7 @@
  .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}
  .gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
  .gate input{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;margin-bottom:12px}
- .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:24px 0 6px}
+ .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:14px;margin:24px 0 6px}
  .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 6px 20px rgba(44,46,51,.05)}
  .tile .n{font-family:var(--serif);font-weight:700;font-size:1.7rem;letter-spacing:-.01em;line-height:1.05}
  .tile .l{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin-top:5px}
@@ -106,7 +106,7 @@
     {t:"Roadmap as a live Hub tab",s:"live"},
     {t:"Saved + recently viewed homes",s:"live"},
     {t:"Instant valuation funnel",s:"live"},
-    {t:"Property alerts — be first",s:"next"},
+    {t:"Property alerts — be first",s:"live"},
     {t:"Branch routing for leads",s:"next"},
     {t:"Company feed — live wins",s:"next"},
     {t:"AI front desk — phone + web, 24/7",s:"later"},
@@ -166,7 +166,7 @@
     var pct=leads.length?Math.round(nStreet/leads.length*100):0;
     var rv=DATA.reviews, rvN=rv&&rv.average?rv.average.toFixed(1)+'★':'—', rvC=rv&&rv.total?rv.total+' reviews':'live';
     var pf=DATA.portfolio, pfN=pf?(pf.total||0):'—';
-    var tiles=tile(leads.length,'Enquiries',true)+tile(nWeek,'This week')+tile(nToday,'Today')+tile(pct+'%','Into Street')+tile(rvN,rvC)+tile(DATA.stats&&DATA.stats.waitlist!=null?DATA.stats.waitlist:'—','Waitlist');
+    var tiles=tile(leads.length,'Enquiries',true)+tile(nWeek,'This week')+tile(nToday,'Today')+tile(pct+'%','Into Street')+tile(rvN,rvC)+tile(DATA.stats&&DATA.stats.alerts!=null?DATA.stats.alerts:'—','Alerts')+tile(DATA.stats&&DATA.stats.waitlist!=null?DATA.stats.waitlist:'—','Waitlist');
 
     function chip(f,label){ return '<button class="chip'+(FILTER===f?' on':'')+'" onclick="setFilter(\''+f+'\')">'+label+'</button>'; }
     var chips=chip('all','All ('+leads.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')');

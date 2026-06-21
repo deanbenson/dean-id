@@ -578,6 +578,50 @@
   </div>
 </section>
 
+<style>
+.alertband{background:linear-gradient(150deg,#fff,#fbf1e9);border:1px solid var(--line);border-radius:24px;padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center;box-shadow:var(--shadow)}
+.alertband h2{font-size:1.9rem;margin:.4rem 0 .6rem}
+.alertband p{color:var(--muted)}
+.ab-form{display:grid;gap:10px}
+.ab-form input,.ab-form select{border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;background:#fff;width:100%;color:var(--ink)}
+.ab-row{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px}
+.ab-form .btn{width:100%;justify-content:center}
+.ab-thanks{font-weight:600;color:var(--orange-deep);margin-top:4px}
+@media(max-width:760px){.alertband{grid-template-columns:1fr;padding:28px}.ab-row{grid-template-columns:1fr 1fr}}
+</style>
+<section id="alerts" style="padding-top:0">
+  <div class="wrap">
+    <div class="alertband">
+      <div>
+        <span class="eyebrow" style="color:var(--orange)">Be first</span>
+        <h2>Beat the rest to the right home</h2>
+        <p>Tell us what you're after and we'll alert you the moment a matching home hits the market, often before it's even on the big portals.</p>
+      </div>
+      <form class="ab-form" onsubmit="return alertSignup(event,this)">
+        <input required name="email" type="email" placeholder="Your email" aria-label="Your email">
+        <div class="ab-row">
+          <select name="kind" aria-label="Buying or renting"><option value="sale">Buying</option><option value="let">Renting</option></select>
+          <input name="area" placeholder="Area or postcode" aria-label="Area or postcode">
+          <select name="beds" aria-label="Minimum bedrooms"><option value="">Beds</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select>
+        </div>
+        <button class="btn btn-dark" type="submit">Notify me</button>
+        <p class="ab-thanks" style="display:none">You're on the list. We'll be in touch the moment something lands. ✓</p>
+      </form>
+    </div>
+  </div>
+</section>
+<script>
+window.alertSignup=function(e,f){
+  e.preventDefault();
+  try{ var fd={}; Array.prototype.forEach.call(f.elements,function(el){ if(el.name) fd[el.name]=el.value; });
+    fetch('/api/alert',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:fd.email||'',kind:fd.kind||'sale',area:fd.area||'',beds:fd.beds||''})}).catch(function(){});
+  }catch(_){}
+  var t=f.querySelector('.ab-thanks'); if(t)t.style.display='block';
+  Array.prototype.forEach.call(f.elements,function(el){ if(el.tagName!=='BUTTON') el.disabled=true; });
+  return false;
+};
+</script>
+
 <section id="contact">
   <div class="wrap">
     <div class="sec-head"><span class="eyebrow">Get in touch</span><h2>Drop us a line</h2><p>Send a message or call either office and we'll get straight back to you.</p></div>

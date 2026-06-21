@@ -1539,9 +1539,10 @@ export default {
         }
       } catch (_) {}
       leads.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
-      let waitlist = 0;
+      let waitlist = 0, alerts = 0;
       try { if (env.LISTINGS) { const wl = await env.LISTINGS.list({ prefix: "waitlist:", limit: 1000 }); waitlist = (wl.keys || []).length; } } catch (_) {}
-      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      try { if (env.LISTINGS) { const al = await env.LISTINGS.list({ prefix: "alert:", limit: 1000 }); alerts = (al.keys || []).length; } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, count: leads.length, leads: leads.slice(0, 200), stats: { waitlist: waitlist, alerts: alerts } }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
     // Admin: portfolio intelligence for the Hub — live counts + averages from D1. Same key as /api/leads.
@@ -1592,6 +1593,30 @@ export default {
         "access-control-allow-origin": "*",
         "cache-control": "public, max-age=300"
       });
+    }
+
+    // Property alerts ("be first") — buyers register their criteria; we notify when a match lands.
+    // Captured now (visible in the Hub); email delivery wired later.
+    if (path === "/api/alert" && request.method === "POST") {
+      if (!originOk(request)) return respond(JSON.stringify({ ok: false }), 403, { "content-type": "application/json; charset=utf-8" });
+      let b = {}; try { b = await request.json(); } catch (_) {}
+      const email = String((b && b.email) || "").trim().toLowerCase().slice(0, 160);
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return respond(JSON.stringify({ ok: false, error: "invalid email" }), 400, { "content-type": "application/json; charset=utf-8" });
+      }
+      const rec = { email: email, kind: (b && b.kind === "let") ? "let" : "sale", area: String((b && b.area) || "").slice(0, 60), beds: String((b && b.beds) || "").slice(0, 4), type: String((b && b.type) || "").slice(0, 40), max: String((b && b.max) || "").slice(0, 12), at: Date.now() };
+      if (env && env.LISTINGS) {
+        try {
+          const ip = request.headers.get("cf-connecting-ip") || "";
+          const rk = "alrate:" + ip;
+          const rc = parseInt((await env.LISTINGS.get(rk)) || "0", 10);
+          if (rc <= 20) {
+            await env.LISTINGS.put(rk, String(rc + 1), { expirationTtl: 600 });
+            await env.LISTINGS.put("alert:" + Date.now() + ":" + Math.random().toString(36).slice(2, 8), JSON.stringify(rec));
+          }
+        } catch (_) {}
+      }
+      return respond(JSON.stringify({ ok: true }), 200, { "content-type": "application/json; charset=utf-8" });
     }
 
     // Early-access signups for the "My G.R. Estates" coming-soon page. Stored in KV as waitlist:<email>.
