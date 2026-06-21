@@ -101,6 +101,11 @@
  .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
  .efilt{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
  .sysg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+ .splitwrap{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 6px 18px rgba(44,46,51,.05);margin-bottom:6px}
+ .splitsum{font-family:var(--serif);font-weight:700;font-size:1.05rem;margin-bottom:11px}.splitsum b{color:var(--orange-deep)}
+ .splitbar{display:flex;height:16px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}.splitbar i{display:block;height:100%}
+ .splitleg{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:.82rem}
+ .splitleg span{display:inline-flex;align-items:center;gap:6px;color:#54585f}.splitleg .d{width:11px;height:11px;border-radius:3px;flex:none}.splitleg b{font-weight:700}
  .sys{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
  .sys .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
  .sys .nm{font-weight:600;font-size:.92rem}
@@ -180,7 +185,7 @@
     home:'Live from Street (listings, team, branches), Google reviews and the website.',
     connections:'Live status and timestamps from each connected system.',
     ask:'Answers from your live Street, reviews and website data.',
-    enquiries:'Live from Street, every enquiry from the website, portals and phone.',
+    enquiries:'Synced from Street into a fast local copy every 15 minutes. Website, portals and phone.',
     listings:'Live from Street, via the property database.',
     reviews:'Live from your Google Business profiles.',
     roadmap:'Maintained by you and Dean.',
@@ -203,10 +208,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.12', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.13', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
   var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.0',changelog:'1.0'};
   var CHANGELOG=[
+    {v:'0.13',d:'21 Jun 2026',items:['Enquiries now read from a fast local copy synced from Street every 15 minutes, instant and always newest','Connections shows what data is flowing in and the split across systems','Cross-links to the real systems throughout']},
+    {v:'0.12',d:'21 Jun 2026',items:['Cross-links: Connections opens each system, Reviews open in Google, enquiries link to the property, home tiles jump to their page']},
     {v:'0.11',d:'21 Jun 2026',items:['Enquiries now reads every enquiry in Street, website, portals and phone, not just our captures','Company feed streams the real Street enquiry activity']},
     {v:'0.10',d:'21 Jun 2026',items:['Staff page v3: grouped by department, with Google-review praise matched to each person','Connections corrected, SignRequest not DocuSign']},
     {v:'0.9',d:'21 Jun 2026',items:['Live Company feed (auto-updating)','Staff v2 with richer profiles','Connections shows your full real system stack','Sticky user block, logo to home','Per-page versions + this changelog']},
@@ -357,7 +364,8 @@
     else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries.</div>';
     else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var propTxt=L.property?(L.propertyId?'<a class="syslink" href="property.html?id='+encodeURIComponent(L.propertyId)+'" target="_blank" rel="noopener">'+esc(L.property)+'</a>':esc(L.property)):''; var meta=[propTxt,(L.branch?esc(L.branch):'')].filter(Boolean).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return '<tr><td>'+(L.at?esc(fmt(new Date(L.at).getTime())):'—')+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+(meta||'<span style="color:var(--muted)">—</span>')+src+'</td></tr>'; }).join('');
       body='<table class="enq"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Property / branch</th></tr></thead><tbody>'+rows+'</tbody></table>'; }
-    return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, the portals and the phone. Last 30 days, newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' in the window'):'')+'.</div>'+chips+body;
+    var syncTxt=D.enqSyncedAt?(' · synced '+ago(new Date(D.enqSyncedAt).getTime())):'';
+    return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, portals and phone. Newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' total'):'')+syncTxt+'.</div>'+chips+body;
   }
 
   function viewConnections(){
@@ -386,7 +394,19 @@
     function ext(u){ return u?'<a class="syslink" href="'+esc(u)+'" target="_blank" rel="noopener">Open ↗</a>':''; }
     var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+(s.url?' · '+ext(s.url):'')+'</div></div>'; }).join('');
     var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected'+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
-    return '<h2 class="vt">Connections</h2><div class="vsub">Every system, whether its data is flowing to the hub, and when it last came in. Only what\'s true.</div>'
+    var dataItems=[
+      {l:'Enquiries',n:(D.enqTotal!=null?D.enqTotal:(D.enquiries?D.enquiries.length:0)),c:'#e2672a'},
+      {l:'Listings',n:(pf?pf.total:0),c:'#3b82c4'},
+      {l:'Reviews',n:(rv?rv.total:0),c:'#1d9e75'},
+      {l:'Team',n:(D.team?D.team.length:0),c:'#7b61c9'},
+      {l:'Be-first alerts',n:(st.alerts||0),c:'#2bb2a8'},
+      {l:'Waitlist',n:(st.waitlist||0),c:'#d4537e'}
+    ].filter(function(x){return x.n>0;});
+    var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
+    var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
+    var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect</div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div></div>';
+    return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split
       +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
       +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
@@ -550,7 +570,7 @@
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
       var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
-      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; D.enqTotal=(d&&d.total!=null)?d.total:null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
+      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }
       else { gate('Couldn\'t load the hub, try again.'); }

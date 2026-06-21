@@ -1355,8 +1355,55 @@ async function refreshGoogleReviews(env, force) {
   }
 }
 
+// Incremental sync of Street enquiries into D1, so the Hub reads a fast local copy, never the live API.
+async function syncEnquiries(env) {
+  if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
+  const db = env.gr_estates;
+  try { await db.prepare("CREATE TABLE IF NOT EXISTS enquiries (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT, email TEXT, phone TEXT, message TEXT, source TEXT, kind TEXT, property_id TEXT, property TEXT, branch TEXT)").run(); } catch (e) {}
+  try { await db.prepare("CREATE INDEX IF NOT EXISTS idx_enq_created ON enquiries(created_at)").run(); } catch (e) {}
+  let since = null;
+  try { if (env.LISTINGS) since = await env.LISTINGS.get("sync:enquiries:cursor"); } catch (_) {}
+  if (!since) since = new Date(Date.now() - 60 * 864e5).toISOString();
+  const runStart = Date.now();
+  const inc = {}; const all = []; const seen = {};
+  function absorb(b) { if (!b) return; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
+  function kindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
+  try {
+    const q = "filter%5Bupdated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
+    for (let pn = 1; pn <= 25; pn++) {
+      const r = await streetGet(env, "/enquiries?" + q + pn);
+      if (!r.ok || !r.body) break;
+      absorb(r.body);
+      const pg = (r.body.meta && r.body.meta.pagination) || {};
+      const tp = pg.total_pages || 1;
+      if (pn >= tp || (r.body.data || []).length < 100) break;
+    }
+  } catch (_) {}
+  if (all.length) {
+    const ups = all.map(function (d) {
+      const a = d.attributes || {}; const rel = d.relationships || {};
+      const propId = (rel.property && rel.property.data && rel.property.data.id) || a.property_uuid || null;
+      const brId = (rel.branch && rel.branch.data && rel.branch.data.id) || a.branch_uuid || null;
+      const prop = (propId && inc[propId]) ? (inc[propId].attributes || {}) : null;
+      const br = (brId && inc[brId]) ? (inc[brId].attributes || {}) : null;
+      return db.prepare("INSERT INTO enquiries (id,created_at,updated_at,name,email,phone,message,source,kind,property_id,property,branch) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name,email=excluded.email,phone=excluded.phone,message=excluded.message,source=excluded.source,kind=excluded.kind,property_id=excluded.property_id,property=excluded.property,branch=excluded.branch")
+        .bind(d.id, a.created_at || null, a.updated_at || null,
+          (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null,
+          a.email_address || null, a.telephone_number || null, (a.message || "").slice(0, 500) || null,
+          a.custom_source || null, kindOf(a), propId,
+          prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address || null) : null,
+          br ? (br.name || br.branch_name || br.display_name || null) : null);
+    });
+    for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
+  }
+  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:enquiries:cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:enquiries:at", new Date().toISOString()); } } catch (_) {}
+  return all.length;
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    ctx.waitUntil(syncEnquiries(env).catch(() => {}));
+    if (event && event.cron && event.cron !== "0 * * * *") return;
     ctx.waitUntil(refreshListings(env).catch(() => {}));
     ctx.waitUntil(refreshD1(env).catch(() => {}));
     ctx.waitUntil(refreshSocial(env).catch(() => {}));
@@ -1614,6 +1661,22 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      // Fast path: read the synced local copy (D1). The cron keeps it fresh, so this is instant.
+      try {
+        if (env.gr_estates) {
+          const lr = await env.gr_estates.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries ORDER BY created_at DESC LIMIT 200").all();
+          const rows = (lr && lr.results) || [];
+          if (rows.length) {
+            let ltotal = rows.length, syncedAt = null;
+            try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM enquiries").first(); if (c && c.n != null) ltotal = c.n; } catch (_) {}
+            try { if (env.LISTINGS) syncedAt = await env.LISTINGS.get("sync:enquiries:at"); } catch (_) {}
+            const out = rows.map(function (x) { return { id: x.id, at: x.created_at, name: x.name, email: x.email, phone: x.phone, message: x.message || "", source: x.source, kind: x.kind, propertyId: x.property_id, property: x.property, branch: x.branch }; });
+            return respond(JSON.stringify({ ok: true, source: "local", count: out.length, total: ltotal, synced_at: syncedAt, enquiries: out }), 200, J);
+          }
+        }
+      } catch (_) {}
+      // Bootstrap: D1 is empty (not synced yet). Kick off a background sync and serve a live read this once.
+      if (ctx && ctx.waitUntil) ctx.waitUntil(syncEnquiries(env).catch(function () {}));
       const since = new Date(Date.now() - 30 * 864e5).toISOString();
       const sinceQ = "filter%5Bcreated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
       let all = [], total = null; const inc = {}; const seen = {};
