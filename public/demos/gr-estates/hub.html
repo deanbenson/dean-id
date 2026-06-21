@@ -200,12 +200,13 @@
  .sys .dta{font-size:.8rem;color:#54585f;margin-top:7px}.sys .fr{font-size:.72rem;color:var(--muted);margin-top:3px}
  .connhero{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(180deg,#fff,#fcfbf8);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 8px 22px rgba(44,46,51,.06)}
  .connhero.ok{border-color:rgba(29,158,117,.38)}
- .chl{display:flex;align-items:center;gap:15px;min-width:270px;flex:1}
+ .chl{display:flex;align-items:center;gap:15px;flex:1 1 320px;min-width:0}
+ .chtxt{min-width:0}
  .chic{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;font-size:1.45rem;background:rgba(29,158,117,.13);color:#157a59}
  .connhero.sync .chic{background:rgba(224,153,42,.16);color:#9a6612}
  .cht{font-family:var(--serif);font-weight:700;font-size:1.16rem;letter-spacing:-.01em;line-height:1.2}
- .chs{font-size:.84rem;color:#54585f;margin-top:3px;max-width:56ch}.chs b{color:var(--ink);font-weight:600}
- .cha{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.chmeta{font-size:.74rem;color:var(--muted)}
+ .chs{font-size:.84rem;color:#54585f;margin-top:3px}.chs b{color:var(--ink);font-weight:600}
+ .cha{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end}.chmeta{font-size:.74rem;color:var(--muted)}
  .livedot{width:8px;height:8px;border-radius:50%;background:#1d9e75;animation:lpulse 2.2s infinite;flex:none}
  @keyframes lpulse{0%{box-shadow:0 0 0 0 rgba(29,158,117,.45)}70%{box-shadow:0 0 0 7px rgba(29,158,117,0)}100%{box-shadow:0 0 0 0 rgba(29,158,117,0)}}
  .sysic{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:.96rem;background:rgba(226,103,42,.1);color:var(--orange-deep)}
@@ -653,11 +654,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.49', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.50', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.50',d:'21 Jun 2026',items:['Fixed the Connections header overlapping the Sync now / Data health buttons. The text now wraps in its own column and the buttons keep their own space, on any screen width']},
     {v:'0.49',d:'21 Jun 2026',items:['Fixed the empty Branch column on Viewings (and Valuations and Offers). Checked a real record: a viewing does link to a branch, but Street only returns that link, not the branch name, unless you explicitly ask for it. The sync now asks Street to include the branch, so the office name comes through and fills in as records re-sync','Same fix makes the property on each viewing clickable through to its full property page, which loads live from Street','Both fill in as the viewings feed re-walks itself']},
     {v:'0.48',d:'21 Jun 2026',items:['Every data screen (Viewings, Valuations, Contacts, Sales, Tenancies and the rest) now opens with an at-a-glance summary above the table — added this month, plus the main status split — so you read the shape of it before the detail, the same idea as the new Connections page','Done once in the shared table component, so it lands consistently across the whole hub']},
     {v:'0.47',d:'21 Jun 2026',items:['Redesigned the Connections page around the person using it, not the engineer who built it. It opens with a plain status — connected and syncing, how many records held — then your live connections, the business numbers your hub holds (properties, contacts, enquiries, viewings, valuations, sales, tenancies), and the wider stack still to plug in','All the technical detail (coverage per dataset, backfill progress, errors) now lives behind the Data health button, on demand, instead of filling the page']},
@@ -904,7 +906,7 @@
     var ok=(withTot.length>0&&filling===0);
     var heroTitle=ok?'Everything\'s connected and up to date':'Connected — pulling your history in';
     var heroSub='Your hub syncs live from <b>Street CRM</b>, your website and <b>Google</b>, and refreshes itself automatically. Holding <b>'+held.toLocaleString('en-GB')+'</b> records'+(ok?(' across all '+wired.length+' live connections.'):(filling>0?(', still bringing in the last '+filling+' feed'+(filling>1?'s':'')+'.'):'.'));
-    var hero='<div class="connhero '+(ok?'ok':'sync')+'"><div class="chl"><div class="chic">'+(ok?'✓':'↻')+'</div><div><div class="cht">'+heroTitle+'</div><div class="chs">'+heroSub+'</div></div></div><div class="cha">'+(lastAt?'<span class="chmeta">last sync '+ago(lastAt)+'</span>':'')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="Full data-health report, dataset by dataset">Data health</button></div></div><div id="diagout"></div>';
+    var hero='<div class="connhero '+(ok?'ok':'sync')+'"><div class="chl"><div class="chic">'+(ok?'✓':'↻')+'</div><div class="chtxt"><div class="cht">'+heroTitle+'</div><div class="chs">'+heroSub+'</div></div></div><div class="cha">'+(lastAt?'<span class="chmeta">last sync '+ago(lastAt)+'</span>':'')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="Full data-health report, dataset by dataset">Data health</button></div></div><div id="diagout"></div>';
     return '<h2 class="vt">Connections</h2><div class="vsub">Everything wired into your hub, what it holds, and what\'s left to plug in.</div>'
       +hero
       +'<div class="secttl">Connected &amp; live ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
