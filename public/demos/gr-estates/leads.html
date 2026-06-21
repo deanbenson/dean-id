@@ -50,6 +50,14 @@
  .branch .nm{font-weight:600}.branch .nm small{display:block;color:var(--muted);font-weight:500;font-size:.74rem}
  .branch .sc{font-family:var(--serif);font-weight:700;font-size:1.05rem;white-space:nowrap}.branch .sc b{color:var(--orange)}
  .branch.sis .nm small{color:var(--orange-deep)}
+ .road{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+ .rcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+ .rcol h4{font-family:var(--serif);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;font-weight:700}
+ .rdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+ .ritem{font-size:.85rem;padding:7px 0;border-top:1px solid var(--line);color:#43464d}
+ .ritem:first-of-type{border-top:0}
+ @media(max-width:860px){.road{grid-template-columns:repeat(2,1fr)}}
+ @media(max-width:480px){.road{grid-template-columns:1fr}}
  .bar2{display:flex;align-items:center;gap:10px;margin:8px 0 12px;flex-wrap:wrap}
  .bar2 h2{font-family:var(--serif);font-size:1.3rem}.bar2 .sp{flex:1}
  .chip{font:inherit;font-size:.8rem;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;padding:.32rem .8rem;cursor:pointer}
@@ -90,6 +98,20 @@
   window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
   window.setFilter=function(f){ FILTER=f; paint(); };
   var DATA={leads:[],stats:{},reviews:null,portfolio:null};
+  var ROADMAP=[
+    {t:"New website + live listings",s:"live"},
+    {t:"Lead capture into Street",s:"live"},
+    {t:"Live Google reviews",s:"live"},
+    {t:"The Hub — leads, portfolio, reviews",s:"live"},
+    {t:"Roadmap as a live Hub tab",s:"now"},
+    {t:"Branch routing for leads",s:"next"},
+    {t:"Saved Homes (My G.R. Estates v1)",s:"next"},
+    {t:"Company feed — live wins",s:"next"},
+    {t:"AI front desk — phone + web, 24/7",s:"later"},
+    {t:"Per-user logins + roles",s:"later"},
+    {t:"Connect Instagram / Facebook",s:"later"},
+    {t:"Make it G.R.-owned + go live",s:"later"}
+  ];
 
   function tile(n,l,accent,sub){ return '<div class="tile'+(accent?' accent':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
@@ -121,6 +143,14 @@
     return '<div class="panel"><h3>Reviews</h3><div class="sub">Live from Google · '+(r.average||'—')+'★ across '+(r.total||0)+' estate reviews</div>'+(rows||'<div class="empty" style="padding:20px">No review data.</div>')+'</div>';
   }
 
+  function renderRoadmap(){
+    var groups=[['live','Live','#1d9e75'],['now','Building now','#e2672a'],['next','Next up','#3b82c4'],['later','Later','#9a958c']];
+    return '<div class="road">'+groups.map(function(g){
+      var items=ROADMAP.filter(function(r){ return r.s===g[0]; });
+      var li=items.map(function(r){ return '<div class="ritem">'+esc(r.t)+'</div>'; }).join('')||'<div class="ritem" style="color:#9a958c">—</div>';
+      return '<div class="rcol"><h4><span class="rdot" style="background:'+g[2]+'"></span>'+g[1]+'</h4>'+li+'</div>';
+    }).join('')+'</div>';
+  }
   function paint(){
     var leads=DATA.leads||[];
     var today=startOfToday(), weekAgo=Date.now()-6048e5;
@@ -155,6 +185,7 @@
 
     app.innerHTML='<div class="tiles">'+tiles+'</div>'
       +'<div class="secttl">Your business, live</div><div class="panels">'+portfolioPanel()+reviewsPanel()+'</div>'
+      +'<div class="secttl">What we’re building</div>'+renderRoadmap()
       +'<div class="bar2"><h2>Enquiries</h2><span class="sp"></span>'+chips+'</div>'+body
       +'<div class="foot">Live from your site, your property database, Street and Google. Newest enquiries first · most recent 200 shown.</div>';
   }
