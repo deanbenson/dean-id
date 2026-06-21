@@ -1877,8 +1877,8 @@ export default {
       const like = "%" + q.replace(/[%_]/g, "") + "%";
       const groups = [];
       try {
-        const r = await db.prepare("SELECT id,address,town,price,kind,beds,type FROM listings WHERE address LIKE ? OR town LIKE ? OR postcode LIKE ? ORDER BY (price IS NULL), price DESC LIMIT 6").bind(like, like, like).all();
-        const items = ((r && r.results) || []).map(function (x) { const mny = x.price != null ? ("£" + Number(x.price).toLocaleString("en-GB") + (x.kind === "let" ? " pcm" : "")) : "POA"; return { type: "property", id: x.id, pid: x.id, title: x.address || "Property", sub: [mny, (x.beds != null ? x.beds + " bed" : ""), x.type || ""].filter(Boolean).join(" · ") }; });
+        const r = await db.prepare("SELECT id,address,town,price,kind,beds,type,image FROM listings WHERE address LIKE ? OR town LIKE ? OR postcode LIKE ? ORDER BY (price IS NULL), price DESC LIMIT 6").bind(like, like, like).all();
+        const items = ((r && r.results) || []).map(function (x) { const mny = x.price != null ? ("£" + Number(x.price).toLocaleString("en-GB") + (x.kind === "let" ? " pcm" : "")) : "POA"; return { type: "property", id: x.id, pid: x.id, img: x.image || null, title: x.address || "Property", sub: [mny, (x.beds != null ? x.beds + " bed" : ""), x.type || ""].filter(Boolean).join(" · ") }; });
         if (items.length) groups.push({ type: "property", label: "Properties", items: items });
       } catch (_) {}
       try {

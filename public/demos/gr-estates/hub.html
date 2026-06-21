@@ -45,7 +45,8 @@
  .gsgrp{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:9px 11px 4px}
  .gsitem{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:9px;cursor:pointer}
  .gsitem:hover,.gsitem.sel{background:#faf3ee}
- .gsic{width:30px;height:30px;flex:none;border-radius:8px;background:rgba(226,103,42,.1);color:var(--orange-deep);display:flex;align-items:center;justify-content:center;font-size:.95rem}
+ .gsic{width:34px;height:34px;flex:none;border-radius:8px;background:rgba(226,103,42,.1);color:var(--orange-deep);display:flex;align-items:center;justify-content:center;font-size:.95rem}
+ .gsic.gsimg{padding:0;overflow:hidden;background:#f1eee9}.gsic.gsimg img{width:100%;height:100%;object-fit:cover}
  .gsmain{flex:1;min-width:0;display:flex;flex-direction:column}
  .gstitle{font-weight:600;font-size:.88rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .gssub{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -155,6 +156,19 @@
  .pctop{margin-bottom:2px}
  .pcaddr{font-weight:700;color:var(--ink);font-size:.92rem;line-height:1.25}
  .pcmeta{color:#54585f;font-size:.84rem;font-weight:600}
+ .dirfilters{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px}
+ .fgrp{display:flex;gap:6px;flex-wrap:wrap}
+ .fchip{font-size:.76rem;color:#54585f;background:#fff;border:1px solid var(--line);border-radius:20px;padding:.28rem .66rem;cursor:pointer;user-select:none}
+ .fchip:hover{border-color:var(--orange)}.fchip.on{background:var(--orange);color:#fff;border-color:var(--orange)}
+ .minirow{display:flex;gap:11px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch}
+ .minicard{flex:0 0 168px;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s}
+ .minicard:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(44,46,51,.1);border-color:var(--orange)}
+ .minicard img{width:100%;height:96px;object-fit:cover;background:#f1eee9;display:block}
+ .minicard .mphno{height:96px;display:flex;align-items:center;justify-content:center;background:#f1eee9;color:var(--muted);font-size:1.4rem}
+ .minicard .mpl{padding:9px 11px;font-size:.82rem;font-weight:600;color:var(--ink);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .savebtn{border:1px solid var(--orange);background:#fff;color:var(--orange-deep);font:inherit;font-weight:600;font-size:.82rem;border-radius:9px;padding:.32rem .8rem;cursor:pointer}
+ .savebtn:hover{background:rgba(226,103,42,.08)}.savebtn.on{background:var(--orange);color:#fff}
+ .officeline{margin:-4px 0 16px;font-size:.9rem;color:#43464d}.officeline .ohint{color:var(--muted);font-size:.8rem;font-weight:400}
  .ok{color:#1d9e75;font-weight:700;white-space:nowrap}.no{color:var(--orange-deep);font-weight:700;white-space:nowrap}
  .efilt{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
  .sysg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
@@ -316,6 +330,18 @@
     return '<h2 class="vt">Contacts</h2><div class="vsub">Buyers, sellers, landlords and tenants from Street, newest first. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+pageSyncLine('hourly')+'.</div>'+body;
   }
 
+  function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch(e){ return []; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function grRecentAdd(it){ if(!it||!it.id)return; var a=lsGet('grHubRecent').filter(function(x){return x.id!==it.id;}); a.unshift({id:it.id,label:it.label||'',img:it.img||'',ts:Date.now()}); if(a.length>14)a=a.slice(0,14); lsSet('grHubRecent',a); }
+  function grSavedList(){ return lsGet('grHubSaved'); }
+  function grIsSaved(id){ return grSavedList().some(function(x){return x.id===id;}); }
+  window.grSaveCurrent=function(){
+    var P=D.prop; if(!P)return; var info=(P.info&&P.info.ok)?P.info:null, hub=(P.hub&&P.hub.ok)?P.hub:null, prop=hub&&hub.property;
+    var label=(info&&info.address)||(hub&&hub.label)||'Property'; var img=(info&&info.images&&info.images[0])||''; var a=grSavedList();
+    if(grIsSaved(P.id)) a=a.filter(function(x){return x.id!==P.id;}); else a.unshift({id:P.id,label:label,img:img,ts:Date.now()});
+    lsSet('grHubSaved',a); renderView(false);
+  };
+  function miniPropCard(x){ return '<a class="minicard" href="#property='+encodeURIComponent(x.id)+'">'+(x.img?'<img src="'+esc(x.img)+'" alt="" loading="lazy">':'<span class="mphno">⌂</span>')+'<span class="mpl">'+esc(x.label||'Property')+'</span></a>'; }
   function loadProperty(id){
     if(!id) return;
     if(D.prop && D.prop.id===id && D.prop.gotHub) return;
@@ -349,13 +375,17 @@
     var enq=(hub&&hub.enquiries)||[], vws=(hub&&hub.viewings)||[], counts=(hub&&hub.counts)||{enquiries:enq.length,viewings:vws.length,people:0};
     function money(n){ return n!=null?('£'+Number(n).toLocaleString('en-GB')+(kind==='let'?' pcm':'')):'POA'; }
     var meta=[money(price),(beds!=null?beds+' bed':''),(baths!=null?baths+' bath':''),esc(ptype),(branch?esc(branch):'')].filter(Boolean).join(' · ');
+    if(P&&!P._tracked){ P._tracked=1; grRecentAdd({id:PROP_ID,label:title,img:img}); }
+    var offices={}; enq.forEach(function(e){if(e.branch)offices[e.branch]=1;}); vws.forEach(function(v){if(v.branch)offices[v.branch]=1;});
+    var offList=Object.keys(offices); var saved=grIsSaved(PROP_ID);
     var hero='<div class="phero">'+(img?'<img class="phimg" src="'+esc(img)+'" alt="" loading="lazy">':'<div class="phimg noimg">No photo</div>')
       +'<div class="phbody"><div class="phk">'+(kind?esc(kind==='let'?'To let':'For sale'):'Property')+(status?' · '+statusPill(status):'')+'</div>'
       +'<div class="pht">'+esc(title)+'</div><div class="phmeta">'+(meta||'')+'</div>'
-      +'<div class="phlinks"><a class="syslink" href="property.html?id='+encodeURIComponent(PROP_ID)+'" target="_blank" rel="noopener">Public page ↗</a> · <a class="syslink" href="https://street.co.uk" target="_blank" rel="noopener">Open in Street ↗</a></div></div></div>';
+      +'<div class="phlinks"><button class="savebtn'+(saved?' on':'')+'" onclick="grSaveCurrent()">'+(saved?'★ Saved':'☆ Save')+'</button> <a class="syslink" href="property.html?id='+encodeURIComponent(PROP_ID)+'" target="_blank" rel="noopener">Public page ↗</a> · <a class="syslink" href="https://street.co.uk" target="_blank" rel="noopener">Open in Street ↗</a></div></div></div>';
     function st(n,l){ return '<div class="ptile"><b>'+n+'</b><span>'+esc(l)+'</span></div>'; }
     var lastEnq=enq.length?enq[0].created_at:null;
-    var tiles='<div class="ptiles">'+st(counts.enquiries,'Enquiries')+st(counts.people||'—','Interested people')+st(counts.viewings,'Viewings')+st(lastEnq?smartDate(lastEnq):'—','Last enquiry')+'</div>';
+    var officeLine=offList.length?'<div class="officeline">Handled by '+offList.map(function(o){return '<b>'+esc(o)+'</b>';}).join(', ')+' <span class="ohint">· office, from this property\'s activity</span></div>':'';
+    var tiles='<div class="ptiles">'+st(counts.enquiries,'Enquiries')+st(counts.people||'—','Interested people')+st(counts.viewings,'Viewings')+st(lastEnq?smartDate(lastEnq):'—','Last enquiry')+'</div>'+officeLine;
     var enqBody=enq.length?dataTable('penq_'+PROP_ID,enq,[
       {key:'at',label:'When',html:function(r){return smartDate(r.created_at);},sortVal:function(r){return r.created_at?new Date(r.created_at).getTime():0;},text:function(r){return r.created_at;}},
       {key:'kind',label:'Type',html:function(r){return '<span class="kind">'+esc(r.kind||'enquiry')+'</span>';},get:function(r){return r.kind||'enquiry';}},
@@ -368,7 +398,7 @@
       {key:'status',label:'Status',html:function(v){return statusPill(v.status);},get:function(v){return v.status;}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
     ],'Search viewings…'):'<div class="card" style="color:var(--muted)">No viewings booked against this property in the local copy yet.</div>';
-    var gaps='<div class="card soonbox"><h3>Not tracked yet</h3><ul class="gaplist"><li><b>Page views</b> — how many times this property\'s page was opened. We can add lightweight view tracking on the site and pull portal stats.</li><li><b>Assigned staff</b> — the negotiator and valuer on this property. Street holds it; we surface it once we map the property\'s team relationship.</li><li><b>Offers</b> — offers are syncing, but not yet linked to a property by id. Coming with offer-to-property matching.</li></ul></div>';
+    var gaps='<div class="card soonbox"><h3>Not tracked yet</h3><ul class="gaplist"><li><b>Page views</b> — how many times this property\'s page was opened. We can add lightweight view tracking on the site and pull portal stats.</li><li><b>Named staff</b> — we show the handling office above; the individual negotiator and valuer sit on Street\'s records and need their assigned-user field wired into the sync.</li><li><b>Offers</b> — offers are syncing, but not yet linked to a property by id. Coming with offer-to-property matching.</li></ul></div>';
     return back+hero+tiles
       +(enq.length?('<div class="secttl">Enquiry activity</div>'+enqChart(enq)):'')
       +'<div class="secttl">Who has enquired ('+enq.length+')</div>'+enqBody
@@ -386,7 +416,7 @@
     if(GSRES==null){ d.classList.remove('show'); d.innerHTML=''; return; }
     if(!GSRES.length){ d.classList.add('show'); d.innerHTML='<div class="gsempty">No matches for "'+esc(GSQ)+'". New records appear as the next sync lands.</div>'; return; }
     var idx=-1;
-    var html=GSRES.map(function(g){ return '<div class="gsgrp">'+esc(g.label)+' ('+g.items.length+')</div>'+g.items.map(function(it){ idx++; var i=idx; return '<div class="gsitem'+(i===GSSEL?' sel':'')+'" onmousedown="grPickIdx(event,'+i+')"><span class="gsic">'+gsIcon(it.type)+'</span><span class="gsmain"><span class="gstitle">'+esc(it.title)+'</span><span class="gssub">'+esc(it.sub||'')+'</span></span><span class="gstype">'+esc(it.type)+'</span></div>'; }).join(''); }).join('');
+    var html=GSRES.map(function(g){ return '<div class="gsgrp">'+esc(g.label)+' ('+g.items.length+')</div>'+g.items.map(function(it){ idx++; var i=idx; var ic=it.img?('<span class="gsic gsimg"><img src="'+esc(it.img)+'" alt="" loading="lazy"></span>'):('<span class="gsic">'+gsIcon(it.type)+'</span>'); return '<div class="gsitem'+(i===GSSEL?' sel':'')+'" onmousedown="grPickIdx(event,'+i+')">'+ic+'<span class="gsmain"><span class="gstitle">'+esc(it.title)+'</span><span class="gssub">'+esc(it.sub||'')+'</span></span><span class="gstype">'+esc(it.type)+'</span></div>'; }).join(''); }).join('');
     d.classList.add('show'); d.innerHTML=html;
   }
   window.grPickIdx=function(e,i){ if(e&&e.preventDefault)e.preventDefault(); var f=gsFlat(); if(f[i])grPick(f[i]); };
@@ -460,10 +490,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.18', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.19', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
-  var VER={home:'1.3',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.1',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
+  var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.19',d:'21 Jun 2026',items:['Search results now show a property photo where we have one','Listings can be filtered by sale or let, bedrooms and price, on top of search','Save any property and jump back to your recently viewed ones, both on the home page','Property pages show the handling office, drawn from that property\'s own activity']},
     {v:'0.18',d:'21 Jun 2026',items:['Next sync is now a live countdown that ticks down every second, on Connections and on every data page','Sync now button to pull straight from Street without waiting for the timer','Empty datasets trigger their own sync the moment you open them, then fill themselves','Pages refresh automatically as each sync lands']},
     {v:'0.17',d:'21 Jun 2026',items:['Intelligent search in the top bar: type anything (address, name, email, phone) and jump straight to a property, enquiry, contact, viewing or valuation','Connections now shows time until the next sync, plus new-today and last-sync counts per dataset','Google reviews show the most recent review date and when they were last checked','Branch review status fixed (was stuck on "reviews syncing" due to a name mismatch)']},
     {v:'0.16',d:'21 Jun 2026',items:['Every data screen now has instant search, click-to-sort columns and clear human dates (just now, Yesterday 4:32pm)','New property command view: open any property to see who enquired, viewings, an enquiries-per-week chart and live counts','Status shown as colour-coded pills throughout']},
@@ -590,8 +621,12 @@
     var areas=(pf&&pf.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">—</div>';
     var chan='<div class="row"><span class="ic">✉</span><span>Website enquiries</span><span class="tm">'+leads.length+' total · '+nW+' this week</span></div><div class="row"><span class="ic">★</span><span>Be-first buyer alerts</span><span class="tm">'+(st.alerts!=null?st.alerts:0)+'</span></div><div class="row"><span class="ic">✦</span><span>My G.R. Estates signups</span><span class="tm">'+(st.waitlist!=null?st.waitlist:0)+'</span></div>';
     var gaps='<div class="row" style="color:var(--muted)">Sales completions &amp; fall-throughs</div><div class="row" style="color:var(--muted)">Rent roll, arrears &amp; occupancy (PayProp)</div><div class="row" style="color:var(--muted)">Revenue &amp; fees</div><div class="row" style="color:var(--muted)">Phone &amp; portal performance</div><div style="font-size:.76rem;color:var(--muted);margin-top:8px">These light up as we wire Street\'s sales, lettings and finance feeds.</div>';
+    var saved=grSavedList(), recent=lsGet('grHubRecent'); var jump='';
+    if(saved.length) jump+='<div class="secttl">Saved properties</div><div class="minirow">'+saved.map(miniPropCard).join('')+'</div>';
+    if(recent.length) jump+='<div class="secttl">Recently viewed</div><div class="minirow">'+recent.map(miniPropCard).join('')+'</div>';
     return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">'+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+(branchN!=null?(' · '+branchN+' branches'):'')+(staff!=null?(' · '+staff+' staff'):'')+'</div>'
       +'<div class="tiles">'+tiles+'</div>'
+      +jump
       +'<div class="secttl">Service lines</div>'+svc
       +'<div class="cols" style="margin-top:18px"><div class="card"><h3>Branches</h3>'+branchRows+'</div><div class="card"><h3>Stock by area</h3>'+areas+'</div></div>'
       +'<div class="cols" style="margin-top:14px"><div class="card"><h3>Live channels</h3>'+chan+'</div><div class="card"><h3>Not connected yet</h3>'+gaps+'</div></div>';
@@ -686,25 +721,35 @@
       +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
   }
 
-  var DIRQ='', DIRT=null;
+  var DIRQ='', DIRT=null, DIRF={kind:'',beds:'',sort:'price_desc'};
   function propDirCard(L){
     var mny=L.price!=null?('£'+Number(L.price).toLocaleString('en-GB')+(L.kind==='let'?' pcm':'')):'POA';
     var sub=[(L.beds!=null?L.beds+' bed':''),(L.type||'')].filter(Boolean).join(' · ');
     return '<a class="pcard" href="#property='+encodeURIComponent(L.id)+'">'+(L.image?'<img class="pcimg" src="'+esc(L.image)+'" alt="" loading="lazy">':'<span class="pcimg noimg">No photo</span>')
       +'<span class="pcb"><span class="pctop">'+(L.kind?statusPill(L.kind==='let'?'To let':'For sale'):'')+'</span><span class="pcaddr">'+esc(L.address||'Property')+'</span><span class="pcmeta">'+esc(mny)+(sub?' · '+esc(sub):'')+'</span></span></a>';
   }
-  function dirCards(){ var d=D.dir; if(!d)return ''; return (d.results||[]).map(propDirCard).join('')||'<div class="card" style="color:var(--muted);grid-column:1/-1">No properties match that search.</div>'; }
-  function fetchDir(q){ fetch('/api/search?pageSize=48&sort=price_desc&q='+encodeURIComponent(q||'')).then(function(r){return r.json();}).then(function(d){ D.dir={results:(d&&d.results)||[],total:(d&&d.total)||0,q:(q||'')}; if(ROUTE==='listings'){ var g=document.getElementById('pgrid'); if(g)g.innerHTML=dirCards(); var c=document.getElementById('dircount'); if(c)c.textContent=dirCountText(); } }).catch(function(){}); }
-  function ensureDir(){ if(D.dir||D._dirLoading)return; D._dirLoading=true; fetch('/api/search?pageSize=48&sort=price_desc').then(function(r){return r.json();}).then(function(d){ D._dirLoading=false; D.dir={results:(d&&d.results)||[],total:(d&&d.total)||0,q:''}; if(ROUTE==='listings')renderView(false); }).catch(function(){ D._dirLoading=false; }); }
-  function dirCountText(){ var d=D.dir; if(!d)return ''; var shown=(d.results||[]).length; return d.q?(shown+' match "'+d.q+'"'):(d.total+' on the market'+(d.total>shown?(' · showing first '+shown+', search to narrow'):'')); }
-  window.grDirSearch=function(v){ DIRQ=v; if(DIRT)clearTimeout(DIRT); DIRT=setTimeout(function(){ fetchDir(DIRQ); }, 250); };
+  function dirCards(){ var d=D.dir; if(!d)return ''; return (d.results||[]).map(propDirCard).join('')||'<div class="card" style="color:var(--muted);grid-column:1/-1">No properties match those filters.</div>'; }
+  function dirQS(){ var p=['pageSize=48']; p.push('sort='+(DIRF.sort||'price_desc')); if(DIRF.kind)p.push('kind='+DIRF.kind); if(DIRF.beds)p.push('beds='+DIRF.beds); if(DIRQ&&DIRQ.trim())p.push('q='+encodeURIComponent(DIRQ.trim())); return p.join('&'); }
+  function applyDir(d){ D.dir={results:(d&&d.results)||[],total:(d&&d.total)||0,q:DIRQ}; }
+  function fetchDir(){ fetch('/api/search?'+dirQS()).then(function(r){return r.json();}).then(function(d){ applyDir(d); if(ROUTE==='listings'){ var g=document.getElementById('pgrid'); if(g)g.innerHTML=dirCards(); var c=document.getElementById('dircount'); if(c)c.textContent=dirCountText(); } }).catch(function(){}); }
+  function ensureDir(){ if(D.dir||D._dirLoading)return; D._dirLoading=true; fetch('/api/search?'+dirQS()).then(function(r){return r.json();}).then(function(d){ D._dirLoading=false; applyDir(d); if(ROUTE==='listings')renderView(false); }).catch(function(){ D._dirLoading=false; }); }
+  function dirCountText(){ var d=D.dir; if(!d)return ''; var shown=(d.results||[]).length; var filt=(DIRF.kind||DIRF.beds||(DIRQ&&DIRQ.trim())); return (d.total!=null?d.total:shown)+(filt?' match':' on the market')+(d.total>shown?(' · showing first '+shown):''); }
+  function dirFilterBar(){
+    function chip(k,v,lab){ return '<span class="fchip'+(DIRF[k]===v?' on':'')+'" onclick="grDirFilter(\''+k+'\',\''+v+'\')">'+lab+'</span>'; }
+    return '<div class="dirfilters">'
+      +'<div class="fgrp">'+chip('kind','','All')+chip('kind','sale','For sale')+chip('kind','let','To let')+'</div>'
+      +'<div class="fgrp">'+chip('beds','','Any beds')+chip('beds','1','1+')+chip('beds','2','2+')+chip('beds','3','3+')+chip('beds','4','4+')+'</div>'
+      +'<div class="fgrp">'+chip('sort','price_desc','Price high')+chip('sort','price_asc','Price low')+'</div></div>';
+  }
+  window.grDirFilter=function(k,v){ DIRF[k]=v; var fb=document.getElementById('dirfb'); if(fb)fb.innerHTML=dirFilterBar(); var c=document.getElementById('dircount'); if(c)c.textContent='Filtering…'; fetchDir(); };
+  window.grDirSearch=function(v){ DIRQ=v; if(DIRT)clearTimeout(DIRT); DIRT=setTimeout(function(){ fetchDir(); }, 250); };
   function viewListings(){
     var p=D.portfolio; if(!p) return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div><div class="card">Loading…</div>';
     ensureDir();
     var max=0;(p.byTown||[]).forEach(function(t){if(t.n>max)max=t.n;});
     var towns=(p.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('');
     var dir=D.dir;
-    var browse='<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dirq" placeholder="Search by address, town or postcode…" value="'+esc(DIRQ)+'" oninput="grDirSearch(this.value)"></div><div class="dtcount" id="dircount">'+(dir?dirCountText():'Loading properties…')+'</div><div class="pgrid" id="pgrid">'+(dir?dirCards():'')+'</div>';
+    var browse='<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dirq" placeholder="Search by address, town or postcode…" value="'+esc(DIRQ)+'" oninput="grDirSearch(this.value)"></div><div id="dirfb">'+dirFilterBar()+'</div><div class="dtcount" id="dircount">'+(dir?dirCountText():'Loading properties…')+'</div><div class="pgrid" id="pgrid">'+(dir?dirCards():'')+'</div>';
     return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database. Open any property for everything we hold on it.</div><div class="tiles">'+tile(p.total||0,'On the market',true)+tile(p.sale||0,'For sale')+tile(p.let||0,'To let')+tile(money(p.avgSale),'Avg asking')+tile(p.avgLetPcm!=null?money(p.avgLetPcm):'—','Avg rent pcm')+'</div><div class="secttl">Browse properties</div>'+browse+'<div class="secttl">Where</div><div class="card">'+(towns||'No data')+'</div>';
   }
 
