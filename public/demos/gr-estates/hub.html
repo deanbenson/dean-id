@@ -317,32 +317,42 @@
       out.innerHTML='<div class="secttl">Data audit — local copy vs live Street</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Dataset</th><th>Local / Street</th><th>Coverage</th><th>Fields match</th><th>Values match</th><th>Missing fields</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">Coverage = how much of Street we hold. Fields match = our stored record contains every field Street returns (structural purity). Values match = sampled values identical (a lower figure just means those records changed in Street since we last synced, not an error).</div>';
     }).catch(function(){ if(b){b.disabled=false;b.textContent='Check data';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Audit error.</div>'; });
   };
+  // One-click health report: checks every dataset, identifies anything wrong, and reports it clearly.
   window.grDiag=function(){
-    var b=document.getElementById('diagbtn'); if(b){b.disabled=true;b.textContent='Diagnosing…';}
-    var out=document.getElementById('diagout'); if(out)out.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-top:10px">Reading what each sync actually did — fetch, map, write, heal — error by error…</div>';
+    var b=document.getElementById('diagbtn'); if(b){b.disabled=true;b.textContent='Checking…';}
+    var out=document.getElementById('diagout'); if(out)out.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-top:10px">Checking every dataset against Street…</div>';
     fetch('/api/sync-diag',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
       if(b){b.disabled=false;b.textContent='Diagnose';}
       if(!out)return;
-      if(!d||!d.datasets){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Diagnostics failed.</div>'; return; }
-      var feed;
-      if(d.errlog&&d.errlog.length){
-        feed='<div class="secttl">What\'s going wrong — most recent errors</div><div style="overflow:auto;max-height:230px;border:1px solid var(--line);border-radius:8px"><table class="enq" style="font-size:.76rem"><thead><tr><th>When</th><th>Dataset</th><th>Stage</th><th>Detail</th></tr></thead><tbody>'+d.errlog.map(function(e){
-          return '<tr><td style="white-space:nowrap;color:var(--muted)">'+esc(ago(new Date(e.at).getTime()))+'</td><td style="font-weight:600">'+esc(e.name)+'</td><td><span style="font-family:monospace;color:#c2541d">'+esc(e.stage)+'</span></td><td style="font-family:monospace;font-size:.72rem">'+esc(e.detail)+'</td></tr>';
-        }).join('')+'</tbody></table></div>';
-      } else { feed='<div style="font-size:.84rem;color:#1d9e75;margin:8px 0;font-weight:600">No errors recorded. Every sync is clean.</div>'; }
-      if(d.lastrun){ feed+='<div style="font-size:.74rem;color:var(--muted);margin:2px 0 6px">Last rotation '+esc(ago(new Date(d.lastrun.at).getTime()))+': '+(d.lastrun.empties!=null?d.lastrun.empties:'?')+' still empty, worked on '+esc((d.lastrun.picked||[]).join(', '))+'</div>'; }
+      if(!d||!d.datasets){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Check failed.</div>'; return; }
+      var nComplete=0,nFilling=0,nEmpty=0,nIssue=0,totLocal=0,totStreet=0,issues=[];
       var rows=d.datasets.map(function(a){
-        var dg=a.diag||{};
-        var flow=(dg.fetched!=null)?(dg.fetched+' → '+(dg.mapped!=null?dg.mapped:'?')+' → <b>'+(dg.stored!=null?dg.stored:'?')+'</b>'):'<span style="color:var(--muted)">not synced yet</span>';
-        var heal=dg.heal?dg.heal.action:'—'; if(dg.heal&&dg.heal.added&&dg.heal.added.length) heal+=' +'+dg.heal.added.length;
-        var miss=(a.missing&&a.missing.length)?('<span style="color:#c2541d" title="'+esc(a.missing.join(', '))+'">'+a.missing.length+' missing</span>'):'<span style="color:#1d9e75">ok</span>';
-        var er=dg.err||((dg.errors&&dg.errors[0])?(dg.errors[0].stage+': '+dg.errors[0].detail):'');
-        var erH=er?('<span style="color:#c2541d;font-family:monospace;font-size:.71rem">'+esc(er)+'</span>'):'<span style="color:var(--muted)">—</span>';
-        var cov=(a.total!=null)?((a.count||0).toLocaleString('en-GB')+' / '+a.total.toLocaleString('en-GB')):((a.count||0).toLocaleString('en-GB'));
-        return '<tr><td style="font-weight:600">'+esc(a.name)+(a.table&&a.table!==a.name?'<div style="font-size:.68rem;color:var(--muted)">→ '+esc(a.table)+'</div>':'')+'</td><td style="font-variant-numeric:tabular-nums">'+cov+'</td><td style="font-size:.74rem">'+flow+'</td><td style="font-size:.73rem">'+esc(heal)+'</td><td style="font-size:.72rem">'+miss+'</td><td>'+erH+'</td></tr>';
+        var dg=a.diag||{}; var total=(a.total!=null)?a.total:null; var local=a.count||0;
+        totLocal+=local; if(total)totStreet+=total;
+        var cov=(total&&total>0)?Math.min(100,Math.round(local/total*100)):(total===0?100:null);
+        var missing=(a.missing&&a.missing.length)?a.missing.length:0;
+        var hadErr=dg.err||(dg.errors&&dg.errors.length);
+        var lossy=(dg.fetched!=null&&dg.stored!=null&&dg.fetched>0&&dg.stored<dg.fetched);
+        var status,scol;
+        if(hadErr||lossy){ status='Issue'; scol='#c2541d'; nIssue++; issues.push({name:a.name, why:(dg.err||((dg.errors&&dg.errors[0])?(dg.errors[0].stage+': '+dg.errors[0].detail):'rows lost on write'))}); }
+        else if(total!=null&&total>0&&local>=total){ status='Complete'; scol='#1d9e75'; nComplete++; }
+        else if(total===0){ status='None in Street'; scol='var(--muted)'; }
+        else if(local>0){ status='Filling'; scol='#a96514'; nFilling++; }
+        else { status='Empty'; scol='var(--muted)'; nEmpty++; }
+        var covTxt=(cov!=null)?('<span style="font-weight:700;color:'+(cov>=99?'#1d9e75':(cov>=50?'#a96514':'#c2541d'))+'">'+cov+'%</span>'):'<span style="color:var(--muted)">—</span>';
+        var integ=(missing||lossy||hadErr)?'<span style="color:#c2541d" title="needs attention">⚠</span>':'<span style="color:#1d9e75">✓</span>';
+        var held=(total!=null)?(local.toLocaleString('en-GB')+' <span style="color:var(--muted)">/ '+total.toLocaleString('en-GB')+'</span>'):local.toLocaleString('en-GB');
+        return '<tr><td style="font-weight:600">'+esc(a.name)+'</td><td style="font-variant-numeric:tabular-nums">'+held+'</td><td>'+covTxt+'</td><td style="color:'+scol+';font-weight:600">'+status+'</td><td style="text-align:center">'+integ+'</td></tr>';
       }).join('');
-      out.innerHTML=feed+'<div class="secttl" style="margin-top:14px">Per dataset — what the last sync did</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Dataset</th><th>Local / Street</th><th>Fetched → mapped → stored</th><th>Heal</th><th>Columns</th><th>Last error</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">Fetched → mapped → stored shows exactly where rows are lost. If fetched is high but stored is 0, the Last error column says why (e.g. a missing column, or a Cloudflare limit). Heal shows what the self-repair did: add-columns means it widened the table; rearm means it restarted the backfill.</div>';
-    }).catch(function(){ if(b){b.disabled=false;b.textContent='Diagnose';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Diagnostics error.</div>'; });
+      var pct=totStreet?Math.round(totLocal/totStreet*100):0;
+      var verdict=(nIssue===0)
+        ?'<div style="background:rgba(29,158,117,.10);border:1px solid #1d9e75;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#157a5b;font-weight:600">✓ All healthy. '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' still empty, no errors. Holding <b>'+totLocal.toLocaleString('en-GB')+'</b> of '+totStreet.toLocaleString('en-GB')+' Street records ('+pct+'%).</div>'
+        :'<div style="background:rgba(194,84,29,.10);border:1px solid #c2541d;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#a8431a;font-weight:600">⚠ '+nIssue+' dataset'+(nIssue>1?'s':'')+' need attention (below). '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' empty.</div>';
+      var issuesHtml=issues.length?('<div class="secttl">Needs attention</div><ul style="margin:4px 0 12px;padding-left:18px;font-size:.82rem">'+issues.map(function(x){return '<li><b>'+esc(x.name)+'</b> — <span style="font-family:monospace;font-size:.75rem;color:#c2541d">'+esc(x.why)+'</span></li>';}).join('')+'</ul>'):'';
+      var lastrun=d.lastrun?('<div style="font-size:.74rem;color:var(--muted);margin:8px 0 0">Last sync '+esc(ago(new Date(d.lastrun.at).getTime()))+(d.lastrun.empties!=null?(' · '+d.lastrun.empties+' datasets still empty'):'')+'</div>'):'';
+      var log=(d.errlog&&d.errlog.length)?('<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.78rem;color:var(--muted)">Recent error log ('+d.errlog.length+')</summary><div style="overflow:auto;max-height:200px;margin-top:6px"><table class="enq" style="font-size:.73rem"><tbody>'+d.errlog.map(function(e){return '<tr><td style="white-space:nowrap;color:var(--muted)">'+esc(ago(new Date(e.at).getTime()))+'</td><td style="font-weight:600">'+esc(e.name)+'</td><td style="font-family:monospace;font-size:.71rem">'+esc((e.stage||'')+': '+(e.detail||''))+'</td></tr>';}).join('')+'</tbody></table></div></details>'):'';
+      out.innerHTML=verdict+issuesHtml+'<div class="secttl">Every dataset — what we hold of Street</div><div style="overflow:auto"><table class="enq" style="font-size:.82rem"><thead><tr><th>Dataset</th><th>Held / Street</th><th>Coverage</th><th>Status</th><th>OK</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Coverage = how much of Street we hold. OK ✓ = every field Street sends is stored and nothing was lost on the way in.</div>'+lastrun+log;
+    }).catch(function(){ if(b){b.disabled=false;b.textContent='Diagnose';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Check error.</div>'; });
   };
   window.grTest=function(){
     var b=document.getElementById('testbtn'); if(b){b.disabled=true;b.textContent='Testing…';}
@@ -604,11 +614,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.41', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.42', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.42',d:'21 Jun 2026',items:['Simplified the Connections controls from five buttons to two: Sync now, and one Diagnose','Diagnose is now a single health report: a plain-English verdict at the top (how many datasets are complete, filling or empty, and how much of Street we hold overall), a short "needs attention" list if anything is wrong with the exact reason, and a clean per-dataset table of coverage and status. Probe, Check data and Test sync are folded into it']},
     {v:'0.41',d:'21 Jun 2026',items:['Cleared the red "no such table" lines in Diagnose. They were never sync failures: the checker was counting rows in tables that had not been created yet because those datasets had not had a first sync. Every table is now created up front (empty, ready), so the message is gone and unsynced datasets simply read as 0','A not-yet-created table is no longer treated as an error anywhere']},
     {v:'0.40',d:'21 Jun 2026',items:['With the speed fixed, datasets are landing at 100% (sales, tenancies, property keys, maintenance, interested applicants all complete and matching Street field-for-field)','Sync now fills the EMPTY datasets first again, so the ones stuck at 0 jump the queue instead of waiting for the rotation to wrap round. Uses a fast row-count check, not the heavy pre-pass that caused the earlier timeout','Diagnose shows how many datasets are still empty so you can watch the number fall to zero']},
     {v:'0.39',d:'21 Jun 2026',items:['The Test sync proved storage was never the problem: one dataset stored all 378 rows perfectly. The real bottleneck was speed. Street is slow (about 2 seconds a page), so fetching pages one at a time made each dataset take ~9 seconds and the background sync ran out of time before it could store anything','Now each dataset fetches its pages in parallel, cutting it to ~2-3 seconds, and Sync now runs the work directly and reports back what it synced the moment it finishes, instead of handing off to a background task that could be cut short','Net effect: click Sync now and watch the datasets actually fill, a batch at a time']},
@@ -844,7 +855,7 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button><button id="auditbtn" class="syncnow" onclick="grAudit()" title="Check our local copy matches Street, field by field">Check data</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="See exactly what each sync did and any errors">Diagnose</button><button id="testbtn" class="syncnow" onclick="grTest()" title="Run one dataset sync inline, right now, and report exactly what happens">Test sync</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div><div id="auditout"></div><div id="diagout"></div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="Full health check: every dataset, how much of Street we hold, and anything that needs attention">Diagnose</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="diagout"></div></div>';
     var syncRows='';
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
