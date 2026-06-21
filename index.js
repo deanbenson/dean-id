@@ -409,7 +409,7 @@ function respond(body, status, headers) {
   return new Response(body, { status, headers: { ...SEC, ...headers } });
 }
 
-const STREET_API_BASE = "https://street.co.uk/open-api";
+const STREET_API_BASE = "https://street.co.uk/open-api/v1";
 
 // Read-only helper: calls the Street Open API with the server-side bearer token.
 // The token lives only in env (.dev.vars locally / wrangler secret in prod) — never in the repo.
@@ -1470,15 +1470,20 @@ function _t(v) {
 // drift that was failing inserts); and resets every backfill so the full history re-walks into the new shape.
 async function migrateSchema(env) {
   if (!env || !env.gr_estates) return;
-  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v3"))) return; } catch (_) { return; }
+  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v4"))) return; } catch (_) { return; }
   const db = env.gr_estates;
   for (const t of ["enquiries", "applicants", "contacts", "listings"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
   for (const t of ["viewings", "valuations", "offers"]) {
     try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + t).first(); if (!c || !c.n) { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } else { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} } }
     catch (_) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (__) {} }
   }
-  try { if (env.LISTINGS) { for (const n of ["enquiries", "viewings", "valuations", "sales_applicants", "lettings_applicants", "sales_offers", "lettings_offers", "contacts"]) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } } } catch (_) {}
-  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v3", "1"); } catch (_) {}
+  // Full-schema (generic) tables are pure mirrors — drop them so they recreate with one column per API field,
+  // then re-backfill from Street. Also clean up the old wrong-named tables from earlier path guesses.
+  const rebuild = ["tenancies", "landlords", "vendors", "tenants", "inspections", "sales", "properties_all", "interested_applicants", "property_keys", "maintenance_jobs", "move_outs", "solicitors", "todos", "todo_types", "follow_ups", "invoices", "photo_and_measures", "sales_instructions", "lettings_instructions", "areas", "brands", "companies", "branches_all", "users_all",
+    "tasks", "task_types", "portal_listings", "e_sign_documents", "questionnaire_responses", "activity", "lettings_applications", "maintenance_requests", "network_settings"];
+  for (const t of rebuild) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (_) {} }
+  try { if (env.LISTINGS) { const names = ["enquiries", "viewings", "valuations", "sales_applicants", "lettings_applicants", "sales_offers", "lettings_offers", "contacts"].concat(rebuild); for (const n of names) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } } } catch (_) {}
+  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v4", "1"); } catch (_) {}
 }
 const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
 const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
@@ -1495,7 +1500,29 @@ function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses
 function genDDL(name) { return "CREATE TABLE IF NOT EXISTS " + name + " (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, raw TEXT)"; }
 function genMapFor(name) { return function (db, d) { const a = d.attributes || {}; return db.prepare("INSERT INTO " + name + " (id,created_at,updated_at,raw) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET created_at=excluded.created_at,updated_at=excluded.updated_at,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.updated_at), JSON.stringify(d)); }; }
 function genRes(name, path) { return { name: name, path: path, ddl: genDDL(name), map: genMapFor(name), opts: { incr: false }, generic: true }; }
-// The full set of Street list resources we mirror locally. Order is the rotation order.
+// Data-driven capture: give a resource its exact field list (from the Street OpenAPI spec / live API) and we
+// build a table with one column per field, plus the COMPLETE raw record. Objects/arrays (address, dates,
+// telephone_numbers) are stored as JSON so nothing is lost; column names are quoted so any field name is safe.
+function schemaRes(name, path, fields, opts) {
+  const cols = ["id"].concat(fields).concat(["raw"]);
+  const ddl = "CREATE TABLE IF NOT EXISTS " + name + " (" + cols.map(function (c) { return '"' + c + '"' + (c === "id" ? " TEXT PRIMARY KEY" : ""); }).join(", ") + ")";
+  const colList = cols.map(function (c) { return '"' + c + '"'; }).join(",");
+  const ph = cols.map(function () { return "?"; }).join(",");
+  const upd = cols.filter(function (c) { return c !== "id"; }).map(function (c) { return '"' + c + '"=excluded."' + c + '"'; }).join(",");
+  const sql = "INSERT INTO " + name + " (" + colList + ") VALUES (" + ph + ") ON CONFLICT(id) DO UPDATE SET " + upd;
+  const map = function (db, d) {
+    const a = d.attributes || {};
+    const vals = [d.id];
+    for (let i = 0; i < fields.length; i++) { const v = a[fields[i]]; vals.push(v == null ? null : (typeof v === "object" ? JSON.stringify(v) : v)); }
+    vals.push(JSON.stringify(d));
+    const stmt = db.prepare(sql);
+    return stmt.bind.apply(stmt, vals);
+  };
+  return { name: name, path: path, ddl: ddl, map: map, opts: opts || { incr: false }, generic: true };
+}
+// The full set of Street list resources we mirror locally. Order is the rotation order. Field lists are taken
+// exactly from the Street Open API (every column matches the API's own attribute names). POST-only endpoints
+// (activity, documents, notes, maintenance-requests) and non-list resources are excluded — zero wrong paths.
 function extrasReg() {
   return [
     { name: "viewings", path: "/viewings", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
@@ -1505,33 +1532,30 @@ function extrasReg() {
     { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
     { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
     { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } },
-    // Every GET-listable Street Open API resource, taken EXACTLY from the official OpenAPI spec
-    // (developers.street.co.uk). POST-only endpoints (activity, documents, notes, maintenance-requests)
-    // and non-list resources are deliberately excluded so there are zero wrong paths.
-    genRes("tenancies", "/tenancies"),
-    genRes("landlords", "/landlords"),
-    genRes("vendors", "/vendors"),
-    genRes("tenants", "/tenants"),
-    genRes("inspections", "/inspections"),
-    genRes("sales", "/sales"),
-    genRes("properties_all", "/properties"),
-    genRes("interested_applicants", "/interested-applicants"),
-    genRes("property_keys", "/property-keys"),
-    genRes("maintenance_jobs", "/maintenance-jobs"),
-    genRes("move_outs", "/move-outs"),
-    genRes("solicitors", "/solicitors"),
-    genRes("todos", "/todos"),
-    genRes("todo_types", "/todo-types"),
-    genRes("follow_ups", "/follow-ups"),
-    genRes("invoices", "/invoices"),
-    genRes("photo_and_measures", "/photo-and-measures"),
-    genRes("sales_instructions", "/sales-instructions"),
-    genRes("lettings_instructions", "/lettings-instructions"),
-    genRes("areas", "/areas"),
-    genRes("brands", "/brands"),
-    genRes("companies", "/companies"),
-    genRes("branches_all", "/branches"),
-    genRes("users_all", "/users")
+    schemaRes("tenancies", "/tenancies", ["active", "start_date", "end_date", "original_term_start_date", "status", "tenancy_type", "tenancy_term_type", "rent_amount", "rent_frequency", "deposit_amount", "service_level", "service_level_type", "management_fee", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("landlords", "/landlords", ["full_name", "title", "first_name", "last_name", "address", "telephone_numbers", "email_addresses", "marketing_consent", "contact_preferences", "landlord_status", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("vendors", "/vendors", ["full_name", "title", "first_name", "last_name", "address", "telephone_numbers", "email_addresses", "marketing_consent", "contact_preferences", "vendor_status", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("tenants", "/tenants", ["tenant_type", "full_name", "title", "first_name", "last_name", "address", "telephone_numbers", "email_addresses", "marketing_consent", "contact_preferences", "tenant_status", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("inspections", "/inspections", ["due_date", "inspection_date", "status", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("sales", "/sales", ["address", "status", "sale_price", "dates", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("properties_all", "/properties", ["is_sales", "is_lettings", "is_company_owned", "is_commercial", "is_residential", "is_listed_building", "is_conservation_area", "address", "inline_address", "public_address", "status", "bedrooms", "bathrooms", "receptions", "floor_area", "plot_area", "land_area", "property_type", "property_style", "property_age_bracket", "construction_year", "tenure", "tenure_notes", "lease_expiry_year", "lease_expiry_date", "display_property_style", "work_required", "full_description", "short_description", "location_summary", "full_description_lettings", "short_description_lettings", "location_summary_lettings", "virtual_tour", "property_urls", "heating_system", "council_tax_band", "council_tax_cost", "local_authority", "service_charge"]),
+    schemaRes("interested_applicants", "/interested-applicants", ["applicant_type", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("property_keys", "/property-keys", ["ident", "description", "status", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("maintenance_jobs", "/maintenance-jobs", ["address", "summary", "description", "priority", "status", "reported_by", "reported_at", "completed_at", "closed_at", "cancelled_at", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("move_outs", "/move-outs", ["move_out_date", "contract_end_date", "completed_at", "cancelled_at", "cancellation_reason", "created_at", "updated_at"]),
+    schemaRes("solicitors", "/solicitors", ["title", "position", "first_name", "last_name", "full_name", "email_addresses", "phone_numbers", "address", "created_at", "updated_at"]),
+    schemaRes("todos", "/todos", ["subject_id", "subject_type", "title", "body", "due_date", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("todo_types", "/todo-types", ["name", "colour", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("follow_ups", "/follow-ups", ["subject_id", "subject_type", "due_date", "note", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("invoices", "/invoices", ["status", "amount", "due_date", "paid_at", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("photo_and_measures", "/photo-and-measures", ["address", "start", "end", "status", "cancelled_at", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("sales_instructions", "/sales-instructions", ["method", "marketing_price_qualifier", "marketing_price", "instructed_at", "revoked_at", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("lettings_instructions", "/lettings-instructions", ["method", "marketing_price_pcm", "marketing_price_period", "instructed_at", "revoked_at", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("areas", "/areas", ["name", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("brands", "/brands", ["name", "primary_colour", "secondary_colour", "tertiary_colour", "about_us", "why_instruct_us", "valuation_url", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("companies", "/companies", ["name", "address", "telephone_number", "email_address", "owner", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("branches_all", "/branches", ["address", "name", "public_name", "email_address", "telephone", "website", "about_branch_copy", "disclaimer", "matching_links_to_website", "matching_url_pattern", "deleted_at", "created_at", "updated_at"]),
+    schemaRes("users_all", "/users", ["first_name", "last_name", "job_title", "telephone_number", "mobile_number", "email_address", "deactivated_at", "deleted_at", "created_at", "updated_at"])
   ];
 }
 async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
