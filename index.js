@@ -1358,77 +1358,71 @@ async function refreshGoogleReviews(env, force) {
   }
 }
 
-// Incremental sync of Street enquiries into D1, so the Hub reads a fast local copy, never the live API.
+const ENQ_DDL = "CREATE TABLE IF NOT EXISTS enquiries (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT, email TEXT, phone TEXT, message TEXT, source TEXT, kind TEXT, property_id TEXT, property TEXT, branch TEXT)";
+function enqKindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
+function mEnq(db, d, inc) {
+  const a = d.attributes || {}; const rel = d.relationships || {};
+  const propId = (rel.property && rel.property.data && rel.property.data.id) || a.property_uuid || null;
+  const brId = (rel.branch && rel.branch.data && rel.branch.data.id) || a.branch_uuid || null;
+  const prop = (propId && inc[propId]) ? (inc[propId].attributes || {}) : null;
+  const br = (brId && inc[brId]) ? (inc[brId].attributes || {}) : null;
+  return db.prepare("INSERT INTO enquiries (id,created_at,updated_at,name,email,phone,message,source,kind,property_id,property,branch) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name,email=excluded.email,phone=excluded.phone,message=excluded.message,source=excluded.source,kind=excluded.kind,property_id=excluded.property_id,property=excluded.property,branch=excluded.branch")
+    .bind(d.id, a.created_at || null, a.updated_at || null,
+      (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null,
+      a.email_address || null, a.telephone_number || null, (a.message || "").slice(0, 500) || null,
+      a.custom_source || null, enqKindOf(a), propId,
+      prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address || null) : null,
+      br ? (br.name || br.branch_name || br.display_name || null) : null);
+}
+// Enquiries run on the same progressive engine: backfill the full history, then top up incrementally.
 async function syncEnquiries(env) {
-  if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
-  const db = env.gr_estates;
-  try { await db.prepare("CREATE TABLE IF NOT EXISTS enquiries (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT, email TEXT, phone TEXT, message TEXT, source TEXT, kind TEXT, property_id TEXT, property TEXT, branch TEXT)").run(); } catch (e) {}
-  try { await db.prepare("CREATE INDEX IF NOT EXISTS idx_enq_created ON enquiries(created_at)").run(); } catch (e) {}
-  let since = null;
-  try { if (env.LISTINGS) since = await env.LISTINGS.get("sync:enquiries:cursor"); } catch (_) {}
-  if (!since) since = new Date(Date.now() - 60 * 864e5).toISOString();
-  const runStart = Date.now();
-  const inc = {}; const all = []; const seen = {};
-  function absorb(b) { if (!b) return; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
-  function kindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
-  try {
-    const q = "filter%5Bupdated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
-    for (let pn = 1; pn <= 25; pn++) {
-      const r = await streetGet(env, "/enquiries?" + q + pn);
-      if (!r.ok || !r.body) break;
-      absorb(r.body);
-      const pg = (r.body.meta && r.body.meta.pagination) || {};
-      const tp = pg.total_pages || 1;
-      if (pn >= tp || (r.body.data || []).length < 100) break;
-    }
-  } catch (_) {}
-  if (all.length) {
-    const ups = all.map(function (d) {
-      const a = d.attributes || {}; const rel = d.relationships || {};
-      const propId = (rel.property && rel.property.data && rel.property.data.id) || a.property_uuid || null;
-      const brId = (rel.branch && rel.branch.data && rel.branch.data.id) || a.branch_uuid || null;
-      const prop = (propId && inc[propId]) ? (inc[propId].attributes || {}) : null;
-      const br = (brId && inc[brId]) ? (inc[brId].attributes || {}) : null;
-      return db.prepare("INSERT INTO enquiries (id,created_at,updated_at,name,email,phone,message,source,kind,property_id,property,branch) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name,email=excluded.email,phone=excluded.phone,message=excluded.message,source=excluded.source,kind=excluded.kind,property_id=excluded.property_id,property=excluded.property,branch=excluded.branch")
-        .bind(d.id, a.created_at || null, a.updated_at || null,
-          (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null,
-          a.email_address || null, a.telephone_number || null, (a.message || "").slice(0, 500) || null,
-          a.custom_source || null, kindOf(a), propId,
-          prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address || null) : null,
-          br ? (br.name || br.branch_name || br.display_name || null) : null);
-    });
-    for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
-  }
-  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:enquiries:cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:enquiries:at", new Date().toISOString()); await env.LISTINGS.put("sync:enquiries:delta", String(all.length)); } } catch (_) {}
-  return all.length;
+  if (!env || !env.gr_estates) return 0;
+  try { await env.gr_estates.prepare("CREATE INDEX IF NOT EXISTS idx_enq_created ON enquiries(created_at)").run(); } catch (e) {}
+  return await syncStreetResource(env, "enquiries", "/enquiries", ENQ_DDL, mEnq, { chunk: 10, incr: true });
 }
 
-// Generic incremental sync of a Street list resource into a D1 table. The Hub reads the local copy.
-// Bounded (maxPages) and instrumented (writes a :diag record with HTTP status / count / error) so we can
-// see exactly what Street returns. Crucially the cursor only advances when we actually pulled rows, so a
-// failed or rate-limited run retries the same window next time instead of silently skipping it forever.
-async function syncStreetResource(env, name, path, ddl, mapFn, maxPages) {
+// Sync a Street list resource into a D1 table so the Hub reads a fast, COMPLETE local copy.
+// Two phases, tracked per resource in KV:
+//   1. backfill — page through the ENTIRE collection a chunk at a time across ticks (no date window),
+//      so we end up holding everything, not just a recent slice. Resumes exactly where it left off.
+//   2. once backfilled — incremental top-up via filter[updated_from] (opts.incr, the default), which only
+//      pulls what changed; or, for endpoints that ignore that filter (viewings/valuations), "recycle":
+//      keep re-walking the collection in chunks so new/changed rows are picked up by idempotent upsert.
+// Each run is bounded (opts.chunk pages) so we never exhaust the Worker subrequest budget, and writes a
+// :diag record (status / rows / mode / backfill progress / error) so nothing can fail silently.
+async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
+  opts = opts || {};
+  const chunk = opts.chunk || 8;
+  const incr = opts.incr !== false;
   if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
   const db = env.gr_estates;
   try { await db.prepare(ddl).run(); } catch (e) {}
-  let since = null;
-  try { if (env.LISTINGS) since = await env.LISTINGS.get("sync:" + name + ":cursor"); } catch (_) {}
-  if (!since) since = new Date(Date.now() - 60 * 864e5).toISOString();
-  const runStart = Date.now();
+  let bf = { done: false, page: 1 };
+  try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
+  const mode = !bf.done ? "backfill" : (incr ? "topup" : "recycle");
   const inc = {}, all = [], seen = {};
-  let status = 0, err = null, pages = 0;
-  function absorb(b) { if (!b) return; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
+  let status = 0, err = null, pages = 0, totalPages = null, reachedEnd = false;
+  function absorb(b) { if (!b) return; const pg = (b.meta && b.meta.pagination) || {}; if (pg.total_pages) totalPages = pg.total_pages; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
+  let qbase, startPage;
+  if (mode === "topup") {
+    let since = null; try { if (env.LISTINGS) since = await env.LISTINGS.get("sync:" + name + ":cursor"); } catch (_) {}
+    if (!since) since = new Date(Date.now() - 2 * 864e5).toISOString();
+    qbase = path + (path.indexOf("?") >= 0 ? "&" : "?") + "filter%5Bupdated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
+    startPage = 1;
+  } else {
+    qbase = path + (path.indexOf("?") >= 0 ? "&" : "?") + "page%5Bsize%5D=100&page%5Bnumber%5D=";
+    startPage = bf.page || 1;
+  }
+  const endPage = (mode === "topup") ? (chunk + 6) : (startPage + chunk - 1);
   try {
-    const base = path + (path.indexOf("?") >= 0 ? "&" : "?") + "filter%5Bupdated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
-    for (let pn = 1; pn <= (maxPages || 10); pn++) {
-      const r = await streetGet(env, base + pn);
+    for (let pn = startPage; pn <= endPage; pn++) {
+      const r = await streetGet(env, qbase + pn);
       status = r.status || status;
       if (!r.ok) { err = (r.body && r.body.errors) ? JSON.stringify(r.body.errors).slice(0, 180) : ("HTTP " + (r.status || "?")); break; }
       if (!r.body) { err = "no body"; break; }
       pages++; absorb(r.body);
-      const pg = (r.body.meta && r.body.meta.pagination) || {};
-      const tp = pg.total_pages || 1;
-      if (pn >= tp || (r.body.data || []).length < 100) break;
+      const tp = totalPages || 1;
+      if (pn >= tp || (r.body.data || []).length < 100) { reachedEnd = true; break; }
     }
   } catch (e) { err = String((e && e.message) || e).slice(0, 180); }
   if (all.length) {
@@ -1436,10 +1430,19 @@ async function syncStreetResource(env, name, path, ddl, mapFn, maxPages) {
     for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
   }
   try { if (env.LISTINGS) {
-    if (all.length) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(runStart - 120000).toISOString());
+    if (mode === "topup") {
+      if (!err) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(Date.now() - 120000).toISOString());
+    } else if (mode === "backfill") {
+      if (reachedEnd) { bf.done = true; bf.page = 1; if (incr) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(Date.now() - 2 * 864e5).toISOString()); }
+      else { bf.page = startPage + pages; }
+      await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf));
+    } else { // recycle: keep walking the whole collection, looping back to the start
+      bf.page = reachedEnd ? 1 : (startPage + pages);
+      await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf));
+    }
     await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
     await env.LISTINGS.put("sync:" + name + ":delta", String(all.length));
-    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, pages: pages, err: err }));
+    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err }));
   } } catch (_) {}
   return all.length;
 }
@@ -1458,27 +1461,27 @@ function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses
 // The full set of Street list resources we mirror locally. Order is the rotation order.
 function extrasReg() {
   return [
-    { name: "viewings", path: "/viewings", ddl: VIEW_DDL, map: mView },
-    { name: "valuations", path: "/valuations", ddl: VAL_DDL, map: mVal },
-    { name: "sales_applicants", path: "/sales-applicants", ddl: APP_DDL, map: mApp("sale") },
-    { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let") },
-    { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale") },
-    { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let") },
-    { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon }
+    { name: "viewings", path: "/viewings", ddl: VIEW_DDL, map: mView, opts: { incr: false } },
+    { name: "valuations", path: "/valuations", ddl: VAL_DDL, map: mVal, opts: { incr: false } },
+    { name: "sales_applicants", path: "/sales-applicants", ddl: APP_DDL, map: mApp("sale"), opts: { incr: true } },
+    { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let"), opts: { incr: true } },
+    { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale"), opts: { incr: false } },
+    { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let"), opts: { incr: false } },
+    { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } }
   ];
 }
 async function migrateExtras(env) {
   try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
   try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
 }
-async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; await migrateExtras(env); try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map); } catch (_) { return 0; } }
+async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; await migrateExtras(env); try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
 // Sync the next `count` resources in rotation, advancing a KV cursor. Keeps each invocation light so we
 // never blow the Worker subrequest budget — over a few ticks everything backfills, then stays incremental.
 async function syncExtrasRotating(env, count) {
   await migrateExtras(env);
   const reg = extrasReg(); const n = Math.max(1, count || 1);
   let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
-  for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map); } catch (_) {} }
+  for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
   try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
 }
 // Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
@@ -1771,7 +1774,7 @@ export default {
       // Fast path: read the synced local copy (D1). The cron keeps it fresh, so this is instant.
       try {
         if (env.gr_estates) {
-          const lr = await env.gr_estates.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries ORDER BY created_at DESC LIMIT 200").all();
+          const lr = await env.gr_estates.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries ORDER BY created_at DESC LIMIT 2000").all();
           const rows = (lr && lr.results) || [];
           if (rows.length) {
             let ltotal = rows.length, syncedAt = null;
@@ -1827,7 +1830,7 @@ export default {
       const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
       let rows = [], total = 0, at = null;
-      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 200").all(); rows = (r && r.results) || []; } catch (_) {}
+      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; } catch (_) {}
       try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); total = (c && c.n) || 0; } catch (_) {}
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
