@@ -504,10 +504,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.23', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.24', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.24',d:'21 Jun 2026',items:['Found it: viewings (7,117), valuations (1,071) and offers (1,248) were fetching fine but failing to store because Street sends the address as a structured object — binding that to a text column silently killed every insert','Now coerced to clean text, and those datasets reset to re-pull their full history from the start']},
     {v:'0.23',d:'21 Jun 2026',items:['Enquiries backfill confirmed working (climbing past 2,890 and counting)','Added a Probe Street button on Connections: asks Street directly what its viewings, valuations and offers endpoints actually return, so we wire them from fact instead of guesswork']},
     {v:'0.22',d:'21 Jun 2026',items:['The local copy now holds EVERYTHING: each dataset backfills its entire history from Street a chunk at a time, then just tops up with new and changed records','Connections shows backfill progress live as it walks each dataset','Hub pages now read up to 2,000 rows (was 200); the top-bar search still covers the full set']},
     {v:'0.21',d:'21 Jun 2026',items:['Viewings and valuations now sync too: those Street endpoints quietly ignore the incremental filter, so we now pull their most recent records directly when it comes back empty','Applicants (617) and contacts (800) confirmed flowing after the staggered-sync fix']},

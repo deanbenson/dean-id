@@ -1448,15 +1448,29 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
 }
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
 function _branch(d, inc) { const id = _relId(d, "branch") || (d.attributes || {}).branch_uuid; const b = (id && inc[id]) ? (inc[id].attributes || {}) : null; return b ? (b.name || b.branch_name || b.display_name || null) : null; }
+// Coerce a Street attribute into something D1 can bind. Street's address fields are structured objects;
+// binding a raw object throws and silently kills the whole insert (that's why viewings/valuations/offers
+// fetched rows but stored none). Strings/numbers pass through; objects become a readable string or null.
+function _t(v) {
+  if (v == null) return null;
+  const t = typeof v;
+  if (t === "string" || t === "number" || t === "boolean") return v;
+  if (t === "object") {
+    const s = v.display_address || v.full_address || v.public_address || v.inline_address || v.formatted_address || v.formatted || v.summary || v.name || v.label || v.value
+      || [v.line_1 || v.line1, v.line_2 || v.line2, v.line_3 || v.line3, v.town || v.city, v.county, v.postcode || v.post_code].filter(Boolean).join(", ");
+    return s || null;
+  }
+  return String(v);
+}
 const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT)";
 const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, branch TEXT)";
 const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT)";
 const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT)";
 const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT)";
-function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, a.created_at || null, a.start || null, a.status || null, a.address || a.public_address || null, _branch(d, inc), _relId(d, "property") || a.property_uuid || null); }
-function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, a.created_at || null, a.start || null, a.status || a.custom_status || null, a.address || null, a.lead_source || null, _branch(d, inc)); }
-function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, a.created_at || null, a.name || null, (req.max_price != null ? Math.round(req.max_price) : null), beds, a.lead_rating || null, _branch(d, inc)); }; }
-function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, a.created_at || a.offer_made_at || null, a.address || null, (a.offer_amount != null ? Math.round(a.offer_amount) : null), a.status || null, _branch(d, inc)); }; }
+function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status), _t(a.address || a.public_address), _t(_branch(d, inc)), _relId(d, "property") || a.property_uuid || null); }
+function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status || a.custom_status), _t(a.address), _t(a.lead_source), _t(_branch(d, inc))); }
+function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc))); }; }
+function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : null), _t(a.status), _t(_branch(d, inc))); }; }
 function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status").bind(d.id, a.created_at || null, nm, em, ph, st); }
 // The full set of Street list resources we mirror locally. Order is the rotation order.
 function extrasReg() {
@@ -1473,6 +1487,9 @@ function extrasReg() {
 async function migrateExtras(env) {
   try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
   try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
+  // One-time: viewings/valuations/offers fetched rows but stored none (address-object bind crash, now fixed).
+  // Their backfill cursor advanced past those pages, so reset it to re-walk the full history from the start.
+  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:addr_fix"))) { for (const n of ["viewings", "valuations", "sales_offers", "lettings_offers"]) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } await env.LISTINGS.put("migrate:addr_fix", "1"); } } catch (_) {}
 }
 async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; await migrateExtras(env); try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
 // Sync the next `count` resources in rotation, advancing a KV cursor. Keeps each invocation light so we
