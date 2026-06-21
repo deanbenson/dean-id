@@ -20,7 +20,8 @@
  .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer}
  .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
  .shell{display:grid;grid-template-columns:214px 1fr;min-height:100vh}
- .side{background:var(--panel);border-right:1px solid #ddd5c8;padding:14px 11px;position:sticky;top:0;height:100vh;overflow:auto}
+ .side{background:var(--panel);border-right:1px solid #ddd5c8;padding:14px 11px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+ .sidescroll{flex:1;overflow:auto;min-height:0;margin:0 -2px;padding:0 2px}
  .brand{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-weight:700;font-size:1.08rem;padding:4px 8px 10px}.brand .k{color:var(--orange)}
  .gl{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:13px 8px 4px}
  .nv{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:.86rem;color:#52555c;cursor:pointer}
@@ -40,7 +41,7 @@
  .acct{display:flex;align-items:center;gap:8px}
  .av{width:30px;height:30px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.72rem;font-family:var(--serif);flex:none}
  .who{display:flex;flex-direction:column;line-height:1.15}.who b{font-size:.82rem;font-weight:600}.who span{font-size:.68rem;color:var(--muted)}
- .sidefoot{margin-top:auto;padding-top:12px;border-top:1px solid #ddd5c8}
+ .sidefoot{flex:none;padding-top:12px;border-top:1px solid #ddd5c8}
  .userblock{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;cursor:pointer}.userblock:hover{background:rgba(255,255,255,.55)}
  .footrow{display:flex;align-items:center;gap:8px;margin-top:8px}
  .footrow .rolesel{flex:1;max-width:none}
@@ -50,6 +51,20 @@
  .staffg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px}
  .strow{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
  .av.sm{width:36px;height:36px;font-size:.8rem}
+ .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:13px}
+ .pcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 16px;box-shadow:0 6px 18px rgba(44,46,51,.05);text-align:center}
+ .pav{width:62px;height:62px;border-radius:50%;margin:0 auto 11px;display:grid;place-items:center;background:#2b3645 center/cover no-repeat;color:#fff;font-weight:700;font-family:var(--serif);font-size:1.1rem}
+ .pav.ini{background:var(--orange)}
+ .pn{font-weight:600;font-size:1rem}.pt{color:var(--muted);font-size:.84rem;margin-top:1px}
+ .pd{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.15rem .55rem;border-radius:20px}
+ .pcc{margin-top:11px;padding-top:10px;border-top:1px solid var(--line);text-align:left;display:grid;gap:4px}
+ .pc{font-size:.8rem;color:#54585f;display:flex;gap:7px;align-items:center}.pc span{opacity:.6}
+ .livehead{display:flex;align-items:center;gap:8px;margin:2px 0 14px;color:var(--muted);font-size:.82rem}
+ .livedot{width:9px;height:9px;border-radius:50%;background:var(--g);flex:none;animation:pulse 2s infinite}
+ @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(29,158,117,.45)}70%{box-shadow:0 0 0 8px rgba(29,158,117,0)}100%{box-shadow:0 0 0 0 rgba(29,158,117,0)}}
+ .feedrow{display:flex;gap:11px;align-items:flex-start;padding:12px 2px;border-top:1px solid var(--line)}.feedrow:first-of-type{border-top:0}
+ .feedrow .fic{width:30px;height:30px;border-radius:50%;background:rgba(226,103,42,.12);color:var(--orange-deep);display:grid;place-items:center;flex:none;font-size:.9rem}
+ .feedrow .ft{margin-left:auto;color:var(--muted);font-size:.76rem;white-space:nowrap}
  .view{padding:20px 22px 64px;max-width:1080px}
  h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
  .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
@@ -171,7 +186,7 @@
     accounts:'Will pull from Street client accounts and your accounting.',
     compliance:'Will pull from Street (certificates) and your AML checks.',
     analytics:'Will be computed from your live Hub data.',
-    feed:'Will be built from live activity across Street and the site.',
+    feed:'Live from website enquiries and activity across the business.',
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
@@ -215,12 +230,13 @@
     var s=document.getElementById('side'); if(s)s.classList.remove('open');
     var o=document.getElementById('ovl'); if(o)o.classList.remove('show');
     updateActive(); renderView(true);
+    if(ROUTE==='feed') startFeed(); else stopFeed();
   }
   function updateActive(){ var ns=document.querySelectorAll('.nv'); for(var i=0;i<ns.length;i++){ ns[i].classList.toggle('on', ns[i].getAttribute('data-id')===ROUTE); } }
   function renderView(scrollTop){ var v=document.getElementById('view'); if(!v) return; v.innerHTML=viewFor(ROUTE); if(scrollTop){ try{ window.scrollTo(0,0); }catch(e){} } }
 
   function navHTML(){
-    var h='<div class="brand"><span>G.<span class="k">R.</span> Hub</span></div>';
+    var h='';
     NAV.forEach(function(grp){
       var vis=grp.items.filter(function(it){ return roleAllows(it.id); });
       if(!vis.length) return;
@@ -299,24 +315,28 @@
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[];
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
     var wired=[
-      {nm:'Street CRM',st:'Live',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0)},
-      {nm:'Google reviews',st:'Live',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rel(rv&&rv.generated_at?new Date(rv.generated_at).getTime():0)},
-      {nm:'Website + leads',st:'Live',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet'))},
-      {nm:'Be-first alerts',st:'Live',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet')},
-      {nm:'Ask Georgina (AI)',st:'Live',dta:'on the site and in this hub',fr:'answers on demand'},
-      {nm:'My G.R. Estates',st:'Live',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live'}
+      {nm:'Street CRM',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0)},
+      {nm:'Google reviews',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rel(rv&&rv.generated_at?new Date(rv.generated_at).getTime():0)},
+      {nm:'Website + leads',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet'))},
+      {nm:'Be-first alerts',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet')},
+      {nm:'Ask Georgina (AI)',dta:'on the site and in this hub',fr:'answers on demand'},
+      {nm:'My G.R. Estates',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live'}
     ];
-    if(D.socialOk) wired.push({nm:'Social (Meta)',st:'Live',dta:'feed showing on the site',fr:'connected'});
-    var known=[];
-    if(!D.socialOk) known.push({nm:'Social (Meta + others)',rag:'r',st:'Not connected',dta:'Instagram, Facebook, LinkedIn, TikTok accounts',fr:'feed not pulled in yet'});
-    known.push({nm:'Rightmove + OnTheMarket',rag:'n',st:'Not wired',dta:'listed on, per your own site',fr:'not connected to the hub'});
-    known.push({nm:'Phone',rag:'n',st:'Not connected',dta:'01642 378022, no integration',fr:'planned, the basis for the AI front desk'});
-    known.push({nm:'G.R. Removals',rag:'n',st:'Partial',dta:'Google reviews only',fr:'jobs and bookings not wired'});
-    function card(s,liveFlag){ var rag=liveFlag?'g':(s.rag||'n'); return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag '+rag+'">'+esc(s.st)+'</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }
-    return '<h2 class="vt">Connections</h2><div class="vsub">Every system, whether its data is flowing, and when it last came in. Only what\'s true, nothing assumed.</div>'
-      +'<div class="secttl">Wired in · live data</div><div class="sysg">'+wired.map(function(s){return card(s,true);}).join('')+'</div>'
-      +'<div class="secttl">Known, not yet wired</div><div class="sysg">'+known.map(function(s){return card(s,false);}).join('')+'</div>'
-      +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">Your full system list, accounts, compliance, maintenance, deposits and the rest, lives in your credentials tracker. Rather than guess at them, we\'ll pull the real inventory in here so each shows its true status and last sync.</div>';
+    if(D.socialOk) wired.push({nm:'Social feed (Meta)',dta:'showing on the site',fr:'connected'});
+    var stack=[
+      ['PayProp','Payments · rent & landlord payouts'],['TDS (Custodial)','Compliance · deposit protection'],
+      ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
+      ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · listings & leads'],
+      ['OnTheMarket','Portal · listings & leads'],['Snaith Boards','Boards · for-sale / to-let'],
+      ['Aztec / 3CX','Telephony · the phone system'],['Google Workspace','Email, calendar & drive'],
+      ['DocuSign','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
+    ];
+    var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
+    var scards=stack.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected to the hub</div></div>'; }).join('');
+    return '<h2 class="vt">Connections</h2><div class="vsub">Every system, whether its data is flowing to the hub, and when it last came in. Only what\'s true.</div>'
+      +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
+      +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
+      +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
   }
 
   function viewListings(){
@@ -346,12 +366,32 @@
     return '<h2 class="vt">Ask Georgina</h2><div class="vsub">Ask anything about the business in plain English. She answers from your live data.</div>'+chips+(log||'<div class="card" style="color:var(--muted)">Try a suggestion above, or use the ask bar at the top of any page.</div>');
   }
 
+  function dept(t){ t=(t||'').toLowerCase(); if(t.indexOf('director')>=0)return 'Leadership'; if(t.indexOf('property manager')>=0)return 'Property management'; if(t.indexOf('manager')>=0||t.indexOf('valuer')>=0)return 'Sales & valuations'; if(t.indexOf('progress')>=0)return 'Sales progression'; if(t.indexOf('lettings')>=0||t.indexOf('negotiator')>=0)return 'Lettings'; if(t.indexOf('social')>=0||t.indexOf('marketing')>=0)return 'Marketing'; if(t.indexOf('account')>=0||t.indexOf('admin')>=0)return 'Accounts & admin'; if(t.indexOf('tech')>=0)return 'Tech'; return 'Team'; }
   function viewStaff(){
     var team=D.team||[];
     if(!team.length) return '<h2 class="vt">Staff</h2><div class="vsub">Live from Street.</div><div class="card">Team syncing…</div>';
-    var rows=team.map(function(p){ return '<div class="strow"><span class="av sm">'+esc(initials(p.name||''))+'</span><div><div style="font-weight:600">'+esc(p.name||'')+'</div><div style="color:var(--muted);font-size:.84rem">'+esc(p.title||'')+'</div></div></div>'; }).join('');
-    return '<h2 class="vt">Staff</h2><div class="vsub">Your team, live from Street · '+team.length+' people.</div><div class="staffg">'+rows+'</div>';
+    var withExtra=team.filter(function(p){return p.email||p.phone||p.photo;}).length;
+    var cards=team.map(function(p){
+      var photo=p.photo?'<span class="pav" style="background-image:url(\''+esc(p.photo)+'\')"></span>':'<span class="pav ini">'+esc(initials(p.name||''))+'</span>';
+      var contact='';
+      if(p.email) contact+='<div class="pc"><span aria-hidden="true">✉</span>'+esc(p.email)+'</div>';
+      if(p.phone) contact+='<div class="pc"><span aria-hidden="true">☎</span>'+esc(p.phone)+'</div>';
+      return '<div class="pcard">'+photo+'<div class="pn">'+esc(p.name||'')+'</div><div class="pt">'+esc(p.title||'')+'</div><div class="pd">'+esc(dept(p.title))+'</div>'+(contact?'<div class="pcc">'+contact+'</div>':'')+'</div>';
+    }).join('');
+    return '<h2 class="vt">Staff</h2><div class="vsub">Your team, live from Street · '+team.length+' people.'+(withExtra?'':' Name and role are what Street exposes for the team today; photos and contact details appear here automatically when they\'re on the Street profiles.')+'</div><div class="pgrid">'+cards+'</div>';
   }
+  function viewFeed(){
+    var leads=D.leads||[]; var ev=[];
+    leads.forEach(function(L){ ev.push({at:L.at,ic:(L.kind==='valuation'?'£':L.kind==='viewing'?'◷':'✉'),txt:'New '+esc(L.kind||'enquiry')+' enquiry'+(L.name?' from '+esc(L.name):''),sub:(L.streetOk?'landed in Street':'captured')}); });
+    ev.sort(function(a,b){ return (b.at||0)-(a.at||0); });
+    var body;
+    if(!ev.length) body='<div class="card" style="color:var(--muted)">Quiet for now. New enquiries and activity will stream in here the moment they happen.</div>';
+    else body='<div class="card">'+ev.slice(0,40).map(function(e){ return '<div class="feedrow"><span class="fic">'+e.ic+'</span><div><div>'+e.txt+'</div><div style="color:var(--muted);font-size:.8rem">'+esc(e.sub)+'</div></div><span class="ft">'+ago(e.at)+'</span></div>'; }).join('')+'</div>';
+    return '<h2 class="vt">Company feed</h2><div class="vsub">Live activity across the business, newest first.</div><div class="livehead"><span class="livedot"></span> Updating automatically</div>'+body;
+  }
+  var FEEDTIMER=null;
+  function startFeed(){ if(FEEDTIMER) return; FEEDTIMER=setInterval(function(){ if(ROUTE!=='feed'){ stopFeed(); return; } fetch('/api/leads',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.leads){ D.leads=d.leads; if(d.stats)D.stats=d.stats; if(ROUTE==='feed') renderView(false); } }).catch(function(){}); }, 40000); }
+  function stopFeed(){ if(FEEDTIMER){ clearInterval(FEEDTIMER); FEEDTIMER=null; } }
   function viewSoon(id){ var it=findItem(id); return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>'; }
 
   function viewProfile(){
@@ -376,6 +416,7 @@
     else if(id==='reviews')body=viewReviews();
     else if(id==='roadmap')body=viewRoadmap();
     else if(id==='staff')body=viewStaff();
+    else if(id==='feed')body=viewFeed();
     else body=viewSoon(id);
     return body+srcLine(id);
   }
@@ -392,10 +433,11 @@
 
   function renderShell(){
     computeRag();
-    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+footHTML()+'</aside><div class="main">'
+    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side"><div class="brand" onclick="grGo(\'home\')" style="cursor:pointer" title="Home"><span>G.<span class="k">R.</span> Hub</span></div><div class="sidescroll">'+navHTML()+'</div>'+footHTML()+'</aside><div class="main">'
       +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div></div>'
       +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
     updateActive();
+    if(ROUTE==='feed') startFeed(); else stopFeed();
   }
 
   function boot(){

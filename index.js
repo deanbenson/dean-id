@@ -1826,7 +1826,16 @@ export default {
             if (!nm || exclude.has(nm) || excludeFirst.has(first)) return false;
             return true;
           })
-          .map(function (a) { const fn = (a.first_name || "").toLowerCase().trim(); return { name: ((a.first_name || "") + " " + (a.last_name || "")).trim(), title: titleOverride[fn] || a.job_title || "" }; });
+          .map(function (a) {
+            const fn = (a.first_name || "").toLowerCase().trim();
+            return {
+              name: ((a.first_name || "") + " " + (a.last_name || "")).trim(),
+              title: titleOverride[fn] || a.job_title || "",
+              email: a.email || a.email_address || null,
+              phone: a.telephone_number || a.phone_number || a.mobile_number || a.contact_number || a.telephone || null,
+              photo: a.profile_image_url || a.avatar_url || a.photo_url || a.image_url || a.profile_photo_url || null
+            };
+          });
         // Team members who aren't in the CRM (e.g. social media manager) — added by hand.
         const extra = [{ name: "Tia-Rose Catterson", title: "Social Media Manager" }];
         extra.forEach(function (m) { if (!members.some(function (x) { return x.name.toLowerCase() === m.name.toLowerCase(); })) members.push(m); });
