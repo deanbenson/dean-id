@@ -40,7 +40,16 @@
  .acct{display:flex;align-items:center;gap:8px}
  .av{width:30px;height:30px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.72rem;font-family:var(--serif);flex:none}
  .who{display:flex;flex-direction:column;line-height:1.15}.who b{font-size:.82rem;font-weight:600}.who span{font-size:.68rem;color:var(--muted)}
- @media(max-width:680px){.who{display:none}.vlab{display:none}}
+ .sidefoot{margin-top:auto;padding-top:12px;border-top:1px solid #ddd5c8}
+ .userblock{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;cursor:pointer}.userblock:hover{background:rgba(255,255,255,.55)}
+ .footrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+ .footrow .rolesel{flex:1;max-width:none}
+ .signout{padding:.45rem .62rem;flex:none}
+ .exitp{flex:1;background:var(--orange);color:#fff;border-color:var(--orange);text-align:center}
+ .srcline{margin-top:24px;padding-top:12px;border-top:1px dashed var(--line);color:var(--muted);font-size:.78rem;display:flex;align-items:center;gap:7px}
+ .staffg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:11px}
+ .strow{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .av.sm{width:36px;height:36px;font-size:.8rem}
  .view{padding:20px 22px 64px;max-width:1080px}
  h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
  .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
@@ -107,6 +116,8 @@
   function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
   function ago(ts){ if(!ts) return ''; var s=Math.floor((Date.now()-ts)/1000); if(s<60)return 'just now'; var m=Math.floor(s/60); if(m<60)return m+' min ago'; var h=Math.floor(m/60); if(h<24)return h+' hr ago'; var d=Math.floor(h/24); return d+' day'+(d>1?'s':'')+' ago'; }
   function fmt(ts){ if(!ts)return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+  function initials(n){ return (n||'').split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase(); }
+  function srcLine(id){ return '<div class="srcline"><span aria-hidden="true">⚯</span> Data, '+esc(SRC[id]||'from the relevant system.')+'</div>'; }
 
   window.grLogout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} boot(); };
   window.grSave=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} boot(); };
@@ -119,7 +130,7 @@
     {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
     {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
     {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
-    {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
+    {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
     {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'maintenance',l:'Maintenance',ic:'✸',rag:'a'}]},
     {g:'Services',items:[{id:'removals',l:'Removals',ic:'⊟',rag:'g'},{id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}]},
     {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
@@ -135,7 +146,34 @@
     removals:'G.R. Removals jobs, bookings and its 5.0-star reviews.',mortgages:'Mortgage referrals and outcomes.',
     accounts:'Client money, landlord statements and invoices.',compliance:'Gas, EICR and EPC tracking, plus AML checks.',
     analytics:'Trends, comparisons and snapshot views you can pin.',staff:'The team, roles and performance.',
-    feed:'Live company wins, everyone sees their own feed.',settings:'People and access, plus integrations.'
+    feed:'Live company wins, everyone sees their own feed.',map:'Branches and properties plotted on a map.',settings:'People and access, plus integrations.'
+  };
+  var SRC={
+    home:'Live from Street (listings, team, branches), Google reviews and the website.',
+    connections:'Live status and timestamps from each connected system.',
+    ask:'Answers from your live Street, reviews and website data.',
+    enquiries:'Live from the website, flowing into Street.',
+    listings:'Live from Street, via the property database.',
+    reviews:'Live from your Google Business profiles.',
+    roadmap:'Maintained by you and Dean.',
+    staff:'Live from Street (your team records).',
+    profile:'Your role and access in the Hub.',
+    valuations:'Will pull from Street (valuations and the diary).',
+    viewings:'Will pull from Street (viewings and feedback).',
+    progression:'Will pull from Street (sales progression and chains).',
+    contacts:'Will pull from Street (all contacts).',
+    calendar:'Will pull from Street (appointments and key dates).',
+    marketing:'Will pull from the portals (Rightmove, OnTheMarket) and Meta.',
+    tenancies:'Will pull from Street (tenancies and rent).',
+    maintenance:'Will pull from Street and your maintenance system.',
+    removals:'Will pull from G.R. Removals (jobs, bookings, reviews).',
+    mortgages:'Will pull from your mortgage referrals.',
+    accounts:'Will pull from Street client accounts and your accounting.',
+    compliance:'Will pull from Street (certificates) and your AML checks.',
+    analytics:'Will be computed from your live Hub data.',
+    feed:'Will be built from live activity across Street and the site.',
+    settings:'People, access and integration settings.',
+    map:'Will plot your branches and property locations from Street.'
   };
   var PLAN=[
     {t:'New website + live listings',s:'live'},{t:'Leads into Street',s:'live'},{t:'Live Google reviews',s:'live'},{t:'Ask Georgina (AI)',s:'live'},
@@ -146,9 +184,9 @@
   ];
   var ROLES={
     owner:{label:'Owner',nav:'all',home:'owner'},
-    manager:{label:'Manager',nav:['home','connections','ask','enquiries','valuations','viewings','progression','contacts','calendar','listings','marketing','tenancies','maintenance','removals','accounts','compliance','analytics','reviews','staff','feed','roadmap'],home:'owner'},
-    negotiator:{label:'Negotiator',nav:['home','ask','enquiries','viewings','contacts','calendar','listings','reviews','feed','roadmap'],home:'nego'},
-    marketing:{label:'Marketing',nav:['home','ask','marketing','listings','reviews','analytics','feed','roadmap'],home:'marketing'},
+    manager:{label:'Manager',nav:['home','connections','ask','enquiries','valuations','viewings','progression','contacts','calendar','listings','map','marketing','tenancies','maintenance','removals','accounts','compliance','analytics','reviews','staff','feed','roadmap'],home:'owner'},
+    negotiator:{label:'Negotiator',nav:['home','ask','enquiries','viewings','contacts','calendar','listings','map','reviews','feed','roadmap'],home:'nego'},
+    marketing:{label:'Marketing',nav:['home','ask','marketing','listings','map','reviews','analytics','feed','roadmap'],home:'marketing'},
     accounts:{label:'Accounts',nav:['home','ask','accounts','compliance','reviews','feed','roadmap'],home:'accounts'}
   };
   var WHO={owner:['Georgina','Owner'],manager:['Branch manager','Manager'],negotiator:['Negotiator','Sales / lettings'],marketing:['Tia','Marketing'],accounts:['Rosie','Accounts']};
@@ -192,6 +230,14 @@
     return h;
   }
 
+  function footHTML(){
+    var who=WHO[ROLE]||['Georgina','Owner'];
+    var user='<div class="userblock" onclick="grGo(\'profile\')" title="Your profile"><span class="av">'+esc(initials(who[0]))+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
+    var ctrl;
+    if(ROLE==='owner'){ ctrl='<select class="rolesel" onchange="grRole(this.value)" title="Preview a role dashboard (admin only)"><option value="owner" selected>Preview a role…</option>'+Object.keys(ROLES).filter(function(k){return k!=='owner';}).map(function(k){ return '<option value="'+k+'">'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>'; }
+    else { ctrl='<button class="btn exitp" onclick="grRole(\'owner\')">Exit '+esc((WHO[ROLE]||['','']) [1])+' preview</button>'; }
+    return '<div class="sidefoot">'+user+'<div class="footrow">'+ctrl+'<button class="btn signout" onclick="grLogout()" title="Sign out" aria-label="Sign out">⎋</button></div></div>';
+  }
   function tile(n,l,acc,sub){ return '<div class="tile'+(acc?' acc':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
   function viewHome(){
@@ -300,6 +346,12 @@
     return '<h2 class="vt">Ask Georgina</h2><div class="vsub">Ask anything about the business in plain English. She answers from your live data.</div>'+chips+(log||'<div class="card" style="color:var(--muted)">Try a suggestion above, or use the ask bar at the top of any page.</div>');
   }
 
+  function viewStaff(){
+    var team=D.team||[];
+    if(!team.length) return '<h2 class="vt">Staff</h2><div class="vsub">Live from Street.</div><div class="card">Team syncing…</div>';
+    var rows=team.map(function(p){ return '<div class="strow"><span class="av sm">'+esc(initials(p.name||''))+'</span><div><div style="font-weight:600">'+esc(p.name||'')+'</div><div style="color:var(--muted);font-size:.84rem">'+esc(p.title||'')+'</div></div></div>'; }).join('');
+    return '<h2 class="vt">Staff</h2><div class="vsub">Your team, live from Street · '+team.length+' people.</div><div class="staffg">'+rows+'</div>';
+  }
   function viewSoon(id){ var it=findItem(id); return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>'; }
 
   function viewProfile(){
@@ -314,10 +366,18 @@
       +'<button class="btn" style="margin-top:16px" onclick="grLogout()">Sign out</button>';
   }
   function viewFor(id){
-    if(id==='profile')return viewProfile();
-    if(id==='home')return roleHome(); if(id==='connections')return viewConnections(); if(id==='ask')return viewAsk();
-    if(id==='enquiries')return viewEnquiries(); if(id==='listings')return viewListings(); if(id==='reviews')return viewReviews(); if(id==='roadmap')return viewRoadmap();
-    return viewSoon(id);
+    var body;
+    if(id==='profile')body=viewProfile();
+    else if(id==='home')body=roleHome();
+    else if(id==='connections')body=viewConnections();
+    else if(id==='ask')body=viewAsk();
+    else if(id==='enquiries')body=viewEnquiries();
+    else if(id==='listings')body=viewListings();
+    else if(id==='reviews')body=viewReviews();
+    else if(id==='roadmap')body=viewRoadmap();
+    else if(id==='staff')body=viewStaff();
+    else body=viewSoon(id);
+    return body+srcLine(id);
   }
 
   window.grAsk=function(q){
@@ -332,11 +392,8 @@
 
   function renderShell(){
     computeRag();
-    var who=WHO[ROLE]||['Georgina','Owner']; var ini=who[0].split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase();
-    var acct='<div class="acct" onclick="grGo(\'profile\')" style="cursor:pointer" title="Your profile"><span class="av">'+esc(ini)+'</span><span class="who"><b>'+esc(who[0])+'</b><span>'+esc(who[1])+'</span></span></div>';
-    var rs='<label class="vlab">View as</label><select class="rolesel" onchange="grRole(this.value)" title="Preview a role view">'+Object.keys(ROLES).map(function(k){ return '<option value="'+k+'"'+(k===ROLE?' selected':'')+'>'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>';
-    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+'</aside><div class="main">'
-      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div>'+acct+rs+'<button class="btn" onclick="grLogout()">Sign out</button></div>'
+    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+footHTML()+'</aside><div class="main">'
+      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div></div>'
       +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
     updateActive();
   }
