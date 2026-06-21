@@ -623,7 +623,7 @@ window.alertSignup=function(e,f){
   var beds=fd.beds?(fd.beds+'+ bed '):'';
   var areaTxt=fd.area?(' in '+esc(fd.area)):'';
   var summary=beds+'homes '+kindTxt+areaTxt;
-  var t=f.querySelector('.ab-thanks'); if(t){ t.innerHTML='You\'re on the list. 🎉<br>We\'ll keep watch for <b>'+summary+'</b> and be in touch the moment the right one lands, often before it hits the portals.'; t.style.display='block'; }
+  var t=f.querySelector('.ab-thanks'); if(t){ t.innerHTML='You\'re on the list. 🎉<br>We\'ll watch for <b>'+summary+'</b>. What happens next: one of our local team picks this up personally, and the moment a match comes to market (often before it\'s even on Rightmove) they\'ll be in touch by email or phone. No bots, no spam, opt out any time.'; t.style.display='block'; }
   var c=f.querySelector('.ab-consent'); if(c) c.style.display='none';
   Array.prototype.forEach.call(f.elements,function(el){ if(el.tagName!=='BUTTON') el.disabled=true; });
   var b=f.querySelector('button'); if(b){ b.disabled=true; b.textContent='Done ✓'; }
