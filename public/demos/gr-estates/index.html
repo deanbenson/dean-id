@@ -129,6 +129,9 @@
   .card .addr{color:var(--muted);font-size:.92rem;margin:.2rem 0 .9rem}
   .card .meta{display:flex;gap:1rem;font-size:.84rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:.8rem}
   .card .meta b{font-weight:600}
+  .card .ph .fav{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--orange-deep);font-size:1.08rem;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18);transition:.15s;z-index:3;border:none;user-select:none}
+  .card .ph .fav:hover{background:#fff;transform:scale(1.08)}
+  .card .ph .fav.on{background:var(--orange);color:#fff}
   .demo-note{font-size:.78rem;color:var(--muted);margin-top:16px;text-align:center}
   .cta-card{display:grid;place-items:center;text-align:center;background:#faf7f2;border:1px solid var(--line);color:var(--ink);min-height:300px}
   .cta-card .cta-inner{display:grid;gap:6px;padding:24px}
@@ -315,6 +318,7 @@
       <a href="#team">Team</a>
       <a href="#ai">Ask Georgina</a>
       <a href="account.html">My G.R. Estates</a>
+      <a href="saved-homes.html" id="navSaved">♡ Saved</a>
       <a href="#contact">Contact</a>
     </nav>
     <div class="nav-cta">
@@ -713,7 +717,18 @@
     if(L.status==='Under Offer') return 'Under Offer';
     return L.kind==='let' ? 'To Let' : 'For Sale';
   }
+  var __byId={};
+  function savedMap(){ try{ var m=JSON.parse(localStorage.getItem('grSaved')||'{}'); return (m&&typeof m==='object'&&!Array.isArray(m))?m:{}; }catch(e){ return {}; } }
+  function isFav(id){ return id!=null && !!savedMap()[String(id)]; }
+  window.toggleFav=function(e,id){ if(e){e.preventDefault();e.stopPropagation();} id=String(id); var m=savedMap(); if(m[id]){ delete m[id]; } else { var L=__byId[id]||{}; m[id]={id:id,kind:L.kind,status:L.status,price:L.price,address:L.address,beds:L.beds,baths:L.baths,type:L.type,image:L.image||(L.images&&L.images[0])||null}; } try{ localStorage.setItem('grSaved',JSON.stringify(m)); }catch(_){} updateFavUI(); return false; };
+  function updateFavUI(){
+    var m=savedMap(), n=0, k; for(k in m){ if(m.hasOwnProperty(k)) n++; }
+    var nv=document.getElementById('navSaved'); if(nv) nv.innerHTML=(n?'♥':'♡')+' Saved'+(n?' ('+n+')':'');
+    var bs=document.querySelectorAll('.fav'); for(var i=0;i<bs.length;i++){ var on=isFav(bs[i].getAttribute('data-id')); bs[i].className='fav'+(on?' on':''); bs[i].innerHTML=on?'♥':'♡'; }
+  }
+  updateFavUI();
   function card(L){
+    if(L&&L.id) __byId[L.id]=L;
     var isLet = L.kind==='let';
     var price = (!L.price) ? 'POA'
       : (isLet ? money(L.price)+' <span style="font-size:.62em;color:var(--muted);font-weight:600">pcm</span>' : money(L.price));
@@ -724,7 +739,8 @@
     var ph = L.image
       ? '<div class="ph" style="background:#2b3645 url(\''+L.image+'\') center/cover no-repeat">'
       : '<div class="ph a">';
-    var inner = ph+'<span class="chip'+(isLet?' let':'')+'">'+chip(L)+'</span></div>'+
+    var favBtn = L.id ? '<span class="fav'+(isFav(L.id)?' on':'')+'" data-id="'+L.id+'" role="button" tabindex="0" aria-label="Save home" onclick="return toggleFav(event,\''+L.id+'\')">'+(isFav(L.id)?'♥':'♡')+'</span>' : '';
+    var inner = ph+'<span class="chip'+(isLet?' let':'')+'">'+chip(L)+'</span>'+favBtn+'</div>'+
       '<div class="body"><div class="price">'+price+'</div>'+
       '<div class="addr">'+shortAddr(L.address)+'</div>'+
       '<div class="meta">'+meta.join('')+'</div></div>';
@@ -759,6 +775,7 @@
     if(!use.length){ note.textContent = 'No current listings to show.'; return; }
     grid.innerHTML = use.map(card).join('') + (live && use.length>3 ? '<a class="card cta-card" href="#buy" onclick="showAll();return false;"><div class="cta-inner"><span class="cta-arrow">→</span><b>See all properties</b><span>Browse the full list</span></div></a>' : '');
     note.innerHTML = (live ? '🟢 Updated live' : 'Updated regularly') + ' · ' + use.length + ' featured homes';
+    updateFavUI();
   }
   function renderSocial(list){
     var wall=document.getElementById('igWall'); if(!wall) return;
@@ -810,6 +827,7 @@
       SS.total = (d && d.total) || 0;
       if(!append){ grid.innerHTML=''; SS.shown=0; }
       grid.insertAdjacentHTML('beforeend', res.map(card).join(''));
+      updateFavUI();
       SS.shown += res.length;
       if(!SS.shown){ note.textContent='Nothing matches that search. Try widening it.'; if(mwrap) mwrap.innerHTML=''; return; }
       var lbl=SS.kind==='let'?'to let':(SS.kind==='sale'?'for sale':'properties'); note.innerHTML='🔎 '+SS.total+' '+lbl+' · showing '+SS.shown;

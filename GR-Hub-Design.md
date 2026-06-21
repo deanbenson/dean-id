@@ -65,9 +65,43 @@ Today the Hub is one **shared admin key** — perfect for you and Georgina, but 
 3. **Roadmap module + Company feed:** make "what's next" and "live wins" real, shared views.
 4. **Deepen the modules:** front desk, finance, maintenance, portals — each becomes a real panel, measured in the Hub.
 
+## Grounded in your real team (the useful part)
+Your 13 people on Street show that access is **level + department**: the company layer everyone gets, plus your department's modules, scoped by your level.
+
+**Levels (scope):** Owner · Partner/Dev · Manager · Team · Trainee (read-mostly).
+**Departments (which modules unlock):** Sales · Lettings · Property management · Marketing · Accounts.
+
+| Person | Title (from Street) | Level | Department |
+|---|---|---|---|
+| Georgina Robinson | Director | Owner | all |
+| Dean Benson | Techie | Partner / Dev | all + build |
+| Vikki Catterson | Manager / Senior Valuer | Manager | cross-dept, all branches |
+| Megan Rich | Sales Progressor | Team | Sales |
+| Lea Finegan | Trainee Valuer | Trainee | Sales (read-mostly) |
+| Alfie Armour | Property Manager | Team | Property management |
+| Donna Cuthbertson | Lettings Negotiator | Team | Lettings |
+| Maddie Cowell | Lettings Negotiator | Team | Lettings |
+| Olivia Rich | Lettings Negotiator | Team | Lettings |
+| Violet Yendall | Lettings Negotiator | Team | Lettings |
+| Noah Foster | Team Lettings | Team | Lettings |
+| Tia-Rose Catterson | Social Media Manager | Team | Marketing |
+| Rosie Turner | Accounts | Team | Accounts |
+
+The payoff: you don't need a dozen bespoke permission sets, just **5 department templates across a few levels**. Tia-Rose and Rosie are why it can't be a simple seniority ladder — their access is about *function*.
+
+## People & access (Georgina's control)
+An Owner-only "People & access" area inside the Hub:
+- **Add a person:** name + work email, pick a **level** and a **department** — access composes automatically from the templates above.
+- **Secure login:** each person signs in as themselves. For a team this size I'd recommend **Google sign-in** (you're already a Google shop, and it brings 2FA with it) or a **magic email link** — both avoid everyone juggling passwords.
+- **Revoke / change anytime:** suspend a leaver in one click, change a role, and see who has access and when they last signed in.
+- Georgina owns it; you (Partner/Dev) can help administer.
+
+This is the foundational build we parked: real per-user logins + roles, living under G.R.'s own account.
+
 ## Decision log
 - **Logins rollout (decided):** Owner + Partner only for now, on the shared key. Build the modules richer first; per-user logins + the full role model come later, as the foundational build, under G.R.'s own account.
 - **Roadmap (done):** now a live module inside the Hub ("What we're building"), not a doc on a laptop.
+- **Role model (grounded):** mapped to the real 13-person team — access = level + department, ~5 department templates. See "Grounded in your real team".
 
 ## Open questions for you
 - Staff structure: how many people, and do they split cleanly into Manager / Team, or do you want finer tiers? (Needed before we build per-user logins.)
