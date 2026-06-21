@@ -194,6 +194,25 @@
  .rag{font-size:.68rem;font-weight:700;padding:.12rem .45rem;border-radius:20px}
  .rag.g{background:rgba(29,158,117,.14);color:#157a59}.rag.a{background:rgba(224,153,42,.16);color:#9a6612}.rag.r{background:rgba(210,73,43,.14);color:var(--orange-deep)}.rag.n{background:rgba(118,114,107,.14);color:#5f5b53}
  .sys .dta{font-size:.8rem;color:#54585f;margin-top:7px}.sys .fr{font-size:.72rem;color:var(--muted);margin-top:3px}
+ .connhero{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(180deg,#fff,#fcfbf8);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:0 8px 22px rgba(44,46,51,.06)}
+ .connhero.ok{border-color:rgba(29,158,117,.38)}
+ .chl{display:flex;align-items:center;gap:15px;min-width:270px;flex:1}
+ .chic{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;font-size:1.45rem;background:rgba(29,158,117,.13);color:#157a59}
+ .connhero.sync .chic{background:rgba(224,153,42,.16);color:#9a6612}
+ .cht{font-family:var(--serif);font-weight:700;font-size:1.16rem;letter-spacing:-.01em;line-height:1.2}
+ .chs{font-size:.84rem;color:#54585f;margin-top:3px;max-width:56ch}.chs b{color:var(--ink);font-weight:600}
+ .cha{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.chmeta{font-size:.74rem;color:var(--muted)}
+ .livedot{width:8px;height:8px;border-radius:50%;background:#1d9e75;animation:lpulse 2.2s infinite;flex:none}
+ @keyframes lpulse{0%{box-shadow:0 0 0 0 rgba(29,158,117,.45)}70%{box-shadow:0 0 0 7px rgba(29,158,117,0)}100%{box-shadow:0 0 0 0 rgba(29,158,117,0)}}
+ .sysic{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:.96rem;background:rgba(226,103,42,.1);color:var(--orange-deep)}
+ .sys.live .top{gap:9px}.sys.live .nm{flex:1}
+ .sys.future{background:#faf8f4;border-style:dashed}.sys.future .nm{color:#5f5b53}
+ .tileg{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px}
+ .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .tile .ttl{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);font-weight:600}
+ .tile .tnm{font-family:var(--serif);font-weight:700;font-size:1.7rem;letter-spacing:-.01em;margin-top:7px;font-variant-numeric:tabular-nums;line-height:1}
+ .tile .tsb{font-size:.71rem;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:5px}
+ .dotg{width:7px;height:7px;border-radius:50%;background:#1d9e75;flex:none}.dota{width:7px;height:7px;border-radius:50%;background:#e0992a;flex:none}
  .road{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
  .rcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px}
  .rcol h4{font-family:var(--serif);font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;font-weight:700}
@@ -618,11 +637,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.46', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.47', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.47',d:'21 Jun 2026',items:['Redesigned the Connections page around the person using it, not the engineer who built it. It opens with a plain status — connected and syncing, how many records held — then your live connections, the business numbers your hub holds (properties, contacts, enquiries, viewings, valuations, sales, tenancies), and the wider stack still to plug in','All the technical detail (coverage per dataset, backfill progress, errors) now lives behind the Data health button, on demand, instead of filling the page']},
     {v:'0.46',d:'21 Jun 2026',items:['Right-sized the pulls so a single sync run stays comfortably under the 1,000-call ceiling. The previous setting was so aggressive (8 big datasets at once) it occasionally blew even the paid limit, which is why the last dataset in a run (valuations) showed "too many subrequests". Now 6 datasets a run with big pulls — fast, and safely within budget']},
     {v:'0.45',d:'21 Jun 2026',items:['Now on the Cloudflare paid plan, which lifts the per-run call ceiling from 50 to 1,000. That was the real wall behind the "too many subrequests" error the diagnostics caught','With the headroom, the pulls are turned right up: each sync now works more datasets and pulls far more pages per run, so the remaining back-history (contacts especially) lands in just a few passes','The earlier red "build failed" was only the cron-schedule step on the free plan; the worker code itself deployed fine throughout']},
     {v:'0.44',d:'21 Jun 2026',items:['Push to 100%: each sync now works the datasets that are furthest behind first, and pulls more pages per run, so the big back-histories (contacts 16k, viewings 7k) finish in a handful of passes instead of dozens','Click Sync now a few times to drive it home, or leave the 15-minute cron to finish it hands-off. Everything already stored stays perfect; this is just the remaining history streaming in']},
@@ -827,19 +847,27 @@
   }
 
   function viewConnections(){
-    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[];
+    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[], sync=D.sync||[];
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
-    var wired=[
-      {nm:'Street CRM',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0)},
-      {nm:'Google reviews',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:(rv&&rv.latest_review_at?('latest review '+ago(new Date(rv.latest_review_at).getTime())+' · '):'')+(rv&&rv.generated_at?('checked '+ago(new Date(rv.generated_at).getTime())):'live')},
-      {nm:'Website + leads',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet'))},
-      {nm:'Be-first alerts',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet')},
-      {nm:'Ask Georgina (AI)',dta:'on the site and in this hub',fr:'answers on demand'},
-      {nm:'My G.R. Estates',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live'}
-    ];
-    if(D.socialOk) wired.push({nm:'Social feed (Meta)',dta:'showing on the site',fr:'connected',url:'https://business.facebook.com'});
+    function ext(u){ return u?'<a class="syslink" href="'+esc(u)+'" target="_blank" rel="noopener">Open ↗</a>':''; }
+    function dsel(t){ for(var i=0;i<sync.length;i++) if(sync[i].table===t) return sync[i]; return null; }
+    // ---- live, connected systems ----
     var gURL=(rv&&rv.branches&&rv.branches[0]&&rv.branches[0].url)||'https://www.google.com/maps?cid=13149266945693900402';
-    wired[0].url='https://street.co.uk/login'; wired[1].url=gURL; wired[2].url='/demos/gr-estates/'; wired[3].url='/demos/gr-estates/#alerts'; wired[4].url='/demos/gr-estates/#ai'; wired[5].url='saved-homes.html';
+    var wired=[
+      {nm:'Street CRM',ic:'⌂',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0),url:'https://street.co.uk/login'},
+      {nm:'Google reviews',ic:'★',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:(rv&&rv.generated_at?('checked '+ago(new Date(rv.generated_at).getTime())):'live'),url:gURL},
+      {nm:'Website + leads',ic:'✉',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet')),url:'/demos/gr-estates/'},
+      {nm:'Be-first alerts',ic:'◔',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet'),url:'/demos/gr-estates/#alerts'},
+      {nm:'Ask Georgina (AI)',ic:'✦',dta:'on the site and in this hub',fr:'answers on demand',url:'/demos/gr-estates/#ai'},
+      {nm:'My G.R. Estates',ic:'♥',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live',url:'saved-homes.html'}
+    ];
+    if(D.socialOk) wired.push({nm:'Social feed (Meta)',ic:'⊞',dta:'showing on the site',fr:'connected',url:'https://business.facebook.com'});
+    var wcards=wired.map(function(s){ return '<div class="sys live"><div class="top"><span class="sysic">'+s.ic+'</span><span class="nm">'+esc(s.nm)+'</span><span class="livedot" title="Live"></span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+(s.url?' · '+ext(s.url):'')+'</div></div>'; }).join('');
+    // ---- what the hub holds (business numbers) ----
+    var TILES=[['properties_all','Properties','⌂'],['listings','On the market','◈'],['contacts','Contacts','☺'],['enquiries','Enquiries','✉'],['viewings','Viewings','◷'],['valuations','Valuations','£'],['sales','Sales','✓'],['tenancies','Tenancies','⚿']];
+    var tiles=TILES.map(function(T){ var s=dsel(T[0]); if(!s) return ''; var n=s.count||0; var tot=s.streetTotal; var done=(tot==null)||(n>=tot); var dot=done?'<span class="dotg"></span>':'<span class="dota"></span>'; var subtxt=done?'up to date':('syncing'+(tot?' · '+Math.min(100,Math.round(n/tot*100))+'%':'')); return '<div class="tile"><div class="ttl"><span class="sysic" style="width:24px;height:24px;font-size:.82rem">'+T[2]+'</span>'+esc(T[1])+'</div><div class="tnm">'+n.toLocaleString('en-GB')+'</div><div class="tsb">'+dot+esc(subtxt)+'</div></div>'; }).filter(Boolean).join('');
+    if(rv&&rv.total){ tiles+='<div class="tile"><div class="ttl"><span class="sysic" style="width:24px;height:24px;font-size:.82rem">★</span>Reviews</div><div class="tnm">'+rv.total.toLocaleString('en-GB')+'</div><div class="tsb"><span class="dotg"></span>'+(rv.average?rv.average.toFixed(1)+' average':'live')+'</div></div>'; }
+    // ---- wider stack, still to connect ----
     var stack=[
       ['PayProp','Payments · rent & landlord payouts'],['TDS (Custodial)','Compliance · deposit protection'],
       ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
@@ -849,44 +877,22 @@
       ['SignRequest','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
     ];
     var SYSURL={'PayProp':'https://uk.payprop.com','TDS (Custodial)':'https://www.tenancydepositscheme.com','Goodlord':'https://www.goodlord.co','Fixflo':'https://www.fixflo.com','Reports2Go':'https://www.reports2go.co.uk','Rightmove':'https://www.rightmove.co.uk','OnTheMarket':'https://www.onthemarket.com','Google Workspace':'https://admin.google.com','SignRequest':'https://signrequest.com','Meta Business':'https://business.facebook.com'};
-    function ext(u){ return u?'<a class="syslink" href="'+esc(u)+'" target="_blank" rel="noopener">Open ↗</a>':''; }
-    var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+(s.url?' · '+ext(s.url):'')+'</div></div>'; }).join('');
-    var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected'+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
-    var dataItems=[
-      {l:'Enquiries',n:(D.enqTotal!=null?D.enqTotal:(D.enquiries?D.enquiries.length:0)),c:'#e2672a'},
-      {l:'Listings',n:(pf?pf.total:0),c:'#3b82c4'},
-      {l:'Reviews',n:(rv?rv.total:0),c:'#1d9e75'},
-      {l:'Team',n:(D.team?D.team.length:0),c:'#7b61c9'},
-      {l:'Be-first alerts',n:(st.alerts||0),c:'#2bb2a8'},
-      {l:'Waitlist',n:(st.waitlist||0),c:'#d4537e'}
-    ].filter(function(x){return x.n>0;});
-    var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
-    var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
-    var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="Full health check: every dataset, how much of Street we hold, and anything that needs attention">Diagnose</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="diagout"></div></div>';
-    var syncRows='';
-    if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
-      var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
-      var deltaTxt=delta.length?('<div style="font-size:.73rem;color:var(--muted);margin-top:3px">'+delta.join(' · ')+'</div>'):'';
-      var diagTxt='', diagCol='var(--orange-deep)';
-      if(s.diag){ var dg=s.diag;
-        if(dg.err) diagTxt='Error: '+dg.err;
-        else if(s.count===0&&(dg.fetched||0)>0&&(dg.stored||0)===0) diagTxt='Pulled '+dg.fetched+' but stored 0 — open Diagnose';
-        else if(dg.heal&&dg.heal.added&&dg.heal.added.length&&s.count===0) { diagTxt='Repaired schema (+'+dg.heal.added.length+' cols) · refilling'; diagCol='var(--muted)'; }
-        else if(s.count===0){ if(dg.status&&dg.status!==200) diagTxt='Street: HTTP '+dg.status; else if((dg.fetched||0)===0) diagTxt='No rows returned yet'; }
-        else if(dg.mode==='backfill'){ diagTxt='Backfilling full history… '+(dg.backfill||''); diagCol='var(--muted)'; }
-      }
-      var diagHtml=diagTxt?('<div style="font-size:.72rem;color:'+diagCol+';margin-top:3px">'+esc(diagTxt)+'</div>'):'';
-      var when=s.at?('synced '+ago(new Date(s.at).getTime())):'awaiting first sync';
-      var nxt=syncCd(s.cadence,' · next sync in ');
-      var ofStreet=(s.streetTotal!=null)?(' <span style="color:var(--muted);font-weight:400">of '+s.streetTotal.toLocaleString('en-GB')+' in Street</span>'):' records';
-      var covPct=(s.streetTotal&&s.streetTotal>0)?Math.min(100,Math.round((s.count||0)/s.streetTotal*100)):null;
-      var covTxt=(covPct!=null)?('<span class="rag" style="background:none;font-weight:700;font-variant-numeric:tabular-nums;color:'+(covPct>=99?'#1d9e75':(covPct>=50?'#a96514':'#c2541d'))+'" title="'+(s.count||0).toLocaleString("en-GB")+' of '+s.streetTotal.toLocaleString("en-GB")+' held locally">'+covPct+'%</span>'):'';
-      return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span>'+(covTxt||'<span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span>')+'</div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b>'+ofStreet+deltaTxt+diagHtml+'</div><div class="fr">'+when+nxt+'</div></div>'; }).join('')+'</div>'; }
-    return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split+syncRows
-      +'<div class="secttl">Live and feeding the hub ('+wired.length+')</div><div style="font-size:.78rem;color:var(--muted);margin:-4px 0 10px">Street and Google are the external systems; the rest is your own website and hub capturing data directly.</div><div class="sysg">'+wcards+'</div>'
-      +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
-      +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">This is your real system list from the credentials tracker. We wire them into the hub over time, the live group above all started here.</div>';
+    var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys future"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">To connect</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not yet wired'+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
+    // ---- hero status ----
+    var withTot=sync.filter(function(s){return s.streetTotal!=null&&s.streetTotal>0;});
+    var filling=withTot.filter(function(s){return (s.count||0)<s.streetTotal;}).length;
+    var held=sync.reduce(function(a,s){return a+(s.count||0);},0);
+    var lastAt=0; sync.forEach(function(s){ if(s.at){ var t=new Date(s.at).getTime(); if(t>lastAt)lastAt=t; } });
+    var ok=(withTot.length>0&&filling===0);
+    var heroTitle=ok?'Everything\'s connected and up to date':'Connected — pulling your history in';
+    var heroSub='Your hub syncs live from <b>Street CRM</b>, your website and <b>Google</b>, and refreshes itself automatically. Holding <b>'+held.toLocaleString('en-GB')+'</b> records'+(ok?(' across all '+wired.length+' live connections.'):(filling>0?(', still bringing in the last '+filling+' feed'+(filling>1?'s':'')+'.'):'.'));
+    var hero='<div class="connhero '+(ok?'ok':'sync')+'"><div class="chl"><div class="chic">'+(ok?'✓':'↻')+'</div><div><div class="cht">'+heroTitle+'</div><div class="chs">'+heroSub+'</div></div></div><div class="cha">'+(lastAt?'<span class="chmeta">last sync '+ago(lastAt)+'</span>':'')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="Full data-health report, dataset by dataset">Data health</button></div></div><div id="diagout"></div>';
+    return '<h2 class="vt">Connections</h2><div class="vsub">Everything wired into your hub, what it holds, and what\'s left to plug in.</div>'
+      +hero
+      +'<div class="secttl">Connected &amp; live ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
+      +(tiles?('<div class="secttl">What your hub holds</div><div class="tileg">'+tiles+'</div>'):'')
+      +'<div class="secttl">Your wider stack — still to connect ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
+      +'<div class="card" style="margin-top:14px;color:var(--muted);font-size:.84rem">Your real system list. We wire each one into the hub over time; the live group up top all started here.</div>';
   }
 
   var DIRQ='', DIRT=null, DIRF={kind:'',beds:'',sort:'price_desc'};
