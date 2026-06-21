@@ -1490,14 +1490,29 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   }
   const endPage = (mode === "topup") ? (chunk + 6) : (startPage + chunk - 1);
   try {
-    for (let pn = startPage; pn <= endPage; pn++) {
-      const r = await streetGet(env, qbase + pn);
-      status = r.status || status;
-      if (!r.ok) { err = (r.body && r.body.errors) ? JSON.stringify(r.body.errors).slice(0, 180) : ("HTTP " + (r.status || "?")); errs.push({ stage: "fetch", detail: "HTTP " + (r.status || "?") + " on page " + pn + (r.body && r.body.errors ? " " + JSON.stringify(r.body.errors).slice(0, 140) : "") }); break; }
-      if (!r.body) { err = "no body"; errs.push({ stage: "fetch", detail: "empty body on page " + pn }); break; }
-      pages++; absorb(r.body);
+    // Fetch the first page to learn the pagination, then fetch the rest of this chunk in PARALLEL. Street is
+    // ~2s/page; doing them one-at-a-time made each dataset ~9s and starved the rotation's time budget. Fetching
+    // the chunk concurrently cuts a dataset to ~2-3s so many can sync per run.
+    const firstR = await streetGet(env, qbase + startPage);
+    status = firstR.status || status;
+    if (!firstR.ok) { err = (firstR.body && firstR.body.errors) ? JSON.stringify(firstR.body.errors).slice(0, 180) : ("HTTP " + (firstR.status || "?")); errs.push({ stage: "fetch", detail: "HTTP " + (firstR.status || "?") + " on page " + startPage + (firstR.body && firstR.body.errors ? " " + JSON.stringify(firstR.body.errors).slice(0, 140) : "") }); }
+    else if (!firstR.body) { err = "no body"; errs.push({ stage: "fetch", detail: "empty body on page " + startPage }); }
+    else {
+      pages++; absorb(firstR.body);
       const tp = totalPages || 1;
-      if (pn >= tp || (r.body.data || []).length < 100) { reachedEnd = true; break; }
+      const lastWanted = Math.min(endPage, tp);
+      if (startPage >= tp || (firstR.body.data || []).length < 100) { reachedEnd = true; }
+      else if (lastWanted > startPage) {
+        const qs = [];
+        for (let pn = startPage + 1; pn <= lastWanted; pn++) qs.push(streetGet(env, qbase + pn));
+        const rs = await Promise.all(qs);
+        for (let j = 0; j < rs.length; j++) {
+          const r = rs[j]; status = r.status || status;
+          if (r.ok && r.body) { pages++; absorb(r.body); if ((r.body.data || []).length < 100) reachedEnd = true; }
+          else if (!err) { err = "HTTP " + (r.status || "?"); errs.push({ stage: "fetch", detail: "HTTP " + (r.status || "?") + " on page " + (startPage + 1 + j) }); }
+        }
+        if (lastWanted >= tp) reachedEnd = true;
+      }
     }
   } catch (e) { err = String((e && e.message) || e).slice(0, 180); errs.push({ stage: "fetch", detail: err }); }
   let mapped = 0, stored = 0, writeErr = null;
@@ -2146,15 +2161,13 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
-      if (ctx && ctx.waitUntil) {
-        // Drive the extras (the ones that get stuck) on their own clean budget; enquiries keeps backfilling on
-        // its own cron. Two passes advance the rotation further per click.
-        ctx.waitUntil((async () => {
-          await syncExtrasRotating(env, 6).catch(function () {});
-          await syncExtrasRotating(env, 6).catch(function () {});
-        })());
-      }
-      return respond(JSON.stringify({ ok: true, started: true }), 200, J);
+      // Run the extras INLINE (awaited) so the response proves what actually happened — the background path
+      // can be cut short. enquiries keeps backfilling on its own cron; kick it in the background too.
+      let threw = null;
+      try { await syncExtrasRotating(env, 5); } catch (e) { threw = String((e && e.message) || e).slice(0, 200); }
+      let lastrun = null; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:lastrun"); if (v) lastrun = JSON.parse(v); } } catch (_) {}
+      if (ctx && ctx.waitUntil) ctx.waitUntil(syncEnquiries(env).catch(function () {}));
+      return respond(JSON.stringify({ ok: true, started: true, ran: true, threw: threw, lastrun: lastrun }), 200, J);
     }
 
     // Run ONE dataset's sync inline (awaited, not in the background) and report the truth: rows before/after,

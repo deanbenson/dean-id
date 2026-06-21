@@ -280,8 +280,12 @@
   function reloadLocal(name){ delete D['L_'+name]; ensureLocal(name); if(ROUTE===name) renderView(false); }
   window.grSyncNow=function(){
     var b=document.getElementById('syncnowbtn'); if(b){ b.disabled=true; b.textContent='Syncing…'; }
-    fetch('/api/sync-now',{method:'POST',headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(){
-      setTimeout(function(){ refreshSyncStatus(); if(ROUTE==='viewings'||ROUTE==='valuations'||ROUTE==='contacts'||ROUTE==='enquiries'||ROUTE==='feed') afterBoundary(); var bb=document.getElementById('syncnowbtn'); if(bb){ bb.disabled=false; bb.textContent='Sync now'; } }, 9000);
+    // The endpoint now runs inline and returns only when the work is done (~10-15s), so we refresh on response.
+    fetch('/api/sync-now',{method:'POST',headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      var bb=document.getElementById('syncnowbtn'); if(bb){ bb.disabled=false; bb.textContent='Sync now'; }
+      refreshSyncStatus(); if(ROUTE==='viewings'||ROUTE==='valuations'||ROUTE==='contacts'||ROUTE==='enquiries'||ROUTE==='feed') afterBoundary();
+      var out=document.getElementById('diagout');
+      if(out&&d&&d.lastrun){ out.innerHTML='<div style="font-size:.82rem;color:#1d9e75;margin-top:10px">Synced just now: <b>'+esc((d.lastrun.picked||[]).join(', '))+'</b>'+(d.threw?(' <span style="color:#c2541d">(error: '+esc(d.threw)+')</span>'):'')+'. Click Diagnose to see rows landed.</div>'; }
     }).catch(function(){ var bb=document.getElementById('syncnowbtn'); if(bb){ bb.disabled=false; bb.textContent='Sync now'; } });
   };
   window.grProbe=function(){
@@ -600,11 +604,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.38', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.39', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.39',d:'21 Jun 2026',items:['The Test sync proved storage was never the problem: one dataset stored all 378 rows perfectly. The real bottleneck was speed. Street is slow (about 2 seconds a page), so fetching pages one at a time made each dataset take ~9 seconds and the background sync ran out of time before it could store anything','Now each dataset fetches its pages in parallel, cutting it to ~2-3 seconds, and Sync now runs the work directly and reports back what it synced the moment it finishes, instead of handing off to a background task that could be cut short','Net effect: click Sync now and watch the datasets actually fill, a batch at a time']},
     {v:'0.38',d:'21 Jun 2026',items:['New Test sync button: runs one dataset (tenancies) sync right now, inline, and reports the exact truth in seconds — rows before, rows after, what stored, and the precise error if it stores nothing. No background timing, no ambiguity','This is the definitive end to guesswork: one click tells us whether storing a Street dataset works, and if not, exactly why']},
     {v:'0.37',d:'21 Jun 2026',items:['Found why the Street datasets stopped filling: enquiries and the rest were sharing one sync run, and the heavy new prioritising step was timing the run out right after enquiries finished, so everything else got killed before it could even start, or log why','Fix: enquiries and the other datasets now run in separate passes, each with a full budget, and the heavy prioritising step is gone. The datasets fill steadily as the rotation comes round','Sync now drives the stuck datasets directly, and a heartbeat is written before any work so a stall can never again hide from Diagnose']},
     {v:'0.36',d:'21 Jun 2026',items:['Closed the last blind spot: the new prioritised sync does bookkeeping queries up front, and if THAT hit a Cloudflare limit it was still failing silently. It is now wrapped so any such error is captured and shown in Diagnose','Diagnose now shows what the last sync rotation actually picked to work on, so you can see it moving through the backlog','This makes the next Diagnose definitive: if a dataset still will not fill, the reason will be on screen']},
