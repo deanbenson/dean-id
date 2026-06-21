@@ -36,6 +36,21 @@
  .ask input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink)}
  .ask .sp{color:var(--orange)}
  .ask button{border:0;background:var(--orange);color:#fff;font:inherit;font-weight:600;font-size:.82rem;border-radius:8px;padding:.35rem .8rem;cursor:pointer}
+ .gsearch{position:relative;flex:1.3;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:.5rem .8rem;max-width:540px}
+ .gsearch:focus-within{border-color:var(--orange);box-shadow:0 0 0 3px rgba(226,103,42,.1)}
+ .gsearch .gsi{color:var(--muted);font-size:1.1rem;line-height:1}
+ .gsearch input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink);min-width:0}
+ .gsdrop{position:absolute;top:calc(100% + 7px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 16px 42px rgba(44,46,51,.17);max-height:72vh;overflow:auto;display:none;z-index:50;padding:6px}
+ .gsdrop.show{display:block}
+ .gsgrp{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:9px 11px 4px}
+ .gsitem{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:9px;cursor:pointer}
+ .gsitem:hover,.gsitem.sel{background:#faf3ee}
+ .gsic{width:30px;height:30px;flex:none;border-radius:8px;background:rgba(226,103,42,.1);color:var(--orange-deep);display:flex;align-items:center;justify-content:center;font-size:.95rem}
+ .gsmain{flex:1;min-width:0;display:flex;flex-direction:column}
+ .gstitle{font-weight:600;font-size:.88rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .gssub{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .gstype{font-size:.66rem;color:var(--muted);text-transform:capitalize;flex:none}
+ .gsempty{padding:16px;color:var(--muted);font-size:.85rem;text-align:center}
  .rolesel{font:inherit;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:9px;padding:.42rem .5rem;color:var(--ink);max-width:130px}
  .vlab{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
  .acct{display:flex;align-items:center;gap:8px}
@@ -170,6 +185,7 @@
   .side{position:fixed;left:0;top:0;bottom:0;width:240px;transform:translateX(-100%);transition:.22s;z-index:40}
   .side.open{transform:none}
   .menu-b{display:inline-flex}
+  .askwrap{flex-wrap:wrap}.gsearch{flex:1 1 100%;max-width:none;order:3;width:100%}.ask{order:2}
   .cols{grid-template-columns:1fr}.road{grid-template-columns:1fr 1fr}.rolesel{max-width:120px}
   .ovl.show{display:block;position:fixed;inset:0;background:rgba(20,20,20,.35);z-index:35}
  }
@@ -207,6 +223,12 @@
     if(now-d.getTime()<6*864e5 && d.getTime()<now) return d.toLocaleDateString('en-GB',{weekday:'short'})+' '+tm;
     if(d.getFullYear()===new Date().getFullYear()) return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }
+  function nextSync(cadence){
+    var now=new Date(), nxt=new Date(now);
+    if(cadence==='hourly'){ nxt.setMinutes(60,0,0); } else { nxt.setMinutes((Math.floor(now.getMinutes()/15)+1)*15,0,0); }
+    var mins=Math.max(0,Math.round((nxt-now)/60000));
+    return mins<=0?'due now':('in ~'+mins+' min');
   }
   var TBL={}, TBLDATA={};
   function dtRender(vid){
@@ -325,6 +347,34 @@
       +'<div class="secttl">Everything else</div>'+gaps;
   }
 
+  var GSQ='', GST=null, GSRES=null, GSSEL=-1;
+  function gsIcon(t){ return ({property:'⌂',enquiry:'✉',contact:'☰',viewing:'◷',valuation:'£'})[t]||'•'; }
+  function gsFlat(){ var f=[]; (GSRES||[]).forEach(function(g){ (g.items||[]).forEach(function(it){ f.push(it); }); }); return f; }
+  window.grSearchInput=function(v){ GSQ=v; if(GST)clearTimeout(GST); if(!v||v.trim().length<2){ GSRES=null; GSSEL=-1; gsRender(); return; } GST=setTimeout(function(){ gsDo(v.trim()); }, 200); };
+  function gsDo(q){ fetch('/api/hub-search?q='+encodeURIComponent(q),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if((GSQ||'').trim()!==q)return; GSRES=(d&&d.groups)||[]; GSSEL=-1; gsRender(); }).catch(function(){}); }
+  function gsRender(){
+    var d=document.getElementById('gsdrop'); if(!d)return;
+    if(GSRES==null){ d.classList.remove('show'); d.innerHTML=''; return; }
+    if(!GSRES.length){ d.classList.add('show'); d.innerHTML='<div class="gsempty">No matches for "'+esc(GSQ)+'". New records appear as the next sync lands.</div>'; return; }
+    var idx=-1;
+    var html=GSRES.map(function(g){ return '<div class="gsgrp">'+esc(g.label)+' ('+g.items.length+')</div>'+g.items.map(function(it){ idx++; var i=idx; return '<div class="gsitem'+(i===GSSEL?' sel':'')+'" onmousedown="grPickIdx(event,'+i+')"><span class="gsic">'+gsIcon(it.type)+'</span><span class="gsmain"><span class="gstitle">'+esc(it.title)+'</span><span class="gssub">'+esc(it.sub||'')+'</span></span><span class="gstype">'+esc(it.type)+'</span></div>'; }).join(''); }).join('');
+    d.classList.add('show'); d.innerHTML=html;
+  }
+  window.grPickIdx=function(e,i){ if(e&&e.preventDefault)e.preventDefault(); var f=gsFlat(); if(f[i])grPick(f[i]); };
+  window.grSearchKey=function(e){ var f=gsFlat(); if(e.key==='ArrowDown'){ e.preventDefault(); if(f.length){ GSSEL=Math.min(GSSEL+1,f.length-1); gsRender(); } } else if(e.key==='ArrowUp'){ e.preventDefault(); if(f.length){ GSSEL=Math.max(GSSEL-1,0); gsRender(); } } else if(e.key==='Enter'){ if(f.length){ grPick(f[GSSEL>=0?GSSEL:0]); } } else if(e.key==='Escape'){ GSRES=null; gsRender(); var inp=document.getElementById('gsin'); if(inp)inp.blur(); } };
+  window.grSearchBlur=function(){ setTimeout(function(){ var d=document.getElementById('gsdrop'); if(d)d.classList.remove('show'); }, 160); };
+  function grPick(it){
+    if(!it)return;
+    var inp=document.getElementById('gsin'); if(inp)inp.value=''; GSQ=''; GSRES=null; GSSEL=-1;
+    var d=document.getElementById('gsdrop'); if(d){ d.classList.remove('show'); d.innerHTML=''; }
+    var pid=it.pid||(it.type==='property'?it.id:null);
+    if(pid){ location.hash='property='+encodeURIComponent(pid); return; }
+    var routeMap={enquiry:'enquiries',contact:'contacts',viewing:'viewings',valuation:'valuations'};
+    var r=routeMap[it.type]; if(!r) return;
+    var vid=(r==='enquiries')?'enq':r; TBL[vid]={q:it.term||'',sort:'_',dir:-1};
+    if(('#'+r)===location.hash) onHash(); else location.hash=r;
+  }
+
   window.grLogout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} boot(); };
   window.grSave=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} boot(); };
   function gate(err){
@@ -381,10 +431,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.16', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.17', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
-  var VER={home:'1.2',connections:'1.3',ask:'1.0',enquiries:'2.1',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.1',valuations:'1.1',contacts:'1.1'};
+  var VER={home:'1.3',connections:'1.4',ask:'1.0',enquiries:'2.1',listings:'1.1',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.1',valuations:'1.1',contacts:'1.1'};
   var CHANGELOG=[
+    {v:'0.17',d:'21 Jun 2026',items:['Intelligent search in the top bar: type anything (address, name, email, phone) and jump straight to a property, enquiry, contact, viewing or valuation','Connections now shows time until the next sync, plus new-today and last-sync counts per dataset','Google reviews show the most recent review date and when they were last checked','Branch review status fixed (was stuck on "reviews syncing" due to a name mismatch)']},
     {v:'0.16',d:'21 Jun 2026',items:['Every data screen now has instant search, click-to-sort columns and clear human dates (just now, Yesterday 4:32pm)','New property command view: open any property to see who enquired, viewings, an enquiries-per-week chart and live counts','Status shown as colour-coded pills throughout']},
     {v:'0.15',d:'21 Jun 2026',items:['Viewings, Valuations and Contacts pages now live, read instantly from the local copy','Owner home shows real valuations and viewings booked this week']},
     {v:'0.14',d:'21 Jun 2026',items:['All core Street data now syncs into the local copy on a cron: viewings, valuations, applicants, offers and contacts','Connections shows what is in the local copy, per dataset','Role preview moved into your profile as Assume a colleague\'s view']},
@@ -497,10 +548,11 @@
     var branchN=branches?branches.length:((rv&&rv.branches)?rv.branches.length:null);
     var pl=D.pipeline||{};
     var tiles=tile(pf?pf.total:'—','Properties live',true,null,'listings')+tile(pf?pf.sale:'—','For sale',false,null,'listings')+tile(pf?pf['let']:'—','To let',false,null,'listings')+tile(pl.valuations_week!=null?pl.valuations_week:'—','Valuations / wk',false,null,'valuations')+tile(pl.viewings_week!=null?pl.viewings_week:'—','Viewings / wk',false,null,'viewings')+tile(branchN!=null?branchN:'—','Branches',false,null,'map')+tile(staff!=null?staff:'—','Team',false,null,'staff')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews',false,null,'reviews');
-    var revByName={}; (rv&&rv.branches||[]).forEach(function(b){ revByName[(b.name||'').toLowerCase()]=b; });
+    function matchRev(b){ var hay=((b.name||'')+' '+(b.town||'')+' '+(b.postcode||'')).toLowerCase(); var list=(rv&&rv.branches)||[]; for(var i=0;i<list.length;i++){ var rn=(list[i].name||'').toLowerCase(); if(!rn)continue; var tok=rn.split(/[\s,\-]+/)[0]; if(hay.indexOf(rn)>=0||(tok&&tok.length>2&&hay.indexOf(tok)>=0)) return list[i]; } return null; }
+    var revFoot=(rv&&rv.generated_at)?('<div class="branch" style="border:0;color:var(--muted);font-size:.76rem;padding-top:9px">Google reviews checked '+ago(new Date(rv.generated_at).getTime())+(rv.latest_review_at?(' · latest review '+ago(new Date(rv.latest_review_at).getTime())):'')+'</div>'):'';
     var branchRows;
-    if(branches){ branchRows=branches.map(function(b){ var rb=revByName[(b.name||'').toLowerCase()]; var sc=rb?('<b>'+rb.rating+'★</b> · '+rb.count+' reviews'):'<span style="color:var(--muted)">reviews syncing</span>'; return '<div class="branch"><span>'+esc(b.name)+(b.town?' <span style="color:var(--muted);font-size:.8rem">'+esc(b.town)+'</span>':'')+'</span><span class="sc">'+sc+'</span></div>'; }).join(''); }
-    else if(rv&&rv.branches&&rv.branches.length){ branchRows=rv.branches.map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+b.rating+'★</b> · '+b.count+' reviews</span></div>'; }).join(''); }
+    if(branches){ branchRows=branches.map(function(b){ var rb=matchRev(b); var sc=rb?('<b>'+rb.rating+'★</b> · '+rb.count+' reviews'):'<span style="color:var(--muted)">not tracked yet</span>'; return '<div class="branch"><span>'+esc(b.name)+(b.town?' <span style="color:var(--muted);font-size:.8rem">'+esc(b.town)+'</span>':'')+'</span><span class="sc">'+sc+'</span></div>'; }).join('')+revFoot; }
+    else if(rv&&rv.branches&&rv.branches.length){ branchRows=rv.branches.map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+b.rating+'★</b> · '+b.count+' reviews</span></div>'; }).join('')+revFoot; }
     else { branchRows='<div class="row" style="color:var(--muted)">Branches syncing from Street…</div>'; }
     function svcChip(lab,val,on){ return '<span class="chip" style="cursor:default'+(on?'':';opacity:.55')+'">'+lab+(on?(' · '+val):' · connect')+'</span>'; }
     var svc='<div class="chips">'+svcChip('Sales',(pf?pf.sale+' live':''),!!pf)+svcChip('Lettings',(pf?pf['let']+' live':''),!!pf)+svcChip('Property management','',false)+svcChip('Removals','',false)+svcChip('Mortgages','',false)+'</div>';
@@ -558,7 +610,7 @@
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
     var wired=[
       {nm:'Street CRM',dta:(pf?pf.total:'—')+' listings · '+(D.team?D.team.length:'—')+' staff'+(D.branches?(' · '+D.branches.length+' offices'):''),fr:rel(D.listingsAt?new Date(D.listingsAt).getTime():0)},
-      {nm:'Google reviews',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rel(rv&&rv.generated_at?new Date(rv.generated_at).getTime():0)},
+      {nm:'Google reviews',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:(rv&&rv.latest_review_at?('latest review '+ago(new Date(rv.latest_review_at).getTime())+' · '):'')+(rv&&rv.generated_at?('checked '+ago(new Date(rv.generated_at).getTime())):'live')},
       {nm:'Website + leads',dta:leads.length+' enquiries captured',fr:(st.lastLeadAt?('last enquiry '+ago(st.lastLeadAt)):(leads.length?('last enquiry '+ago(leads[0].at)):'none yet'))},
       {nm:'Be-first alerts',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet')},
       {nm:'Ask Georgina (AI)',dta:'on the site and in this hub',fr:'answers on demand'},
@@ -590,9 +642,14 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect</div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records flowing into the hub from <b>'+wired.length+'</b> live systems, with '+stack.length+' more in your stack to connect. <span style="color:var(--muted)">Next sync '+nextSync('15min')+'.</span></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div></div>';
     var syncRows='';
-    if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records</div><div class="fr">'+(s.at?('synced '+ago(new Date(s.at).getTime())):'awaiting first sync')+'</div></div>'; }).join('')+'</div>'; }
+    if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
+      var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
+      var deltaTxt=delta.length?('<div style="font-size:.73rem;color:var(--muted);margin-top:3px">'+delta.join(' · ')+'</div>'):'';
+      var when=s.at?('synced '+ago(new Date(s.at).getTime())):'awaiting first sync';
+      var nxt=s.cadence?(' · next '+nextSync(s.cadence)):'';
+      return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records'+deltaTxt+'</div><div class="fr">'+when+nxt+'</div></div>'; }).join('')+'</div>'; }
     return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split+syncRows
       +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
@@ -757,7 +814,7 @@
   function renderShell(){
     computeRag();
     root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side"><div class="brand" onclick="grGo(\'home\')" style="cursor:pointer" title="Home"><span>G.<span class="k">R.</span> Hub</span></div><div class="sidescroll">'+navHTML()+'</div>'+footHTML()+'</aside><div class="main">'
-      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div></div>'
+      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="gsearch"><span class="gsi">⌕</span><input id="gsin" placeholder="Search anything: address, name, email, phone…" autocomplete="off" oninput="grSearchInput(this.value)" onkeydown="grSearchKey(event)" onblur="grSearchBlur()"><div class="gsdrop" id="gsdrop"></div></div><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina…" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div></div>'
       +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
     updateActive();
     if(ROUTE==='feed') startFeed(); else stopFeed();

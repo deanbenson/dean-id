@@ -548,6 +548,7 @@ async function refreshD1(env) {
       }
     }
   } catch (e) {}
+  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:listings:at", new Date().toISOString()); await env.LISTINGS.put("sync:listings:delta", String(all.length)); } } catch (_) {}
   return all.length;
 }
 
@@ -1348,7 +1349,9 @@ async function refreshGoogleReviews(env, force) {
     // address, so Google's Places API won't return it via search (confirmed: 0 results).
     // Figures set manually from its Google listing; bump if the count moves materially.
     const removals = { name: "G.R. Removals", rating: 5.0, count: 23, url: "https://www.google.com/maps?cid=1120685705039092282", reviews: [] };
-    await env.LISTINGS.put("google:reviewsv5", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, generated_at: new Date().toISOString() }));
+    let latestReviewAt = null;
+    allReviews.forEach(function (rv) { if (rv.publishTime && (!latestReviewAt || rv.publishTime > latestReviewAt)) latestReviewAt = rv.publishTime; });
+    await env.LISTINGS.put("google:reviewsv5", JSON.stringify({ ok: true, total: total, average: average, branches: branches, reviews: reviews.slice(0, 12), removals: removals, latest_review_at: latestReviewAt, generated_at: new Date().toISOString() }));
     try { await env.LISTINGS.delete("google:err"); } catch (_) {}
   } catch (e) {
     try { if (env.LISTINGS) await env.LISTINGS.put("google:err", JSON.stringify({ err: String((e && e.message) || e), at: Date.now() })); } catch (_) {}
@@ -1396,7 +1399,7 @@ async function syncEnquiries(env) {
     });
     for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
   }
-  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:enquiries:cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:enquiries:at", new Date().toISOString()); } } catch (_) {}
+  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:enquiries:cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:enquiries:at", new Date().toISOString()); await env.LISTINGS.put("sync:enquiries:delta", String(all.length)); } } catch (_) {}
   return all.length;
 }
 
@@ -1426,7 +1429,7 @@ async function syncStreetResource(env, name, path, ddl, mapFn) {
     const ups = all.map(function (d) { try { return mapFn(db, d, inc); } catch (e) { return null; } }).filter(Boolean);
     for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
   }
-  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString()); } } catch (_) {}
+  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString()); await env.LISTINGS.put("sync:" + name + ":delta", String(all.length)); } } catch (_) {}
   return all.length;
 }
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
@@ -1823,16 +1826,57 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
-      const tables = [["enquiries", "Enquiries"], ["listings", "Listings"], ["viewings", "Viewings"], ["valuations", "Valuations"], ["applicants", "Applicants"], ["offers", "Offers"], ["contacts", "Contacts"]];
-      const keyMap = { enquiries: "sync:enquiries:at", viewings: "sync:viewings:at", valuations: "sync:valuations:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", contacts: "sync:contacts:at" };
+      const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings", "hourly", "listings"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["contacts", "Contacts", "hourly", "contacts"]];
+      const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at" };
       const out = [];
       for (const t of tables) {
-        let count = 0, at = null;
+        let count = 0, at = null, today = null, delta = null;
         try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0]).first(); count = (c && c.n) || 0; } } catch (_) {}
-        try { if (keyMap[t[0]] && env.LISTINGS) at = await env.LISTINGS.get(keyMap[t[0]]); } catch (_) {}
-        out.push({ table: t[0], label: t[1], count: count, at: at });
+        try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + t[3] + ":at"); } catch (_) {}
+        try { if (env.LISTINGS) { const d = await env.LISTINGS.get("sync:" + t[3] + ":delta"); if (d != null) delta = parseInt(d, 10) || 0; } } catch (_) {}
+        if (dateCol[t[0]] && env.gr_estates) { try { const c2 = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0] + " WHERE datetime(" + dateCol[t[0]] + ") >= datetime('now','start of day')").first(); today = (c2 && c2.n) || 0; } catch (_) {} }
+        out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta });
       }
-      return respond(JSON.stringify({ ok: true, datasets: out }), 200, J);
+      return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
+    }
+
+    // Intelligent cross-data search for the hub: properties, enquiries, contacts, viewings, valuations. Admin-gated (PII).
+    if (path === "/api/hub-search" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const q = String(url.searchParams.get("q") || "").trim();
+      if (q.length < 2 || !env.gr_estates) return respond(JSON.stringify({ ok: true, q: q, groups: [] }), 200, J);
+      const db = env.gr_estates;
+      const like = "%" + q.replace(/[%_]/g, "") + "%";
+      const groups = [];
+      try {
+        const r = await db.prepare("SELECT id,address,town,price,kind,beds,type FROM listings WHERE address LIKE ? OR town LIKE ? OR postcode LIKE ? ORDER BY (price IS NULL), price DESC LIMIT 6").bind(like, like, like).all();
+        const items = ((r && r.results) || []).map(function (x) { const mny = x.price != null ? ("£" + Number(x.price).toLocaleString("en-GB") + (x.kind === "let" ? " pcm" : "")) : "POA"; return { type: "property", id: x.id, pid: x.id, title: x.address || "Property", sub: [mny, (x.beds != null ? x.beds + " bed" : ""), x.type || ""].filter(Boolean).join(" · ") }; });
+        if (items.length) groups.push({ type: "property", label: "Properties", items: items });
+      } catch (_) {}
+      try {
+        const r = await db.prepare("SELECT id,name,email,phone,kind,property,property_id,created_at FROM enquiries WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR property LIKE ? ORDER BY created_at DESC LIMIT 6").bind(like, like, like, like).all();
+        const items = ((r && r.results) || []).map(function (x) { return { type: "enquiry", id: x.id, pid: x.property_id || null, term: x.name || x.email || "", title: x.name || x.email || "Enquiry", sub: [(x.kind || "enquiry"), (x.property || x.email || x.phone || "")].filter(Boolean).join(" · ") }; });
+        if (items.length) groups.push({ type: "enquiry", label: "Enquiries", items: items });
+      } catch (_) {}
+      try {
+        const r = await db.prepare("SELECT id,name,email,phone,created_at FROM contacts WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 6").bind(like, like, like).all();
+        const items = ((r && r.results) || []).map(function (x) { return { type: "contact", id: x.id, term: x.name || x.email || "", title: x.name || "Contact", sub: [x.email, x.phone].filter(Boolean).join(" · ") }; });
+        if (items.length) groups.push({ type: "contact", label: "Contacts", items: items });
+      } catch (_) {}
+      try {
+        const r = await db.prepare("SELECT id,address,status,start,created_at,property_id FROM viewings WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
+        const items = ((r && r.results) || []).map(function (x) { return { type: "viewing", id: x.id, pid: x.property_id || null, term: x.address || "", title: x.address || "Viewing", sub: ["Viewing", (x.status || "")].filter(Boolean).join(" · ") }; });
+        if (items.length) groups.push({ type: "viewing", label: "Viewings", items: items });
+      } catch (_) {}
+      try {
+        const r = await db.prepare("SELECT id,address,status,start,created_at FROM valuations WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
+        const items = ((r && r.results) || []).map(function (x) { return { type: "valuation", id: x.id, term: x.address || "", title: x.address || "Valuation", sub: ["Valuation", (x.status || "")].filter(Boolean).join(" · ") }; });
+        if (items.length) groups.push({ type: "valuation", label: "Valuations", items: items });
+      } catch (_) {}
+      return respond(JSON.stringify({ ok: true, q: q, groups: groups }), 200, J);
     }
 
     // Live branches from Street (no hardcoding the office list). Admin-gated.
