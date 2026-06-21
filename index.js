@@ -1612,6 +1612,20 @@ export default {
           const rc = parseInt((await env.LISTINGS.get(rk)) || "0", 10);
           if (rc <= 20) {
             await env.LISTINGS.put(rk, String(rc + 1), { expirationTtl: 600 });
+            // Push into Street as an enquiry (criteria in the message). Street has no API to create a
+            // structured applicant, so the team converts this enquiry into an applicant + runs matching.
+            let streetOk = false;
+            try {
+              const kindLabel = rec.kind === "let" ? "RENT" : "BUY";
+              let amsg = "PROPERTY ALERT SIGNUP — wants to be first to know. Looking to " + kindLabel + ".";
+              if (rec.beds) amsg += " Min " + rec.beds + " bed.";
+              if (rec.area) amsg += " Area: " + rec.area + ".";
+              if (rec.max) amsg += " Max price: " + rec.max + ".";
+              amsg += " Please set up as an applicant + property match (via the website be-first alerts).";
+              const sr = await streetPost(env, "/enquiries", { data: { type: "enquiry", attributes: { email_address: rec.email, message: amsg.slice(0, 2000), custom_source: "web-alerts" } } });
+              streetOk = !!(sr && sr.ok);
+            } catch (_) {}
+            rec.streetOk = streetOk;
             await env.LISTINGS.put("alert:" + Date.now() + ":" + Math.random().toString(36).slice(2, 8), JSON.stringify(rec));
           }
         } catch (_) {}
