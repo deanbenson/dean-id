@@ -1392,6 +1392,41 @@ function ddlColumns(ddl) {
 // The real table name a CREATE statement targets (some sync resources, e.g. sales_applicants, write to a
 // shared table like "applicants").
 function ddlTable(ddl) { const m = String(ddl).match(/CREATE TABLE IF NOT EXISTS\s+([A-Za-z0-9_]+)/i); return m ? m[1] : null; }
+// --- Source-prefixed warehouse tables -------------------------------------------------------------
+// The read-only mirror of Street CRM lives in tables prefixed "street_" so each feed's provenance is
+// obvious at a glance (and a second source later can use its own prefix, e.g. payprop_). Two tables are
+// deliberately NOT prefixed: enquiries and listings are the live operational tables the public website
+// and lead capture read and write directly. phys() maps a logical dataset name to its physical table.
+function phys(name) { return (!name || name === "enquiries" || name === "listings") ? name : "street_" + name; }
+// One-time, non-destructive migration: rename each existing warehouse table to its street_ name, keeping
+// every row (ALTER ... RENAME TO — no DROP of populated tables, ever). The list is derived from the sync
+// registry so it can never drift out of step. Runs once, gated by a KV flag; safe to call on any request.
+async function migrateStreetTables(env) {
+  if (!env || !env.gr_estates || !env.LISTINGS) return;
+  let done; try { done = await env.LISTINGS.get("migrate:street_v1"); } catch (_) { return; }
+  if (done) return;
+  const db = env.gr_estates;
+  const have = {};
+  try { const r = await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all(); ((r && r.results) || []).forEach(function (x) { have[x.name] = 1; }); } catch (_) { return; }
+  const names = {};
+  try { extrasReg().forEach(function (e) { const t = ddlTable(e.ddl); if (t) names[t.replace(/^street_/, "")] = 1; }); } catch (_) {}
+  for (const oldN of Object.keys(names)) {
+    const newN = "street_" + oldN;
+    try {
+      if (have[oldN] && !have[newN]) { await db.prepare('ALTER TABLE "' + oldN + '" RENAME TO "' + newN + '"').run(); have[newN] = 1; delete have[oldN]; }
+      else if (have[oldN] && have[newN]) {
+        // Both exist (e.g. a sync created an empty street_ table before this ran). Never lose data: only
+        // replace the street_ table with the old one if street_ is empty and the old one has rows.
+        let nc = 0; try { const a = await db.prepare('SELECT COUNT(*) AS n FROM "' + newN + '"').first(); nc = (a && a.n) || 0; } catch (_) {}
+        if (nc === 0) { let oc = 0; try { const b = await db.prepare('SELECT COUNT(*) AS n FROM "' + oldN + '"').first(); oc = (b && b.n) || 0; } catch (_) {} if (oc > 0) { try { await db.prepare('DROP TABLE "' + newN + '"').run(); await db.prepare('ALTER TABLE "' + oldN + '" RENAME TO "' + newN + '"').run(); } catch (_) {} } }
+      }
+    } catch (_) {}
+  }
+  try { await env.LISTINGS.put("migrate:street_v1", "1"); } catch (_) {}
+}
+// Run the rename at most once per isolate; after the global migration it's a single cheap KV read.
+let _streetMigrated = null;
+function ensureStreetTables(env) { if (!_streetMigrated) _streetMigrated = migrateStreetTables(env).catch(function () {}); return _streetMigrated; }
 // Self-heal schema drift. CREATE TABLE IF NOT EXISTS will NOT widen a table that already exists with an
 // older, narrower column set — e.g. a resource first mirrored generically as (id, created_at, updated_at, raw)
 // and later promoted to one column per field. The INSERT then names columns the table doesn't have, every
@@ -1464,6 +1499,7 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
   const db = env.gr_estates;
   try { // catch-all so any Cloudflare runtime error (subrequest limit, D1/KV failure) is recorded, not lost
+  await ensureStreetTables(env); // rename warehouse tables to their street_ name once, before any create/write
   await migrateSchema(env);
   try { await db.prepare(ddl).run(); } catch (e) { await logSyncError(env, name, "ddl", String((e && e.message) || e).slice(0, 180)); }
   let bf = { done: false, page: 1 };
@@ -1611,16 +1647,16 @@ async function migrateSchema(env) {
   for (const t of ["enquiries", "applicants", "contacts", "listings", "viewings", "valuations", "offers"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
   try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v6", "1"); } catch (_) {}
 }
-const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
-const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
-const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT, raw TEXT)";
-const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT, raw TEXT)";
-const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT, raw TEXT)";
-function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,end_at,viewing_type,status,address,branch,property_id,raw) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,end_at=excluded.end_at,viewing_type=excluded.viewing_type,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.end), _t(a.viewing_type), _t(a.status), _t(a.address || a.public_address), _t(_branch(d, inc)), _relId(d, "property") || a.property_uuid || null, JSON.stringify(d)); }
-function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,valuation_type,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,valuation_type=excluded.valuation_type,branch=excluded.branch,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status || a.custom_status), _t(a.address), _t(a.lead_source), _t(a.valuation_type), _t(_branch(d, inc)), JSON.stringify(d)); }
-function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc)), JSON.stringify(d)); }; }
-function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch,raw) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : (a.rent_amount != null ? Math.round(a.rent_amount) : null)), _t(a.status), _t(_branch(d, inc)), JSON.stringify(d)); }; }
-function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status,raw) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(nm), _t(em), _t(ph), _t(st), JSON.stringify(d)); }
+const VIEW_DDL = "CREATE TABLE IF NOT EXISTS street_viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
+const VAL_DDL = "CREATE TABLE IF NOT EXISTS street_valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
+const APP_DDL = "CREATE TABLE IF NOT EXISTS street_applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT, raw TEXT)";
+const OFF_DDL = "CREATE TABLE IF NOT EXISTS street_offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT, raw TEXT)";
+const CON_DDL = "CREATE TABLE IF NOT EXISTS street_contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT, raw TEXT)";
+function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO street_viewings (id,created_at,start,end_at,viewing_type,status,address,branch,property_id,raw) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,end_at=excluded.end_at,viewing_type=excluded.viewing_type,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.end), _t(a.viewing_type), _t(a.status), _t(a.address || a.public_address), _t(_branch(d, inc)), _relId(d, "property") || a.property_uuid || null, JSON.stringify(d)); }
+function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO street_valuations (id,created_at,start,status,address,lead_source,valuation_type,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,valuation_type=excluded.valuation_type,branch=excluded.branch,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status || a.custom_status), _t(a.address), _t(a.lead_source), _t(a.valuation_type), _t(_branch(d, inc)), JSON.stringify(d)); }
+function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO street_applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc)), JSON.stringify(d)); }; }
+function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO street_offers (id,kind,created_at,address,amount,status,branch,raw) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : (a.rent_amount != null ? Math.round(a.rent_amount) : null)), _t(a.status), _t(_branch(d, inc)), JSON.stringify(d)); }; }
+function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO street_contacts (id,created_at,name,email,phone,status,raw) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(nm), _t(em), _t(ph), _t(st), JSON.stringify(d)); }
 // Generic capture: any Street resource we don't have a bespoke table for is mirrored as id + dates + the
 // COMPLETE raw record, so every field is held even without dedicated columns. Lets us add any endpoint in one line.
 function genDDL(name) { return "CREATE TABLE IF NOT EXISTS " + name + " (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, raw TEXT)"; }
@@ -1630,12 +1666,13 @@ function genRes(name, path) { return { name: name, path: path, ddl: genDDL(name)
 // build a table with one column per field, plus the COMPLETE raw record. Objects/arrays (address, dates,
 // telephone_numbers) are stored as JSON so nothing is lost; column names are quoted so any field name is safe.
 function schemaRes(name, path, fields, opts) {
+  const tbl = "street_" + name; // physical table is source-prefixed; resource keeps its logical name
   const cols = ["id"].concat(fields).concat(["raw"]);
-  const ddl = "CREATE TABLE IF NOT EXISTS " + name + " (" + cols.map(function (c) { return '"' + c + '"' + (c === "id" ? " TEXT PRIMARY KEY" : ""); }).join(", ") + ")";
+  const ddl = "CREATE TABLE IF NOT EXISTS " + tbl + " (" + cols.map(function (c) { return '"' + c + '"' + (c === "id" ? " TEXT PRIMARY KEY" : ""); }).join(", ") + ")";
   const colList = cols.map(function (c) { return '"' + c + '"'; }).join(",");
   const ph = cols.map(function () { return "?"; }).join(",");
   const upd = cols.filter(function (c) { return c !== "id"; }).map(function (c) { return '"' + c + '"=excluded."' + c + '"'; }).join(",");
-  const sql = "INSERT INTO " + name + " (" + colList + ") VALUES (" + ph + ") ON CONFLICT(id) DO UPDATE SET " + upd;
+  const sql = "INSERT INTO " + tbl + " (" + colList + ") VALUES (" + ph + ") ON CONFLICT(id) DO UPDATE SET " + upd;
   const map = function (db, d) {
     const a = d.attributes || {};
     const vals = [d.id];
@@ -1962,12 +1999,12 @@ export default {
       try {
         const wk = new Date(Date.now() - 7 * 864e5).toISOString();
         const cntq = async function (sql, arg) { try { const r = arg ? await env.gr_estates.prepare(sql).bind(arg).first() : await env.gr_estates.prepare(sql).first(); return (r && r.n) || 0; } catch (_) { return 0; } };
-        pipeline.viewings = await cntq("SELECT COUNT(*) AS n FROM viewings");
-        pipeline.viewings_week = await cntq("SELECT COUNT(*) AS n FROM viewings WHERE created_at >= ?", wk);
-        pipeline.valuations = await cntq("SELECT COUNT(*) AS n FROM valuations");
-        pipeline.valuations_week = await cntq("SELECT COUNT(*) AS n FROM valuations WHERE created_at >= ?", wk);
-        pipeline.applicants = await cntq("SELECT COUNT(*) AS n FROM applicants");
-        pipeline.contacts = await cntq("SELECT COUNT(*) AS n FROM contacts");
+        pipeline.viewings = await cntq("SELECT COUNT(*) AS n FROM street_viewings");
+        pipeline.viewings_week = await cntq("SELECT COUNT(*) AS n FROM street_viewings WHERE created_at >= ?", wk);
+        pipeline.valuations = await cntq("SELECT COUNT(*) AS n FROM street_valuations");
+        pipeline.valuations_week = await cntq("SELECT COUNT(*) AS n FROM street_valuations WHERE created_at >= ?", wk);
+        pipeline.applicants = await cntq("SELECT COUNT(*) AS n FROM street_applicants");
+        pipeline.contacts = await cntq("SELECT COUNT(*) AS n FROM street_contacts");
       } catch (_) {}
       return respond(JSON.stringify({ ok: true, portfolio: portfolio, listings_at: listings_at, pipeline: pipeline, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
@@ -1978,6 +2015,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       let b = {}; try { b = await request.json(); } catch (_) {}
       const q = String((b && b.q) || "").trim().slice(0, 400);
       if (!q) return respond(JSON.stringify({ ok: true, answer: "Ask me anything about the business, like how many enquiries this week, which branch is busiest, or what needs your attention." }), 200, J);
@@ -2018,6 +2056,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       // Fast path: read the synced local copy (D1). The cron keeps it fresh, so this is instant.
       try {
         if (env.gr_estates) {
@@ -2073,12 +2112,13 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const name = String(url.searchParams.get("name") || "");
       const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1, interested_applicants: 1, property_keys: 1, maintenance_jobs: 1, move_outs: 1, solicitors: 1, todos: 1, todo_types: 1, follow_ups: 1, invoices: 1, photo_and_measures: 1, sales_instructions: 1, lettings_instructions: 1, areas: 1, brands: 1, companies: 1, branches_all: 1, users_all: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
       let rows = [], total = 0, at = null;
-      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
-      try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); total = (c && c.n) || 0; } catch (_) {}
+      try { const r = await env.gr_estates.prepare("SELECT * FROM " + phys(name) + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
+      try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + phys(name)).first(); total = (c && c.n) || 0; } catch (_) {}
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
       let syncing = false;
@@ -2104,11 +2144,12 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const name = String(url.searchParams.get("name") || ""), id = String(url.searchParams.get("id") || "");
       const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1, interested_applicants: 1, property_keys: 1, maintenance_jobs: 1, move_outs: 1, solicitors: 1, todos: 1, todo_types: 1, follow_ups: 1, invoices: 1, photo_and_measures: 1, sales_instructions: 1, lettings_instructions: 1, areas: 1, brands: 1, companies: 1, branches_all: 1, users_all: 1 };
       if (!allow[name] || !id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad request" }), 400, J);
       let row = null, raw = null;
-      try { row = await env.gr_estates.prepare("SELECT * FROM " + name + " WHERE id = ?").bind(id).first(); } catch (_) {}
+      try { row = await env.gr_estates.prepare("SELECT * FROM " + phys(name) + " WHERE id = ?").bind(id).first(); } catch (_) {}
       if (row && row.raw) { try { raw = JSON.parse(row.raw); } catch (_) {} delete row.raw; }
       return respond(JSON.stringify({ ok: true, name: name, row: row, raw: raw }), 200, J);
     }
@@ -2119,13 +2160,14 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const id = String(url.searchParams.get("id") || "");
       if (!id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
       const db = env.gr_estates;
       let property = null, enquiries = [], viewings = [];
       try { property = await db.prepare("SELECT id,kind,status,price,address,town,postcode,beds,baths,type,style,updated_at FROM listings WHERE id = ?").bind(id).first(); } catch (_) {}
       try { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE property_id = ? ORDER BY created_at DESC LIMIT 300").bind(id).all(); enquiries = (r && r.results) || []; } catch (_) {}
-      try { const r = await db.prepare("SELECT id,created_at,start,status,address,branch FROM viewings WHERE property_id = ? ORDER BY COALESCE(start,created_at) DESC LIMIT 300").bind(id).all(); viewings = (r && r.results) || []; } catch (_) {}
+      try { const r = await db.prepare("SELECT id,created_at,start,status,address,branch FROM street_viewings WHERE property_id = ? ORDER BY COALESCE(start,created_at) DESC LIMIT 300").bind(id).all(); viewings = (r && r.results) || []; } catch (_) {}
       const label = property ? property.address : ((enquiries[0] && enquiries[0].property) || (viewings[0] && viewings[0].address) || null);
       const branch = property ? null : ((enquiries[0] && enquiries[0].branch) || (viewings[0] && viewings[0].branch) || null);
       const byKind = {}; enquiries.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
@@ -2140,17 +2182,18 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const tables = [["enquiries", "Enquiries", "15min", "enquiries"], ["listings", "Listings (on-market)", "hourly", "listings"], ["properties_all", "Properties (all)", "15min", "properties_all"], ["viewings", "Viewings", "15min", "viewings"], ["valuations", "Valuations", "15min", "valuations"], ["applicants", "Applicants", "15min", "sales_applicants"], ["offers", "Offers", "15min", "sales_offers"], ["sales", "Sales", "15min", "sales"], ["tenancies", "Tenancies", "15min", "tenancies"], ["contacts", "Contacts", "hourly", "contacts"], ["landlords", "Landlords", "15min", "landlords"], ["vendors", "Vendors", "15min", "vendors"], ["tenants", "Tenants", "15min", "tenants"], ["inspections", "Inspections", "15min", "inspections"], ["interested_applicants", "Interested applicants", "15min", "interested_applicants"], ["property_keys", "Property keys", "15min", "property_keys"], ["maintenance_jobs", "Maintenance jobs", "15min", "maintenance_jobs"], ["move_outs", "Move outs", "15min", "move_outs"], ["solicitors", "Solicitors", "15min", "solicitors"], ["todos", "Tasks / to-dos", "15min", "todos"]];
       const dateCol = { enquiries: "created_at", viewings: "created_at", valuations: "created_at", applicants: "created_at", offers: "created_at", contacts: "created_at", tenancies: "created_at", landlords: "created_at", vendors: "created_at", tenants: "created_at", inspections: "created_at", sales: "created_at", properties_all: "created_at", interested_applicants: "created_at", property_keys: "created_at", maintenance_jobs: "created_at", move_outs: "created_at", solicitors: "created_at", todos: "created_at" };
       const out = [];
       for (const t of tables) {
         let count = 0, at = null, today = null, delta = null;
-        try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0]).first(); count = (c && c.n) || 0; } } catch (_) {}
+        try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + phys(t[0])).first(); count = (c && c.n) || 0; } } catch (_) {}
         try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + t[3] + ":at"); } catch (_) {}
         try { if (env.LISTINGS) { const d = await env.LISTINGS.get("sync:" + t[3] + ":delta"); if (d != null) delta = parseInt(d, 10) || 0; } } catch (_) {}
         let diag = null; try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + t[3] + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
         let streetTotal = null; try { if (env.LISTINGS) { const st = await env.LISTINGS.get("sync:" + t[3] + ":total"); if (st != null) streetTotal = parseInt(st, 10); } } catch (_) {}
-        if (dateCol[t[0]] && env.gr_estates) { try { const c2 = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0] + " WHERE datetime(" + dateCol[t[0]] + ") >= datetime('now','start of day')").first(); today = (c2 && c2.n) || 0; } catch (_) {} }
+        if (dateCol[t[0]] && env.gr_estates) { try { const c2 = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + phys(t[0]) + " WHERE datetime(" + dateCol[t[0]] + ") >= datetime('now','start of day')").first(); today = (c2 && c2.n) || 0; } catch (_) {} }
         out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta, streetTotal: streetTotal, diag: diag });
       }
       return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
@@ -2164,6 +2207,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const db = env.gr_estates;
       const reg = [{ name: "enquiries", ddl: ENQ_DDL }, { name: "listings", ddl: "CREATE TABLE listings (id)" }].concat(extrasReg());
       const out = [];
@@ -2190,6 +2234,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       // Run the extras INLINE (awaited) so the response proves what actually happened — the background path
       // can be cut short. enquiries keeps backfilling on its own cron; kick it in the background too.
       let threw = null;
@@ -2207,6 +2252,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const db = env.gr_estates;
       const want = url.searchParams.get("name") || "tenancies";
       const e = extrasReg().find(function (x) { return x.name === want; });
@@ -2231,6 +2277,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       // Exact paths from the official Street Open API spec. GET-listable ones return 200; POST-only
       // ones (activity, documents, notes, maintenance-requests) return 405 — included so the result is honest.
       const cands = [
@@ -2269,6 +2316,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const list = [
         ["enquiries", "/enquiries"], ["viewings", "/viewings"], ["valuations", "/valuations"], ["contacts", "/people"],
         ["properties_all", "/properties"], ["sales", "/sales"], ["tenancies", "/tenancies"], ["landlords", "/landlords"],
@@ -2285,9 +2333,9 @@ export default {
           const b = r.body || {}; const pg = (b.meta && b.meta.pagination) || {};
           total = (pg.total != null) ? pg.total : ((pg.total_count != null) ? pg.total_count : ((pg.count != null) ? pg.count : null));
           const recs = b.data || []; sample = recs.length;
-          try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); localCount = (c && c.n) || 0; } } catch (_) {}
+          try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + phys(name)).first(); localCount = (c && c.n) || 0; } } catch (_) {}
           for (const rec of recs) {
-            let row = null; try { if (env.gr_estates) row = await env.gr_estates.prepare("SELECT raw FROM " + name + " WHERE id = ?").bind(rec.id).first(); } catch (_) {}
+            let row = null; try { if (env.gr_estates) row = await env.gr_estates.prepare("SELECT raw FROM " + phys(name) + " WHERE id = ?").bind(rec.id).first(); } catch (_) {}
             if (!row || !row.raw) continue;
             found++;
             let stored = {}; try { stored = JSON.parse(row.raw) || {}; } catch (_) {}
@@ -2317,6 +2365,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       const q = String(url.searchParams.get("q") || "").trim();
       if (q.length < 2 || !env.gr_estates) return respond(JSON.stringify({ ok: true, q: q, groups: [] }), 200, J);
       const db = env.gr_estates;
@@ -2333,17 +2382,17 @@ export default {
         if (items.length) groups.push({ type: "enquiry", label: "Enquiries", items: items });
       } catch (_) {}
       try {
-        const r = await db.prepare("SELECT id,name,email,phone,created_at FROM contacts WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 6").bind(like, like, like).all();
+        const r = await db.prepare("SELECT id,name,email,phone,created_at FROM street_contacts WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 6").bind(like, like, like).all();
         const items = ((r && r.results) || []).map(function (x) { return { type: "contact", id: x.id, term: x.name || x.email || "", title: x.name || "Contact", sub: [x.email, x.phone].filter(Boolean).join(" · ") }; });
         if (items.length) groups.push({ type: "contact", label: "Contacts", items: items });
       } catch (_) {}
       try {
-        const r = await db.prepare("SELECT id,address,status,start,created_at,property_id FROM viewings WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
+        const r = await db.prepare("SELECT id,address,status,start,created_at,property_id FROM street_viewings WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
         const items = ((r && r.results) || []).map(function (x) { return { type: "viewing", id: x.id, pid: x.property_id || null, term: x.address || "", title: x.address || "Viewing", sub: ["Viewing", (x.status || "")].filter(Boolean).join(" · ") }; });
         if (items.length) groups.push({ type: "viewing", label: "Viewings", items: items });
       } catch (_) {}
       try {
-        const r = await db.prepare("SELECT id,address,status,start,created_at FROM valuations WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
+        const r = await db.prepare("SELECT id,address,status,start,created_at FROM street_valuations WHERE address LIKE ? ORDER BY COALESCE(start,created_at) DESC LIMIT 5").bind(like).all();
         const items = ((r && r.results) || []).map(function (x) { return { type: "valuation", id: x.id, term: x.address || "", title: x.address || "Valuation", sub: ["Valuation", (x.status || "")].filter(Boolean).join(" · ") }; });
         if (items.length) groups.push({ type: "valuation", label: "Valuations", items: items });
       } catch (_) {}
@@ -2356,6 +2405,7 @@ export default {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
       let branches = [];
       try {
         const r = await streetGet(env, "/branches");
