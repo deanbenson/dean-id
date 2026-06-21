@@ -349,14 +349,14 @@
       if(b){b.disabled=false;b.textContent='Diagnose';}
       if(!out)return;
       if(!d||!d.datasets){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Check failed.</div>'; return; }
-      var nComplete=0,nFilling=0,nEmpty=0,nIssue=0,totLocal=0,totStreet=0,issues=[];
+      var nComplete=0,nFilling=0,nEmpty=0,nIssue=0,totLocal=0,totStreet=0,cappedLocal=0,issues=[];
       // Group by physical table so the two feeds that share one (sales+lettings offers -> offers, and
       // applicants) show as a single row with the combined Street total, not one row per half.
       var seen={},groups=[];
       d.datasets.forEach(function(a){ var t=a.table||a.name; if(seen[t]!=null){ if(a.total!=null) groups[seen[t]].total=(groups[seen[t]].total||0)+a.total; return; } seen[t]=groups.length; groups.push({name:(a.table&&a.table!==a.name?a.table:a.name),count:a.count||0,total:a.total,diag:a.diag,missing:a.missing}); });
       var rows=groups.map(function(a){
         var dg=a.diag||{}; var total=(a.total!=null)?a.total:null; var local=a.count||0;
-        totLocal+=local; if(total)totStreet+=total;
+        totLocal+=local; if(total!=null&&total>0){ totStreet+=total; cappedLocal+=Math.min(local,total); }
         var cov=(total&&total>0)?Math.min(100,Math.round(local/total*100)):(total===0?100:null);
         var missing=(a.missing&&a.missing.length)?a.missing.length:0;
         var hadErr=dg.err||(dg.errors&&dg.errors.length);
@@ -372,9 +372,9 @@
         var held=(total!=null)?(local.toLocaleString('en-GB')+' <span style="color:var(--muted)">/ '+total.toLocaleString('en-GB')+'</span>'):local.toLocaleString('en-GB');
         return '<tr><td style="font-weight:600">'+esc(a.name)+'</td><td style="font-variant-numeric:tabular-nums">'+held+'</td><td>'+covTxt+'</td><td style="color:'+scol+';font-weight:600">'+status+'</td><td style="text-align:center">'+integ+'</td></tr>';
       }).join('');
-      var pct=totStreet?Math.round(totLocal/totStreet*100):0;
+      var pct=totStreet?Math.min(100,Math.round(cappedLocal/totStreet*100)):0;
       var verdict=(nIssue===0)
-        ?'<div style="background:rgba(29,158,117,.10);border:1px solid #1d9e75;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#157a5b;font-weight:600">✓ All healthy. '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' still empty, no errors. Holding <b>'+totLocal.toLocaleString('en-GB')+'</b> of '+totStreet.toLocaleString('en-GB')+' Street records ('+pct+'%).</div>'
+        ?'<div style="background:rgba(29,158,117,.10);border:1px solid #1d9e75;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#157a5b;font-weight:600">✓ All healthy. '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' still empty, no errors. Holding <b>'+totLocal.toLocaleString('en-GB')+'</b> records — '+pct+'% of what Street holds.</div>'
         :'<div style="background:rgba(194,84,29,.10);border:1px solid #c2541d;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#a8431a;font-weight:600">⚠ '+nIssue+' dataset'+(nIssue>1?'s':'')+' need attention (below). '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' empty.</div>';
       var issuesHtml=issues.length?('<div class="secttl">Needs attention</div><ul style="margin:4px 0 12px;padding-left:18px;font-size:.82rem">'+issues.map(function(x){return '<li><b>'+esc(x.name)+'</b> — <span style="font-family:monospace;font-size:.75rem;color:#c2541d">'+esc(x.why)+'</span></li>';}).join('')+'</ul>'):'';
       var lastrun=d.lastrun?('<div style="font-size:.74rem;color:var(--muted);margin:8px 0 0">Last sync '+esc(ago(new Date(d.lastrun.at).getTime()))+'</div>'):'';
@@ -654,11 +654,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.50', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.51', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.51',d:'21 Jun 2026',items:['Fixed the nonsense "157% of Street" figure. Cause: once a feed finishes its full backfill it only pulls recently-changed records, and the page total for that small slice (e.g. "1") was overwriting the real dataset total — so enquiries\' total read 1 instead of 25,444. The sync now re-reads the true total cleanly in top-up mode','Belt and braces: the coverage figure is now capped per dataset and can never read over 100% again, even if a total is briefly wrong']},
     {v:'0.50',d:'21 Jun 2026',items:['Fixed the Connections header overlapping the Sync now / Data health buttons. The text now wraps in its own column and the buttons keep their own space, on any screen width']},
     {v:'0.49',d:'21 Jun 2026',items:['Fixed the empty Branch column on Viewings (and Valuations and Offers). Checked a real record: a viewing does link to a branch, but Street only returns that link, not the branch name, unless you explicitly ask for it. The sync now asks Street to include the branch, so the office name comes through and fills in as records re-sync','Same fix makes the property on each viewing clickable through to its full property page, which loads live from Street','Both fill in as the viewings feed re-walks itself']},
     {v:'0.48',d:'21 Jun 2026',items:['Every data screen (Viewings, Valuations, Contacts, Sales, Tenancies and the rest) now opens with an at-a-glance summary above the table — added this month, plus the main status split — so you read the shape of it before the detail, the same idea as the new Connections page','Done once in the shared table component, so it lands consistently across the whole hub']},

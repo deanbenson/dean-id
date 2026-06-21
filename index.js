@@ -1515,6 +1515,17 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
       }
     }
   } catch (e) { err = String((e && e.message) || e).slice(0, 180); errs.push({ stage: "fetch", detail: err }); }
+  // In top-up mode the page total reflects only the filtered (updated_from) slice — a tiny number that would
+  // clobber the real dataset total (that's why enquiries' total read 1). Re-read the TRUE total with one cheap
+  // unfiltered page so coverage figures stay correct.
+  if (mode === "topup") {
+    try {
+      const tq = await streetGet(env, path + (path.indexOf("?") >= 0 ? "&" : "?") + "page%5Bsize%5D=1&page%5Bnumber%5D=1");
+      const tpg = (tq && tq.body && tq.body.meta && tq.body.meta.pagination) || {};
+      const tt = (tpg.total != null) ? tpg.total : ((tpg.total_count != null) ? tpg.total_count : null);
+      if (tt != null) totalRecords = tt;
+    } catch (_) {}
+  }
   let mapped = 0, stored = 0, writeErr = null;
   if (all.length) {
     // Map each record to a bound statement, keeping the record alongside so we can name the offending row.
