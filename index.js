@@ -1358,7 +1358,7 @@ async function refreshGoogleReviews(env, force) {
   }
 }
 
-const ENQ_DDL = "CREATE TABLE IF NOT EXISTS enquiries (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT, email TEXT, phone TEXT, message TEXT, source TEXT, kind TEXT, property_id TEXT, property TEXT, branch TEXT)";
+const ENQ_DDL = "CREATE TABLE IF NOT EXISTS enquiries (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT, email TEXT, phone TEXT, message TEXT, source TEXT, kind TEXT, property_id TEXT, property TEXT, branch TEXT, raw TEXT)";
 function enqKindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
 function mEnq(db, d, inc) {
   const a = d.attributes || {}; const rel = d.relationships || {};
@@ -1366,13 +1366,13 @@ function mEnq(db, d, inc) {
   const brId = (rel.branch && rel.branch.data && rel.branch.data.id) || a.branch_uuid || null;
   const prop = (propId && inc[propId]) ? (inc[propId].attributes || {}) : null;
   const br = (brId && inc[brId]) ? (inc[brId].attributes || {}) : null;
-  return db.prepare("INSERT INTO enquiries (id,created_at,updated_at,name,email,phone,message,source,kind,property_id,property,branch) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name,email=excluded.email,phone=excluded.phone,message=excluded.message,source=excluded.source,kind=excluded.kind,property_id=excluded.property_id,property=excluded.property,branch=excluded.branch")
-    .bind(d.id, a.created_at || null, a.updated_at || null,
+  return db.prepare("INSERT INTO enquiries (id,created_at,updated_at,name,email,phone,message,source,kind,property_id,property,branch,raw) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,name=excluded.name,email=excluded.email,phone=excluded.phone,message=excluded.message,source=excluded.source,kind=excluded.kind,property_id=excluded.property_id,property=excluded.property,branch=excluded.branch,raw=excluded.raw")
+    .bind(d.id, _t(a.created_at), _t(a.updated_at),
       (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null,
-      a.email_address || null, a.telephone_number || null, (a.message || "").slice(0, 500) || null,
-      a.custom_source || null, enqKindOf(a), propId,
-      prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address || null) : null,
-      br ? (br.name || br.branch_name || br.display_name || null) : null);
+      _t(a.email_address), _t(a.telephone_number), (a.message || "").slice(0, 500) || null,
+      _t(a.custom_source), enqKindOf(a), propId,
+      prop ? _t(prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address) : null,
+      br ? _t(br.name || br.branch_name || br.display_name) : null, JSON.stringify(d));
 }
 // Enquiries run on the same progressive engine: backfill the full history, then top up incrementally.
 async function syncEnquiries(env) {
@@ -1396,6 +1396,7 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   const incr = opts.incr !== false;
   if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
   const db = env.gr_estates;
+  await migrateSchema(env);
   try { await db.prepare(ddl).run(); } catch (e) {}
   let bf = { done: false, page: 1 };
   try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
@@ -1425,26 +1426,28 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
       if (pn >= tp || (r.body.data || []).length < 100) { reachedEnd = true; break; }
     }
   } catch (e) { err = String((e && e.message) || e).slice(0, 180); }
+  let mapped = 0, stored = 0, writeErr = null;
   if (all.length) {
-    const ups = all.map(function (d) { try { return mapFn(db, d, inc); } catch (e) { return null; } }).filter(Boolean);
-    for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
+    const ups = all.map(function (d) { try { return mapFn(db, d, inc); } catch (e) { if (!writeErr) writeErr = "map: " + String((e && e.message) || e).slice(0, 150); return null; } }).filter(Boolean);
+    mapped = ups.length;
+    for (let i = 0; i < ups.length; i += 40) { const slice = ups.slice(i, i + 40); try { await db.batch(slice); stored += slice.length; } catch (e) { if (!writeErr) writeErr = "write: " + String((e && e.message) || e).slice(0, 150); } }
   }
   try { if (env.LISTINGS) {
     if (mode === "topup") {
       if (!err) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(Date.now() - 120000).toISOString());
     } else if (mode === "backfill") {
       if (reachedEnd) { bf.done = true; bf.page = 1; if (incr) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(Date.now() - 2 * 864e5).toISOString()); }
-      else { bf.page = startPage + pages; }
+      else if (stored > 0) { bf.page = startPage + pages; }
       await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf));
     } else { // recycle: keep walking the whole collection, looping back to the start
       bf.page = reachedEnd ? 1 : (startPage + pages);
       await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf));
     }
     await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
-    await env.LISTINGS.put("sync:" + name + ":delta", String(all.length));
-    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err }));
+    await env.LISTINGS.put("sync:" + name + ":delta", String(stored));
+    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, mapped: mapped, stored: stored, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err || writeErr }));
   } } catch (_) {}
-  return all.length;
+  return stored;
 }
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
 function _branch(d, inc) { const id = _relId(d, "branch") || (d.attributes || {}).branch_uuid; const b = (id && inc[id]) ? (inc[id].attributes || {}) : null; return b ? (b.name || b.branch_name || b.display_name || null) : null; }
@@ -1462,16 +1465,31 @@ function _t(v) {
   }
   return String(v);
 }
-const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT)";
-const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, branch TEXT)";
-const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT)";
-const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT)";
-const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT)";
-function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status), _t(a.address || a.public_address), _t(_branch(d, inc)), _relId(d, "property") || a.property_uuid || null); }
-function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status || a.custom_status), _t(a.address), _t(a.lead_source), _t(_branch(d, inc))); }
-function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc))); }; }
-function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : null), _t(a.status), _t(_branch(d, inc))); }; }
-function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status").bind(d.id, a.created_at || null, nm, em, ph, st); }
+// One-time schema migration. Adds the `raw` full-record column everywhere; drops the empty
+// viewings/valuations/offers tables so they recreate cleanly from the current schema (killing any column
+// drift that was failing inserts); and resets every backfill so the full history re-walks into the new shape.
+async function migrateSchema(env) {
+  if (!env || !env.gr_estates) return;
+  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v3"))) return; } catch (_) { return; }
+  const db = env.gr_estates;
+  for (const t of ["enquiries", "applicants", "contacts", "listings"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
+  for (const t of ["viewings", "valuations", "offers"]) {
+    try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + t).first(); if (!c || !c.n) { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } else { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} } }
+    catch (_) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (__) {} }
+  }
+  try { if (env.LISTINGS) { for (const n of ["enquiries", "viewings", "valuations", "sales_applicants", "lettings_applicants", "sales_offers", "lettings_offers", "contacts"]) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } } } catch (_) {}
+  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v3", "1"); } catch (_) {}
+}
+const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
+const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
+const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT, raw TEXT)";
+const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT, raw TEXT)";
+const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT, raw TEXT)";
+function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,end_at,viewing_type,status,address,branch,property_id,raw) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,end_at=excluded.end_at,viewing_type=excluded.viewing_type,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.end), _t(a.viewing_type), _t(a.status), _t(a.address || a.public_address), _t(_branch(d, inc)), _relId(d, "property") || a.property_uuid || null, JSON.stringify(d)); }
+function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,valuation_type,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,valuation_type=excluded.valuation_type,branch=excluded.branch,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(a.start), _t(a.status || a.custom_status), _t(a.address), _t(a.lead_source), _t(a.valuation_type), _t(_branch(d, inc)), JSON.stringify(d)); }
+function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc)), JSON.stringify(d)); }; }
+function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch,raw) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : (a.rent_amount != null ? Math.round(a.rent_amount) : null)), _t(a.status), _t(_branch(d, inc)), JSON.stringify(d)); }; }
+function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status,raw) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(nm), _t(em), _t(ph), _t(st), JSON.stringify(d)); }
 // The full set of Street list resources we mirror locally. Order is the rotation order.
 function extrasReg() {
   return [
@@ -1484,18 +1502,10 @@ function extrasReg() {
     { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon, opts: { incr: true } }
   ];
 }
-async function migrateExtras(env) {
-  try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
-  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
-  // One-time: viewings/valuations/offers fetched rows but stored none (address-object bind crash, now fixed).
-  // Their backfill cursor advanced past those pages, so reset it to re-walk the full history from the start.
-  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:addr_fix"))) { for (const n of ["viewings", "valuations", "sales_offers", "lettings_offers"]) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } await env.LISTINGS.put("migrate:addr_fix", "1"); } } catch (_) {}
-}
-async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; await migrateExtras(env); try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
+async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
 // Sync the next `count` resources in rotation, advancing a KV cursor. Keeps each invocation light so we
 // never blow the Worker subrequest budget — over a few ticks everything backfills, then stays incremental.
 async function syncExtrasRotating(env, count) {
-  await migrateExtras(env);
   const reg = extrasReg(); const n = Math.max(1, count || 1);
   let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
   for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
@@ -1847,7 +1857,7 @@ export default {
       const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
       let rows = [], total = 0, at = null;
-      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; } catch (_) {}
+      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
       try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); total = (c && c.n) || 0; } catch (_) {}
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
@@ -1866,6 +1876,21 @@ export default {
         } catch (_) {}
       }
       return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows, syncing: syncing }), 200, J);
+    }
+
+    // One full record incl. the complete raw Street payload (every field). Admin-gated (PII).
+    if (path === "/api/record" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const name = String(url.searchParams.get("name") || ""), id = String(url.searchParams.get("id") || "");
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
+      if (!allow[name] || !id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad request" }), 400, J);
+      let row = null, raw = null;
+      try { row = await env.gr_estates.prepare("SELECT * FROM " + name + " WHERE id = ?").bind(id).first(); } catch (_) {}
+      if (row && row.raw) { try { raw = JSON.parse(row.raw); } catch (_) {} delete row.raw; }
+      return respond(JSON.stringify({ ok: true, name: name, row: row, raw: raw }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).

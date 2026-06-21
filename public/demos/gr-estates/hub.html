@@ -53,6 +53,17 @@
  .gstype{font-size:.66rem;color:var(--muted);text-transform:capitalize;flex:none}
  .gsempty{padding:16px;color:var(--muted);font-size:.85rem;text-align:center}
  .nextsync{font-variant-numeric:tabular-nums;font-weight:700;color:var(--orange-deep)}
+ table.dt td.dtx,table.dt th.dtx{width:1%;white-space:nowrap;text-align:right}
+ .rowbtn{border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;color:var(--muted);font-size:.9rem;line-height:1;padding:.15rem .4rem}.rowbtn:hover{border-color:var(--orange);color:var(--orange-deep)}
+ .rdov{position:fixed;inset:0;background:rgba(20,20,20,.42);z-index:100;display:flex;justify-content:flex-end}
+ .rdpanel{background:#fff;width:min(560px,94vw);height:100%;overflow:auto;box-shadow:-14px 0 44px rgba(0,0,0,.22)}
+ .rdhead{position:sticky;top:0;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);font-size:1rem;z-index:2}
+ .rdx{border:0;background:none;font-size:1.05rem;cursor:pointer;color:var(--muted);line-height:1}.rdx:hover{color:var(--ink)}
+ .rdbody{padding:12px 18px 28px}.rdmeta{font-size:.76rem;color:var(--muted);margin:4px 0 6px}
+ .rdsec{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px}
+ .frow{display:grid;grid-template-columns:38% 62%;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:.85rem}.frow:first-of-type{border-top:0}
+ .fk{color:#54585f;font-weight:600;word-break:break-word}.fv{word-break:break-word}
+ .fjson{font-size:.76rem;white-space:pre-wrap;color:#43464d;background:#faf7f2;border-radius:5px;padding:2px 5px;display:block}
  .syncnow{border:1px solid var(--orange);background:#fff;color:var(--orange-deep);font:inherit;font-weight:600;font-size:.74rem;border-radius:7px;padding:.2rem .6rem;cursor:pointer;margin-left:8px;vertical-align:baseline}
  .syncnow:hover{background:var(--orange);color:#fff}.syncnow:disabled{opacity:.6;cursor:default}
  .emptybox{color:var(--muted)}.emptybox .emptyrow{margin-top:10px;padding-top:11px;border-top:1px solid var(--line);font-size:.86rem}
@@ -287,19 +298,37 @@
       out.innerHTML='<div class="secttl">Street probe — what each endpoint actually returns</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Query</th><th>HTTP</th><th>Rows / total</th><th>Type / error</th><th>Fields</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">A green HTTP with rows is the call we wire. If everything reads 0, those records simply aren\'t in Street.</div>';
     }).catch(function(){ if(b){b.disabled=false;b.textContent='Probe Street';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Probe error.</div>'; });
   };
+  window.grCloseDrawer=function(){ var o=document.getElementById('rowdrawer'); if(o)o.parentNode.removeChild(o); };
+  function fieldRows(obj){ if(!obj||typeof obj!=='object') return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; var ks=Object.keys(obj); if(!ks.length) return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; return ks.map(function(k){ var v=obj[k]; var disp; if(v==null||v==='') disp='<span style="color:var(--muted)">—</span>'; else if(typeof v==='object') disp='<code class="fjson">'+esc(JSON.stringify(v,null,1))+'</code>'; else if(typeof v==='boolean') disp=v?'Yes':'No'; else disp=esc(String(v)); return '<div class="frow"><span class="fk">'+esc(k)+'</span><span class="fv">'+disp+'</span></div>'; }).join(''); }
+  window.grRow=function(name,id){
+    grCloseDrawer();
+    var wrap=document.createElement('div'); wrap.id='rowdrawer';
+    wrap.innerHTML='<div class="rdov" onclick="if(event.target===this)grCloseDrawer()"><div class="rdpanel"><div class="rdhead"><b id="rdtitle">Loading record…</b><button class="rdx" onclick="grCloseDrawer()" aria-label="Close">✕</button></div><div class="rdbody" id="rdbody"><div style="color:var(--muted)">Fetching every field from Street…</div></div></div></div>';
+    document.body.appendChild(wrap);
+    fetch('/api/record?name='+encodeURIComponent(name)+'&id='+encodeURIComponent(id),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      var body=document.getElementById('rdbody'), ttl=document.getElementById('rdtitle'); if(!body)return;
+      if(!d||!d.ok){ body.innerHTML='<div style="color:var(--orange-deep)">Could not load this record.</div>'; return; }
+      var a=(d.raw&&d.raw.attributes)||{}, rel=(d.raw&&d.raw.relationships)||null;
+      var label=name.charAt(0).toUpperCase()+name.slice(1).replace(/s$/,'');
+      if(ttl)ttl.textContent=label+' · full record';
+      var nfields=Object.keys(a).length;
+      body.innerHTML='<div class="rdmeta">'+nfields+' fields from Street · id '+esc(id)+'</div><div class="rdsec">All fields</div>'+fieldRows(a)+(rel?('<div class="rdsec">Relationships</div>'+fieldRows(rel)):'');
+    }).catch(function(){ var body=document.getElementById('rdbody'); if(body)body.innerHTML='<div style="color:var(--orange-deep)">Error loading record.</div>'; });
+  };
   var TBL={}, TBLDATA={};
   function dtRender(vid){
     var d=TBLDATA[vid], st=TBL[vid], cols=d.cols, q=(st.q||'').toLowerCase();
     var rows=d.rows.filter(function(r){ if(!q)return true; for(var i=0;i<cols.length;i++){ var c=cols[i]; if(c.search===false)continue; var v=c.text?c.text(r):(c.get?c.get(r):''); if(String(v==null?'':v).toLowerCase().indexOf(q)>=0)return true; } return false; });
     var sc=null; for(var i=0;i<cols.length;i++){ if(cols[i].key===st.sort){sc=cols[i];break;} } if(!sc)sc=cols[0];
     rows.sort(function(a,b){ var va=sc.sortVal?sc.sortVal(a):(sc.get?sc.get(a):''); var vb=sc.sortVal?sc.sortVal(b):(sc.get?sc.get(b):''); if(va==null)va=''; if(vb==null)vb=''; if(typeof va==='number'&&typeof vb==='number')return (va-vb)*st.dir; return String(va).localeCompare(String(vb))*st.dir; });
-    var head=cols.map(function(c){ var on=st.sort===c.key, s=(c.sort!==false); return '<th'+(s?' class="dtsort" onclick="grTblSort(\''+vid+'\',\''+c.key+'\')"':'')+'>'+esc(c.label)+(on?'<span class="dtar">'+(st.dir<0?'↓':'↑')+'</span>':'')+'</th>'; }).join('');
-    var body=rows.length?rows.map(function(r){ return '<tr>'+cols.map(function(c){ return '<td>'+(c.html?c.html(r):esc((c.get?c.get(r):'')==null?'':c.get(r)))+'</td>'; }).join('')+'</tr>'; }).join(''):'<tr><td colspan="'+cols.length+'" style="color:var(--muted);padding:18px;text-align:center">No matches.</td></tr>';
+    var det=d.detail;
+    var head=cols.map(function(c){ var on=st.sort===c.key, s=(c.sort!==false); return '<th'+(s?' class="dtsort" onclick="grTblSort(\''+vid+'\',\''+c.key+'\')"':'')+'>'+esc(c.label)+(on?'<span class="dtar">'+(st.dir<0?'↓':'↑')+'</span>':'')+'</th>'; }).join('')+(det?'<th class="dtx"></th>':'');
+    var body=rows.length?rows.map(function(r){ return '<tr>'+cols.map(function(c){ return '<td>'+(c.html?c.html(r):esc((c.get?c.get(r):'')==null?'':c.get(r)))+'</td>'; }).join('')+(det&&r.id?'<td class="dtx"><button class="rowbtn" title="View all fields" onclick="grRow(\''+det+'\',\''+r.id+'\')">⤢</button></td>':(det?'<td class="dtx"></td>':''))+'</tr>'; }).join(''):'<tr><td colspan="'+(cols.length+(det?1:0))+'" style="color:var(--muted);padding:18px;text-align:center">No matches.</td></tr>';
     return '<div class="dtcount">'+rows.length+(d.rows.length!==rows.length?(' of '+d.rows.length):'')+'</div><table class="enq dt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
   }
-  function dataTable(vid, rows, cols, placeholder){
+  function dataTable(vid, rows, cols, placeholder, detail){
     if(!TBL[vid]) TBL[vid]={q:'',sort:cols[0].key,dir:-1};
-    TBLDATA[vid]={rows:rows,cols:cols};
+    TBLDATA[vid]={rows:rows,cols:cols,detail:detail||null};
     return '<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dts_'+vid+'" placeholder="'+esc(placeholder||'Search…')+'" value="'+esc(TBL[vid].q)+'" oninput="grTblFilter(\''+vid+'\')"></div><div id="dtw_'+vid+'">'+dtRender(vid)+'</div>';
   }
   window.grTblFilter=function(vid){ var inp=document.getElementById('dts_'+vid); if(TBL[vid])TBL[vid].q=inp?inp.value:''; var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
@@ -315,7 +344,7 @@
       {key:'status',label:'Status',html:function(v){return statusPill(v.status);},get:function(v){return v.status;}},
       {key:'address',label:'Property',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
-    ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…'); }
+    ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…','viewings'); }
     return '<h2 class="vt">Viewings</h2><div class="vsub">Every viewing in Street, from the local copy. '+L.total+' total'+localSync(L)+pageSyncLine('15min')+'.</div>'+body;
   }
   function viewValuations(){
@@ -328,7 +357,7 @@
       {key:'address',label:'Address',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'lead_source',label:'Source',get:function(v){return v.lead_source||'—';}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
-    ]; body=dataTable('valuations',L.rows,cols,'Search valuations, address, source…'); }
+    ]; body=dataTable('valuations',L.rows,cols,'Search valuations, address, source…','valuations'); }
     return '<h2 class="vt">Valuations</h2><div class="vsub">Valuations booked in Street, from the local copy. '+L.total+' total'+localSync(L)+pageSyncLine('15min')+'.</div>'+body;
   }
   function viewContacts(){
@@ -340,7 +369,7 @@
       {key:'name',label:'Name',get:function(c){return c.name||'—';}},
       {key:'contact',label:'Contact',html:function(c){return [c.email,c.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(c){return (c.email||'')+' '+(c.phone||'');},sort:false},
       {key:'status',label:'Status',html:function(c){return statusPill(c.status);},get:function(c){return c.status;}}
-    ]; body=dataTable('contacts',L.rows,cols,'Search by name, email or phone…'); }
+    ]; body=dataTable('contacts',L.rows,cols,'Search by name, email or phone…','contacts'); }
     return '<h2 class="vt">Contacts</h2><div class="vsub">Buyers, sellers, landlords and tenants from Street, newest first. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+pageSyncLine('hourly')+'.</div>'+body;
   }
 
@@ -504,10 +533,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.24', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.25', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.25',d:'21 Jun 2026',items:['We now keep the COMPLETE raw Street record for every row, so every field is captured even ones we have no column for','Click any row on Enquiries, Viewings, Valuations or Contacts to open a drawer showing every single field','Empty viewings/valuations/offers tables rebuilt cleanly and the sync now reports the exact database error if an insert ever fails (no more silent failures)']},
     {v:'0.24',d:'21 Jun 2026',items:['Found it: viewings (7,117), valuations (1,071) and offers (1,248) were fetching fine but failing to store because Street sends the address as a structured object — binding that to a text column silently killed every insert','Now coerced to clean text, and those datasets reset to re-pull their full history from the start']},
     {v:'0.23',d:'21 Jun 2026',items:['Enquiries backfill confirmed working (climbing past 2,890 and counting)','Added a Probe Street button on Connections: asks Street directly what its viewings, valuations and offers endpoints actually return, so we wire them from fact instead of guesswork']},
     {v:'0.22',d:'21 Jun 2026',items:['The local copy now holds EVERYTHING: each dataset backfills its entire history from Street a chunk at a time, then just tops up with new and changed records','Connections shows backfill progress live as it walks each dataset','Hub pages now read up to 2,000 rows (was 200); the top-bar search still covers the full set']},
@@ -684,7 +714,7 @@
       {key:'name',label:'Name',get:function(L){return L.name||'—';}},
       {key:'contact',label:'Contact',html:function(L){return [L.email,L.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(L){return (L.email||'')+' '+(L.phone||'');},sort:false},
       {key:'property',label:'Property / branch',html:function(L){ var propTxt=L.property?propLink(L.propertyId,L.property):''; var meta=[propTxt,(L.branch?esc(L.branch):'')].filter(Boolean).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return (meta||'<span style="color:var(--muted)">—</span>')+src; },text:function(L){return (L.property||'')+' '+(L.branch||'')+' '+(L.source||'');}}
-    ]; body=dataTable('enq',shown,cols,'Search name, email, property, source…'); }
+    ]; body=dataTable('enq',shown,cols,'Search name, email, property, source…','enquiries'); }
     var syncTxt=D.enqSyncedAt?(' · synced '+smartDate(D.enqSyncedAt)):'';
     return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, portals and phone. Newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' total'):'')+syncTxt+pageSyncLine('15min')+'.</div>'+chips+body;
   }
@@ -732,8 +762,9 @@
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
       var deltaTxt=delta.length?('<div style="font-size:.73rem;color:var(--muted);margin-top:3px">'+delta.join(' · ')+'</div>'):'';
       var diagTxt='', diagCol='var(--orange-deep)';
-      if(s.diag){ var dg=s.diag;
-        if(s.count===0){ if(dg.err) diagTxt='Street said: '+dg.err; else if(dg.status&&dg.status!==200) diagTxt='Street: HTTP '+dg.status; else diagTxt='No rows returned yet'; }
+      if(s.diag){ var dg=s.diag; var ie=dg.err&&(dg.err.indexOf('write:')===0||dg.err.indexOf('map:')===0);
+        if(ie&&(s.count===0||(dg.fetched&&dg.stored===0))) diagTxt='Insert error: '+dg.err;
+        else if(s.count===0){ if(dg.err) diagTxt='Street said: '+dg.err; else if(dg.status&&dg.status!==200) diagTxt='Street: HTTP '+dg.status; else diagTxt='No rows returned yet'; }
         else if(dg.mode==='backfill'){ diagTxt='Backfilling full history… '+(dg.backfill||''); diagCol='var(--muted)'; }
       }
       var diagHtml=diagTxt?('<div style="font-size:.72rem;color:'+diagCol+';margin-top:3px">'+esc(diagTxt)+'</div>'):'';
