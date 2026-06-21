@@ -1381,6 +1381,14 @@ async function syncEnquiries(env) {
   return await syncStreetResource(env, "enquiries", "/enquiries", ENQ_DDL, mEnq, { chunk: 16, incr: true });
 }
 
+// Pull the column names out of a CREATE TABLE statement, whether they're quoted ("id") or bare (id TEXT).
+// Used to detect when a live table is missing columns the current INSERT needs (schema drift).
+function ddlColumns(ddl) {
+  const m = String(ddl).match(/\(([\s\S]*)\)/);
+  if (!m) return [];
+  return m[1].split(",").map(function (s) { return s.trim().replace(/^"/, "").split(/["\s(]/)[0]; })
+    .filter(function (c) { const u = c.toUpperCase(); return c && u !== "PRIMARY" && u !== "FOREIGN" && u !== "UNIQUE" && u !== "CHECK"; });
+}
 // Sync a Street list resource into a D1 table so the Hub reads a fast, COMPLETE local copy.
 // Two phases, tracked per resource in KV:
 //   1. backfill — page through the ENTIRE collection a chunk at a time across ticks (no date window),
@@ -1400,6 +1408,29 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   try { await db.prepare(ddl).run(); } catch (e) {}
   let bf = { done: false, page: 1 };
   try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
+  // Self-heal schema drift. CREATE TABLE IF NOT EXISTS will NOT widen a table that already exists with an
+  // older, narrower column set — e.g. a resource first mirrored generically as (id, created_at, updated_at,
+  // raw) and later promoted to one column per field. The INSERT then names columns the table doesn't have,
+  // every batch throws, and the resource stores 0 forever. THAT is exactly why tenancies/landlords/vendors/
+  // tenants/inspections/offers fetched rows but held none while sales (whose table happened to match) filled.
+  // Fix: compare the table's real columns to the ones this resource needs; if any are missing, rebuild the
+  // table to the current shape and reset its backfill so the full history re-walks in. enquiries is left
+  // alone (huge, known-good, its own column set). Tables with a matching schema are never touched.
+  let healed = false;
+  if (name !== "enquiries") {
+    try {
+      const want = ddlColumns(ddl);
+      const info = await db.prepare("PRAGMA table_info(" + name + ")").all();
+      const have = {}; (((info && info.results) || [])).forEach(function (r) { if (r && r.name) have[r.name] = 1; });
+      const missing = want.filter(function (c) { return c && !have[c]; });
+      if (Object.keys(have).length && missing.length) {
+        await db.prepare("DROP TABLE IF EXISTS " + name).run();
+        await db.prepare(ddl).run();
+        bf = { done: false, page: 1 }; healed = true;
+        try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify(bf)); await env.LISTINGS.delete("sync:" + name + ":cursor"); } } catch (_) {}
+      }
+    } catch (_) {}
+  }
   const mode = !bf.done ? "backfill" : (incr ? "topup" : "recycle");
   const inc = {}, all = [], seen = {};
   let status = 0, err = null, pages = 0, totalPages = null, totalRecords = null, reachedEnd = false;
@@ -1446,7 +1477,7 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
     await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
     await env.LISTINGS.put("sync:" + name + ":delta", String(stored));
     if (totalRecords != null) await env.LISTINGS.put("sync:" + name + ":total", String(totalRecords));
-    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, mapped: mapped, stored: stored, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err || writeErr }));
+    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, mapped: mapped, stored: stored, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), healed: healed, err: err || writeErr }));
   } } catch (_) {}
   return stored;
 }
