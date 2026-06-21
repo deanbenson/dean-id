@@ -65,6 +65,11 @@
  .feedrow{display:flex;gap:11px;align-items:flex-start;padding:12px 2px;border-top:1px solid var(--line)}.feedrow:first-of-type{border-top:0}
  .feedrow .fic{width:30px;height:30px;border-radius:50%;background:rgba(226,103,42,.12);color:var(--orange-deep);display:grid;place-items:center;flex:none;font-size:.9rem}
  .feedrow .ft{margin-left:auto;color:var(--muted);font-size:.76rem;white-space:nowrap}
+ .vtag{font-size:.66rem;font-weight:700;color:var(--muted);background:rgba(118,114,107,.12);padding:.08rem .4rem;border-radius:5px;letter-spacing:.03em}
+ .vtag.big{font-size:.6rem;color:var(--orange-deep);background:rgba(226,103,42,.12);vertical-align:middle;text-transform:uppercase}
+ .soonbadge{margin-left:auto;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:rgba(118,114,107,.14);padding:.06rem .34rem;border-radius:5px;flex:none}
+ .nv.isoon{opacity:.5}.nv.isoon:hover{opacity:.78}
+ .verline{font-size:.7rem;color:var(--muted);text-align:center;margin-top:9px;cursor:pointer}.verline:hover{color:var(--orange-deep)}
  .view{padding:20px 22px 64px;max-width:1080px}
  h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
  .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
@@ -132,7 +137,7 @@
   function ago(ts){ if(!ts) return ''; var s=Math.floor((Date.now()-ts)/1000); if(s<60)return 'just now'; var m=Math.floor(s/60); if(m<60)return m+' min ago'; var h=Math.floor(m/60); if(h<24)return h+' hr ago'; var d=Math.floor(h/24); return d+' day'+(d>1?'s':'')+' ago'; }
   function fmt(ts){ if(!ts)return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
   function initials(n){ return (n||'').split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase(); }
-  function srcLine(id){ return '<div class="srcline"><span aria-hidden="true">⚯</span> Data, '+esc(SRC[id]||'from the relevant system.')+'</div>'; }
+  function srcLine(id){ return '<div class="srcline"><span class="vtag">v'+(VER[id]||'0.1')+'</span> <span aria-hidden="true">⚯</span> Data, '+esc(SRC[id]||'from the relevant system.')+'</div>'; }
 
   window.grLogout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} boot(); };
   window.grSave=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} boot(); };
@@ -151,7 +156,7 @@
     {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
     {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'}]},
     {g:'Team',items:[{id:'staff',l:'Staff',ic:'☺',rag:'g'},{id:'feed',l:'Company feed',ic:'❏',rag:'g'},{id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}]},
-    {g:'',items:[{id:'settings',l:'Settings',ic:'⚙',rag:'g'}]}
+    {g:'',items:[{id:'changelog',l:'What\'s new',ic:'❖',rag:'g'},{id:'settings',l:'Settings',ic:'⚙',rag:'g'}]}
   ];
   var SOON={
     valuations:'Booked valuations, the diary and outcomes, from Street.',viewings:'Every viewing, with feedback collected automatically.',
@@ -190,6 +195,34 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
+  var HUB_VERSION='0.9', BUILD='21 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
+  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'1.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'2.0',feed:'1.0',profile:'1.0',changelog:'1.0'};
+  var CHANGELOG=[
+    {v:'0.9',d:'21 Jun 2026',items:['Live Company feed (auto-updating)','Staff v2 with richer profiles','Connections shows your full real system stack','Sticky user block, logo to home','Per-page versions + this changelog']},
+    {v:'0.8',d:'21 Jun 2026',items:['Honest data source on every page','Live branches and staff (no hardcoding)','Profile view, admin-only role preview','Phone status corrected']},
+    {v:'0.7',d:'21 Jun 2026',items:['Business-level owner home','Shareable URLs, no-jump navigation','Enquiries moved into the hub']},
+    {v:'0.6',d:'20 Jun 2026',items:['The Hub app: sidebar + Ask Georgina copilot','Live Home, Connections, Listings, Reviews, Roadmap']},
+    {v:'0.5',d:'20 Jun 2026',items:['Instant valuation funnel','Be-first property alerts into Street','Saved and recently viewed homes']},
+    {v:'0.4',d:'20 Jun 2026',items:['Leads inbox / Hub v1','Live Google reviews','Lead capture into Street']}
+  ];
+  var SOONCFG={
+    valuations:{features:['Booked valuations and the diary','Outcomes: instructed or not','Valuer performance'],scope:function(D){return [{n:(D.leads||[]).filter(function(L){return L.kind==='valuation';}).length,l:'Valuation enquiries'}];}},
+    viewings:{features:['Every viewing with feedback','Automatic feedback requests','Viewings by property'],scope:function(D){return [{n:(D.leads||[]).filter(function(L){return L.kind==='viewing';}).length,l:'Viewing requests'}];}},
+    progression:{features:['Offer to completion tracking','Chain view','Stall alerts'],scope:function(D){return D.portfolio?[{n:D.portfolio.sale,l:'For sale now'}]:[];}},
+    contacts:{features:['Buyers, sellers, landlords, tenants','Search and segments','Full activity history'],scope:function(D){return [{n:(D.leads||[]).length,l:'Website contacts'}];}},
+    calendar:{features:['Appointments and key dates','Viewings and valuations','Whole-team diary'],scope:function(D){return [];}},
+    marketing:{features:['Portal performance (Rightmove, OnTheMarket)','Social scheduling and reach','Needs-a-post worklist'],scope:function(D){var t=[];if(D.portfolio)t.push({n:D.portfolio.total,l:'Live listings'});if(D.reviews&&D.reviews.average)t.push({n:D.reviews.average.toFixed(1)+'★',l:'Reviews'});return t;}},
+    tenancies:{features:['Live tenancies and renewals','Rent and arrears','Compliance dates'],scope:function(D){return D.portfolio?[{n:D.portfolio['let'],l:'Currently to let'}]:[];}},
+    maintenance:{features:['Works orders','Contractor jobs','Tenant-reported issues'],scope:function(D){return [];}},
+    removals:{features:['Jobs and bookings','Quotes','Reviews'],scope:function(D){return (D.reviews&&D.reviews.removals)?[{n:(D.reviews.removals.rating||'—')+'★',l:'Removals rating'},{n:D.reviews.removals.count||0,l:'Removals reviews'}]:[];}},
+    mortgages:{features:['Referrals','Outcomes','Commission'],scope:function(D){return [];}},
+    accounts:{features:['Client money and statements','Landlord payouts','Invoices'],scope:function(D){return [];}},
+    compliance:{features:['Gas, EICR and EPC tracking','Renewal alerts','AML checks'],scope:function(D){return [];}},
+    analytics:{features:['Trends over time','Branch comparisons','Pinned snapshot views'],scope:function(D){var t=[{n:(D.leads||[]).length,l:'Enquiries'}];if(D.portfolio)t.push({n:D.portfolio.total,l:'Listings'});return t;}},
+    map:{features:['Branches on a map','Property pins','Demand by area'],scope:function(D){var t=[];if(D.branches)t.push({n:D.branches.length,l:'Branches'});if(D.portfolio)t.push({n:D.portfolio.total,l:'Properties'});return t;}},
+    settings:{features:['People and access','Integrations','Branding'],scope:function(D){var t=[];if(D.team)t.push({n:D.team.length,l:'People'});if(D.branches)t.push({n:D.branches.length,l:'Branches'});return t;}}
+  };
   var PLAN=[
     {t:'New website + live listings',s:'live'},{t:'Leads into Street',s:'live'},{t:'Live Google reviews',s:'live'},{t:'Ask Georgina (AI)',s:'live'},
     {t:'Saved + recently viewed',s:'live'},{t:'Instant valuation funnel',s:'live'},{t:'Be-first property alerts',s:'live'},{t:'The Hub app',s:'live'},
@@ -208,7 +241,7 @@
 
   function ragColor(c){ return c==='g'?'var(--g)':c==='a'?'var(--a)':c==='r'?'var(--r)':'var(--muted)'; }
   function findItem(id){ for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++) if(NAV[i].items[j].id===id) return NAV[i].items[j]; return null; }
-  function roleAllows(id){ if(id==='profile') return true; var n=ROLES[ROLE].nav; return n==='all'||n.indexOf(id)>=0; }
+  function roleAllows(id){ if(id==='profile'||id==='changelog') return true; var n=ROLES[ROLE].nav; return n==='all'||n.indexOf(id)>=0; }
   function computeRag(){
     for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++){ var it=NAV[i].items[j];
       if(it.id==='connections') it.rag=(D.socialOk?'g':'a');
@@ -241,7 +274,11 @@
       var vis=grp.items.filter(function(it){ return roleAllows(it.id); });
       if(!vis.length) return;
       if(grp.g) h+='<div class="gl">'+grp.g+'</div>';
-      vis.forEach(function(it){ h+='<div class="nv'+(it.id===ROUTE?' on':'')+'" data-id="'+it.id+'" onclick="grGo(\''+it.id+'\')"><span class="ic">'+it.ic+'</span>'+esc(it.l)+'<span class="dot" style="background:'+ragColor(it.rag)+'"></span></div>'; });
+      vis.forEach(function(it){
+        var soon=!LIVE_VIEWS[it.id];
+        var marker=soon?'<span class="soonbadge">soon</span>':'<span class="dot" style="background:'+ragColor(it.rag)+'"></span>';
+        h+='<div class="nv'+(it.id===ROUTE?' on':'')+(soon?' isoon':'')+'" data-id="'+it.id+'" onclick="grGo(\''+it.id+'\')"><span class="ic">'+it.ic+'</span>'+esc(it.l)+marker+'</div>';
+      });
     });
     return h;
   }
@@ -252,7 +289,7 @@
     var ctrl;
     if(ROLE==='owner'){ ctrl='<select class="rolesel" onchange="grRole(this.value)" title="Preview a role dashboard (admin only)"><option value="owner" selected>Preview a role…</option>'+Object.keys(ROLES).filter(function(k){return k!=='owner';}).map(function(k){ return '<option value="'+k+'">'+esc(ROLES[k].label)+'</option>'; }).join('')+'</select>'; }
     else { ctrl='<button class="btn exitp" onclick="grRole(\'owner\')">Exit '+esc((WHO[ROLE]||['','']) [1])+' preview</button>'; }
-    return '<div class="sidefoot">'+user+'<div class="footrow">'+ctrl+'<button class="btn signout" onclick="grLogout()" title="Sign out" aria-label="Sign out">⎋</button></div></div>';
+    return '<div class="sidefoot">'+user+'<div class="footrow">'+ctrl+'<button class="btn signout" onclick="grLogout()" title="Sign out" aria-label="Sign out">⎋</button></div><div class="verline" onclick="grGo(\'changelog\')" title="What\'s new">Hub v'+HUB_VERSION+' · '+BUILD+'</div></div>';
   }
   function tile(n,l,acc,sub){ return '<div class="tile'+(acc?' acc':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
@@ -392,7 +429,19 @@
   var FEEDTIMER=null;
   function startFeed(){ if(FEEDTIMER) return; FEEDTIMER=setInterval(function(){ if(ROUTE!=='feed'){ stopFeed(); return; } fetch('/api/leads',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.leads){ D.leads=d.leads; if(d.stats)D.stats=d.stats; if(ROUTE==='feed') renderView(false); } }).catch(function(){}); }, 40000); }
   function stopFeed(){ if(FEEDTIMER){ clearInterval(FEEDTIMER); FEEDTIMER=null; } }
-  function viewSoon(id){ var it=findItem(id); return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>'; }
+  function viewSoon(id){
+    var it=findItem(id); var cfg=SOONCFG[id]||{};
+    var scope=cfg.scope?cfg.scope(D):[];
+    var tiles=scope.length?('<div class="tiles">'+scope.map(function(s){return tile(s.n,s.l);}).join('')+'</div>'):'';
+    var feats=(cfg.features||[]).map(function(f){return '<div class="row"><span class="ic">○</span>'+esc(f)+'</div>';}).join('');
+    return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+' <span class="vtag big">planned</span></h2><div class="vsub">'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div>'
+      +(tiles?('<div class="secttl">Already in your data</div>'+tiles):'')
+      +(feats?('<div class="secttl">What this page will do</div><div class="card">'+feats+'</div>'):'<div class="soon"><div class="bg">On the way</div><div class="tag">Planned</div></div>');
+  }
+  function viewChangelog(){
+    var rows=CHANGELOG.map(function(r){ return '<div class="card" style="margin-bottom:11px"><div style="display:flex;align-items:baseline;gap:9px;margin-bottom:7px"><span style="font-family:var(--serif);font-weight:700;font-size:1.05rem">v'+esc(r.v)+'</span><span style="color:var(--muted);font-size:.82rem">'+esc(r.d)+'</span></div>'+r.items.map(function(i){ return '<div class="row"><span class="ic" style="color:var(--g)">✓</span>'+esc(i)+'</div>'; }).join('')+'</div>'; }).join('');
+    return '<h2 class="vt">What\'s new</h2><div class="vsub">Hub v'+HUB_VERSION+' · built '+BUILD+'. Every release, newest first.</div>'+rows;
+  }
 
   function viewProfile(){
     var who=WHO[ROLE]||['Georgina','Owner']; var ini=who[0].split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase();
@@ -417,6 +466,7 @@
     else if(id==='roadmap')body=viewRoadmap();
     else if(id==='staff')body=viewStaff();
     else if(id==='feed')body=viewFeed();
+    else if(id==='changelog')body=viewChangelog();
     else body=viewSoon(id);
     return body+srcLine(id);
   }
