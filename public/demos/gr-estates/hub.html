@@ -490,10 +490,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.19', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.20', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.20',d:'21 Jun 2026',items:['Fixed the first sync: the viewings, valuations, applicants, offers and contacts feeds now backfill reliably by spreading the work across cron ticks instead of overwhelming one run','Each dataset now reports exactly what Street returned (status, rows, any error) so nothing fails silently','The cursor only moves forward once data actually lands, so a failed run retries instead of skipping']},
     {v:'0.19',d:'21 Jun 2026',items:['Search results now show a property photo where we have one','Listings can be filtered by sale or let, bedrooms and price, on top of search','Save any property and jump back to your recently viewed ones, both on the home page','Property pages show the handling office, drawn from that property\'s own activity']},
     {v:'0.18',d:'21 Jun 2026',items:['Next sync is now a live countdown that ticks down every second, on Connections and on every data page','Sync now button to pull straight from Street without waiting for the timer','Empty datasets trigger their own sync the moment you open them, then fill themselves','Pages refresh automatically as each sync lands']},
     {v:'0.17',d:'21 Jun 2026',items:['Intelligent search in the top bar: type anything (address, name, email, phone) and jump straight to a property, enquiry, contact, viewing or valuation','Connections now shows time until the next sync, plus new-today and last-sync counts per dataset','Google reviews show the most recent review date and when they were last checked','Branch review status fixed (was stuck on "reviews syncing" due to a name mismatch)']},
@@ -712,9 +713,11 @@
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
       var deltaTxt=delta.length?('<div style="font-size:.73rem;color:var(--muted);margin-top:3px">'+delta.join(' · ')+'</div>'):'';
+      var diagTxt=''; if(s.count===0&&s.diag){ var dg=s.diag; if(dg.err) diagTxt='Street said: '+dg.err; else if(dg.status&&dg.status!==200) diagTxt='Street: HTTP '+dg.status; else if(dg.status===200) diagTxt='Street returned 0 rows in this window'; }
+      var diagHtml=diagTxt?('<div style="font-size:.72rem;color:var(--orange-deep);margin-top:3px">'+esc(diagTxt)+'</div>'):'';
       var when=s.at?('synced '+ago(new Date(s.at).getTime())):'awaiting first sync';
       var nxt=syncCd(s.cadence,' · next sync in ');
-      return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records'+deltaTxt+'</div><div class="fr">'+when+nxt+'</div></div>'; }).join('')+'</div>'; }
+      return '<div class="sys"><div class="top"><span class="nm">'+esc(s.label)+'</span><span class="rag '+(s.count>0?'g':'n')+'">'+(s.count>0?'synced':'pending')+'</span></div><div class="dta"><b>'+(s.count||0).toLocaleString('en-GB')+'</b> records'+deltaTxt+diagHtml+'</div><div class="fr">'+when+nxt+'</div></div>'; }).join('')+'</div>'; }
     return '<h2 class="vt">Connections</h2><div class="vsub">What\'s flowing in, what\'s live, and when it last came in. Only what\'s true.</div>'+split+syncRows
       +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'

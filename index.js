@@ -1404,7 +1404,10 @@ async function syncEnquiries(env) {
 }
 
 // Generic incremental sync of a Street list resource into a D1 table. The Hub reads the local copy.
-async function syncStreetResource(env, name, path, ddl, mapFn) {
+// Bounded (maxPages) and instrumented (writes a :diag record with HTTP status / count / error) so we can
+// see exactly what Street returns. Crucially the cursor only advances when we actually pulled rows, so a
+// failed or rate-limited run retries the same window next time instead of silently skipping it forever.
+async function syncStreetResource(env, name, path, ddl, mapFn, maxPages) {
   if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
   const db = env.gr_estates;
   try { await db.prepare(ddl).run(); } catch (e) {}
@@ -1413,62 +1416,94 @@ async function syncStreetResource(env, name, path, ddl, mapFn) {
   if (!since) since = new Date(Date.now() - 60 * 864e5).toISOString();
   const runStart = Date.now();
   const inc = {}, all = [], seen = {};
+  let status = 0, err = null, pages = 0;
   function absorb(b) { if (!b) return; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
   try {
     const base = path + (path.indexOf("?") >= 0 ? "&" : "?") + "filter%5Bupdated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
-    for (let pn = 1; pn <= 25; pn++) {
+    for (let pn = 1; pn <= (maxPages || 10); pn++) {
       const r = await streetGet(env, base + pn);
-      if (!r.ok || !r.body) break;
-      absorb(r.body);
+      status = r.status || status;
+      if (!r.ok) { err = (r.body && r.body.errors) ? JSON.stringify(r.body.errors).slice(0, 180) : ("HTTP " + (r.status || "?")); break; }
+      if (!r.body) { err = "no body"; break; }
+      pages++; absorb(r.body);
       const pg = (r.body.meta && r.body.meta.pagination) || {};
       const tp = pg.total_pages || 1;
       if (pn >= tp || (r.body.data || []).length < 100) break;
     }
-  } catch (_) {}
+  } catch (e) { err = String((e && e.message) || e).slice(0, 180); }
   if (all.length) {
     const ups = all.map(function (d) { try { return mapFn(db, d, inc); } catch (e) { return null; } }).filter(Boolean);
     for (let i = 0; i < ups.length; i += 40) { try { await db.batch(ups.slice(i, i + 40)); } catch (e) {} }
   }
-  try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":cursor", new Date(runStart - 120000).toISOString()); await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString()); await env.LISTINGS.put("sync:" + name + ":delta", String(all.length)); } } catch (_) {}
+  try { if (env.LISTINGS) {
+    if (all.length) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(runStart - 120000).toISOString());
+    await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
+    await env.LISTINGS.put("sync:" + name + ":delta", String(all.length));
+    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, pages: pages, err: err }));
+  } } catch (_) {}
   return all.length;
 }
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
 function _branch(d, inc) { const id = _relId(d, "branch") || (d.attributes || {}).branch_uuid; const b = (id && inc[id]) ? (inc[id].attributes || {}) : null; return b ? (b.name || b.branch_name || b.display_name || null) : null; }
-async function syncStreetExtras(env, includeHeavy) {
-  const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT)";
-  const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, branch TEXT)";
-  const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT)";
-  const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT)";
-  const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT)";
-  function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, a.created_at || null, a.start || null, a.status || null, a.address || a.public_address || null, _branch(d, inc), _relId(d, "property") || a.property_uuid || null); }
-  function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, a.created_at || null, a.start || null, a.status || a.custom_status || null, a.address || null, a.lead_source || null, _branch(d, inc)); }
-  function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, a.created_at || null, a.name || null, (req.max_price != null ? Math.round(req.max_price) : null), beds, a.lead_rating || null, _branch(d, inc)); }; }
-  function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, a.created_at || a.offer_made_at || null, a.address || null, (a.offer_amount != null ? Math.round(a.offer_amount) : null), a.status || null, _branch(d, inc)); }; }
-  function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status").bind(d.id, a.created_at || null, nm, em, ph, st); }
-  try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
-  // one-time: re-backfill viewings so the new property_id column fills for the recent window
-  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
-  try { await syncStreetResource(env, "viewings", "/viewings", VIEW_DDL, mView); } catch (_) {}
-  try { await syncStreetResource(env, "valuations", "/valuations", VAL_DDL, mVal); } catch (_) {}
-  try { await syncStreetResource(env, "sales_applicants", "/sales-applicants", APP_DDL, mApp("sale")); } catch (_) {}
-  try { await syncStreetResource(env, "lettings_applicants", "/lettings-applicants", APP_DDL, mApp("let")); } catch (_) {}
-  try { await syncStreetResource(env, "sales_offers", "/sales-offers", OFF_DDL, mOff("sale")); } catch (_) {}
-  try { await syncStreetResource(env, "lettings_offers", "/lettings-offers", OFF_DDL, mOff("let")); } catch (_) {}
-  if (includeHeavy) { try { await syncStreetResource(env, "contacts", "/people", CON_DDL, mCon); } catch (_) {} }
+const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT)";
+const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, branch TEXT)";
+const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT)";
+const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT)";
+const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT)";
+function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, a.created_at || null, a.start || null, a.status || null, a.address || a.public_address || null, _branch(d, inc), _relId(d, "property") || a.property_uuid || null); }
+function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, a.created_at || null, a.start || null, a.status || a.custom_status || null, a.address || null, a.lead_source || null, _branch(d, inc)); }
+function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, a.created_at || null, a.name || null, (req.max_price != null ? Math.round(req.max_price) : null), beds, a.lead_rating || null, _branch(d, inc)); }; }
+function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, a.created_at || a.offer_made_at || null, a.address || null, (a.offer_amount != null ? Math.round(a.offer_amount) : null), a.status || null, _branch(d, inc)); }; }
+function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status").bind(d.id, a.created_at || null, nm, em, ph, st); }
+// The full set of Street list resources we mirror locally. Order is the rotation order.
+function extrasReg() {
+  return [
+    { name: "viewings", path: "/viewings", ddl: VIEW_DDL, map: mView },
+    { name: "valuations", path: "/valuations", ddl: VAL_DDL, map: mVal },
+    { name: "sales_applicants", path: "/sales-applicants", ddl: APP_DDL, map: mApp("sale") },
+    { name: "lettings_applicants", path: "/lettings-applicants", ddl: APP_DDL, map: mApp("let") },
+    { name: "sales_offers", path: "/sales-offers", ddl: OFF_DDL, map: mOff("sale") },
+    { name: "lettings_offers", path: "/lettings-offers", ddl: OFF_DDL, map: mOff("let") },
+    { name: "contacts", path: "/people", ddl: CON_DDL, map: mCon }
+  ];
 }
+async function migrateExtras(env) {
+  try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
+  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
+}
+async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; await migrateExtras(env); try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map); } catch (_) { return 0; } }
+// Sync the next `count` resources in rotation, advancing a KV cursor. Keeps each invocation light so we
+// never blow the Worker subrequest budget — over a few ticks everything backfills, then stays incremental.
+async function syncExtrasRotating(env, count) {
+  await migrateExtras(env);
+  const reg = extrasReg(); const n = Math.max(1, count || 1);
+  let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
+  for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map); } catch (_) {} }
+  try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
+}
+// Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
+function extrasForDataset(name) { if (name === "applicants") return ["sales_applicants", "lettings_applicants"]; if (name === "offers") return ["sales_offers", "lettings_offers"]; return [name]; }
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(syncEnquiries(env).catch(() => {}));
-    if (event && event.cron && event.cron !== "0 * * * *") {
-      ctx.waitUntil(syncStreetExtras(env, false).catch(() => {}));
+    const hourly = !(event && event.cron && event.cron !== "0 * * * *");
+    if (hourly) {
+      // The hourly tick is a separate invocation with its own subrequest budget: do the heavy
+      // property/reviews refreshes here so they never compete with the enquiry + extras sync.
+      ctx.waitUntil((async () => {
+        await refreshListings(env).catch(() => {});
+        await refreshD1(env).catch(() => {});
+        await refreshSocial(env).catch(() => {});
+        await refreshGoogleReviews(env).catch(() => {});
+      })());
       return;
     }
-    ctx.waitUntil(syncStreetExtras(env, true).catch(() => {}));
-    ctx.waitUntil(refreshListings(env).catch(() => {}));
-    ctx.waitUntil(refreshD1(env).catch(() => {}));
-    ctx.waitUntil(refreshSocial(env).catch(() => {}));
-    ctx.waitUntil(refreshGoogleReviews(env).catch(() => {}));
+    // Every 15 minutes: enquiries (always, they're time-critical) + the next two Street resources
+    // in rotation. Light enough to never exhaust the budget; the whole set backfills within ~1 hour.
+    ctx.waitUntil((async () => {
+      await syncEnquiries(env).catch(() => {});
+      await syncExtrasRotating(env, 2).catch(() => {});
+    })());
   },
   async fetch(request, env, ctx) {
    try {
@@ -1802,7 +1837,10 @@ export default {
           const last = env.LISTINGS ? await env.LISTINGS.get("sync:kick:at") : null;
           if (!last || (Date.now() - new Date(last).getTime() > 60000)) {
             if (env.LISTINGS) await env.LISTINGS.put("sync:kick:at", new Date().toISOString());
-            if (ctx && ctx.waitUntil) ctx.waitUntil((name === "enquiries" ? syncEnquiries(env) : syncStreetExtras(env, true)).catch(function () {}));
+            if (ctx && ctx.waitUntil) {
+              if (name === "enquiries") ctx.waitUntil(syncEnquiries(env).catch(function () {}));
+              else { const parts = extrasForDataset(name); ctx.waitUntil((async () => { for (let i = 0; i < parts.length; i++) { try { await syncOneExtra(env, parts[i]); } catch (e) {} } })()); }
+            }
           }
           syncing = true;
         } catch (_) {}
@@ -1845,8 +1883,9 @@ export default {
         try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0]).first(); count = (c && c.n) || 0; } } catch (_) {}
         try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + t[3] + ":at"); } catch (_) {}
         try { if (env.LISTINGS) { const d = await env.LISTINGS.get("sync:" + t[3] + ":delta"); if (d != null) delta = parseInt(d, 10) || 0; } } catch (_) {}
+        let diag = null; try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + t[3] + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
         if (dateCol[t[0]] && env.gr_estates) { try { const c2 = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + t[0] + " WHERE datetime(" + dateCol[t[0]] + ") >= datetime('now','start of day')").first(); today = (c2 && c2.n) || 0; } catch (_) {} }
-        out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta });
+        out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta, diag: diag });
       }
       return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
     }
@@ -1858,9 +1897,10 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       if (ctx && ctx.waitUntil) {
-        ctx.waitUntil(syncEnquiries(env).catch(function () {}));
-        ctx.waitUntil(syncStreetExtras(env, true).catch(function () {}));
-        ctx.waitUntil(refreshD1(env).catch(function () {}));
+        ctx.waitUntil((async () => {
+          await syncEnquiries(env).catch(function () {});
+          await syncExtrasRotating(env, 3).catch(function () {});
+        })());
       }
       return respond(JSON.stringify({ ok: true, started: true }), 200, J);
     }
