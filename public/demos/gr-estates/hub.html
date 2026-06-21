@@ -326,7 +326,11 @@
       if(!out)return;
       if(!d||!d.datasets){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Check failed.</div>'; return; }
       var nComplete=0,nFilling=0,nEmpty=0,nIssue=0,totLocal=0,totStreet=0,issues=[];
-      var rows=d.datasets.map(function(a){
+      // Group by physical table so the two feeds that share one (sales+lettings offers -> offers, and
+      // applicants) show as a single row with the combined Street total, not one row per half.
+      var seen={},groups=[];
+      d.datasets.forEach(function(a){ var t=a.table||a.name; if(seen[t]!=null){ if(a.total!=null) groups[seen[t]].total=(groups[seen[t]].total||0)+a.total; return; } seen[t]=groups.length; groups.push({name:(a.table&&a.table!==a.name?a.table:a.name),count:a.count||0,total:a.total,diag:a.diag,missing:a.missing}); });
+      var rows=groups.map(function(a){
         var dg=a.diag||{}; var total=(a.total!=null)?a.total:null; var local=a.count||0;
         totLocal+=local; if(total)totStreet+=total;
         var cov=(total&&total>0)?Math.min(100,Math.round(local/total*100)):(total===0?100:null);
@@ -349,7 +353,7 @@
         ?'<div style="background:rgba(29,158,117,.10);border:1px solid #1d9e75;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#157a5b;font-weight:600">✓ All healthy. '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' still empty, no errors. Holding <b>'+totLocal.toLocaleString('en-GB')+'</b> of '+totStreet.toLocaleString('en-GB')+' Street records ('+pct+'%).</div>'
         :'<div style="background:rgba(194,84,29,.10);border:1px solid #c2541d;border-radius:8px;padding:10px 13px;margin:4px 0 12px;color:#a8431a;font-weight:600">⚠ '+nIssue+' dataset'+(nIssue>1?'s':'')+' need attention (below). '+nComplete+' complete, '+nFilling+' filling, '+nEmpty+' empty.</div>';
       var issuesHtml=issues.length?('<div class="secttl">Needs attention</div><ul style="margin:4px 0 12px;padding-left:18px;font-size:.82rem">'+issues.map(function(x){return '<li><b>'+esc(x.name)+'</b> — <span style="font-family:monospace;font-size:.75rem;color:#c2541d">'+esc(x.why)+'</span></li>';}).join('')+'</ul>'):'';
-      var lastrun=d.lastrun?('<div style="font-size:.74rem;color:var(--muted);margin:8px 0 0">Last sync '+esc(ago(new Date(d.lastrun.at).getTime()))+(d.lastrun.empties!=null?(' · '+d.lastrun.empties+' datasets still empty'):'')+'</div>'):'';
+      var lastrun=d.lastrun?('<div style="font-size:.74rem;color:var(--muted);margin:8px 0 0">Last sync '+esc(ago(new Date(d.lastrun.at).getTime()))+'</div>'):'';
       var log=(d.errlog&&d.errlog.length)?('<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.78rem;color:var(--muted)">Recent error log ('+d.errlog.length+')</summary><div style="overflow:auto;max-height:200px;margin-top:6px"><table class="enq" style="font-size:.73rem"><tbody>'+d.errlog.map(function(e){return '<tr><td style="white-space:nowrap;color:var(--muted)">'+esc(ago(new Date(e.at).getTime()))+'</td><td style="font-weight:600">'+esc(e.name)+'</td><td style="font-family:monospace;font-size:.71rem">'+esc((e.stage||'')+': '+(e.detail||''))+'</td></tr>';}).join('')+'</tbody></table></div></details>'):'';
       out.innerHTML=verdict+issuesHtml+'<div class="secttl">Every dataset — what we hold of Street</div><div style="overflow:auto"><table class="enq" style="font-size:.82rem"><thead><tr><th>Dataset</th><th>Held / Street</th><th>Coverage</th><th>Status</th><th>OK</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Coverage = how much of Street we hold. OK ✓ = every field Street sends is stored and nothing was lost on the way in.</div>'+lastrun+log;
     }).catch(function(){ if(b){b.disabled=false;b.textContent='Diagnose';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Check error.</div>'; });
@@ -614,11 +618,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.42', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.43', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.43',d:'21 Jun 2026',items:['Diagnose now groups the two feeds that share a table (sales + lettings offers, and applicants) into one row, so the totals stop being double-counted and the overall figure can no longer read over 100%','Tidied the "last sync" line so it no longer shows a stale empty-count that disagreed with the live one']},
     {v:'0.42',d:'21 Jun 2026',items:['Simplified the Connections controls from five buttons to two: Sync now, and one Diagnose','Diagnose is now a single health report: a plain-English verdict at the top (how many datasets are complete, filling or empty, and how much of Street we hold overall), a short "needs attention" list if anything is wrong with the exact reason, and a clean per-dataset table of coverage and status. Probe, Check data and Test sync are folded into it']},
     {v:'0.41',d:'21 Jun 2026',items:['Cleared the red "no such table" lines in Diagnose. They were never sync failures: the checker was counting rows in tables that had not been created yet because those datasets had not had a first sync. Every table is now created up front (empty, ready), so the message is gone and unsynced datasets simply read as 0','A not-yet-created table is no longer treated as an error anywhere']},
     {v:'0.40',d:'21 Jun 2026',items:['With the speed fixed, datasets are landing at 100% (sales, tenancies, property keys, maintenance, interested applicants all complete and matching Street field-for-field)','Sync now fills the EMPTY datasets first again, so the ones stuck at 0 jump the queue instead of waiting for the rotation to wrap round. Uses a fast row-count check, not the heavy pre-pass that caused the earlier timeout','Diagnose shows how many datasets are still empty so you can watch the number fall to zero']},
