@@ -82,6 +82,8 @@
  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:13px;margin-bottom:8px}
  .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
  .tile.acc{background:linear-gradient(155deg,#fff,#fbf1e9)}
+ .tile.tclick{cursor:pointer}.tile.tclick:hover{border-color:var(--orange);transform:translateY(-1px)}
+ .syslink{color:var(--orange-deep);font-weight:600;text-decoration:none;white-space:nowrap}.syslink:hover{text-decoration:underline}
  .tile .n{font-family:var(--serif);font-weight:700;font-size:1.65rem;line-height:1.05}
  .tile .n .st{color:var(--g);font-size:.9rem;font-weight:600}
  .tile .l{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin-top:5px}
@@ -201,7 +203,7 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.11', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.12', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
   var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.0',changelog:'1.0'};
   var CHANGELOG=[
@@ -299,7 +301,7 @@
     else { ctrl='<button class="btn exitp" onclick="grRole(\'owner\')">Exit '+esc((WHO[ROLE]||['','']) [1])+' preview</button>'; }
     return '<div class="sidefoot">'+user+'<div class="footrow">'+ctrl+'<button class="btn signout" onclick="grLogout()" title="Sign out" aria-label="Sign out">⎋</button></div><div class="verline" onclick="grGo(\'changelog\')" title="What\'s new">Hub v'+HUB_VERSION+' · '+BUILD+'</div></div>';
   }
-  function tile(n,l,acc,sub){ return '<div class="tile'+(acc?' acc':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
+  function tile(n,l,acc,sub,route){ return '<div class="tile'+(acc?' acc':'')+(route?' tclick':'')+'"'+(route?' onclick="grGo(\''+route+'\')"':'')+'><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
   function viewHome(){
     var leads=D.leads||[]; var w0=Date.now()-6048e5; var nW=0; leads.forEach(function(L){ if((L.at||0)>=w0)nW++; });
@@ -307,7 +309,7 @@
     var staff=(D.team&&D.team.length)||null;
     var branches=(D.branches&&D.branches.length)?D.branches:null;
     var branchN=branches?branches.length:((rv&&rv.branches)?rv.branches.length:null);
-    var tiles=tile(pf?pf.total:'—','Properties live',true)+tile(pf?pf.sale:'—','For sale')+tile(pf?pf['let']:'—','To let')+tile(branchN!=null?branchN:'—','Branches')+tile(staff!=null?staff:'—','Team')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews');
+    var tiles=tile(pf?pf.total:'—','Properties live',true,null,'listings')+tile(pf?pf.sale:'—','For sale',false,null,'listings')+tile(pf?pf['let']:'—','To let',false,null,'listings')+tile(branchN!=null?branchN:'—','Branches',false,null,'map')+tile(staff!=null?staff:'—','Team',false,null,'staff')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews',false,null,'reviews');
     var revByName={}; (rv&&rv.branches||[]).forEach(function(b){ revByName[(b.name||'').toLowerCase()]=b; });
     var branchRows;
     if(branches){ branchRows=branches.map(function(b){ var rb=revByName[(b.name||'').toLowerCase()]; var sc=rb?('<b>'+rb.rating+'★</b> · '+rb.count+' reviews'):'<span style="color:var(--muted)">reviews syncing</span>'; return '<div class="branch"><span>'+esc(b.name)+(b.town?' <span style="color:var(--muted);font-size:.8rem">'+esc(b.town)+'</span>':'')+'</span><span class="sc">'+sc+'</span></div>'; }).join(''); }
@@ -353,7 +355,7 @@
     var body;
     if(!enq.length) body='<div class="card" style="color:var(--muted)">No enquiries in Street in the last 30 days.</div>';
     else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries.</div>';
-    else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var meta=[L.property,L.branch].filter(Boolean).map(esc).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return '<tr><td>'+(L.at?esc(fmt(new Date(L.at).getTime())):'—')+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+(meta||'<span style="color:var(--muted)">—</span>')+src+'</td></tr>'; }).join('');
+    else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var propTxt=L.property?(L.propertyId?'<a class="syslink" href="property.html?id='+encodeURIComponent(L.propertyId)+'" target="_blank" rel="noopener">'+esc(L.property)+'</a>':esc(L.property)):''; var meta=[propTxt,(L.branch?esc(L.branch):'')].filter(Boolean).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return '<tr><td>'+(L.at?esc(fmt(new Date(L.at).getTime())):'—')+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+(meta||'<span style="color:var(--muted)">—</span>')+src+'</td></tr>'; }).join('');
       body='<table class="enq"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Property / branch</th></tr></thead><tbody>'+rows+'</tbody></table>'; }
     return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, the portals and the phone. Last 30 days, newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' in the window'):'')+'.</div>'+chips+body;
   }
@@ -369,7 +371,9 @@
       {nm:'Ask Georgina (AI)',dta:'on the site and in this hub',fr:'answers on demand'},
       {nm:'My G.R. Estates',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live'}
     ];
-    if(D.socialOk) wired.push({nm:'Social feed (Meta)',dta:'showing on the site',fr:'connected'});
+    if(D.socialOk) wired.push({nm:'Social feed (Meta)',dta:'showing on the site',fr:'connected',url:'https://business.facebook.com'});
+    var gURL=(rv&&rv.branches&&rv.branches[0]&&rv.branches[0].url)||'https://www.google.com/maps?cid=13149266945693900402';
+    wired[0].url='https://street.co.uk/login'; wired[1].url=gURL; wired[2].url='/demos/gr-estates/'; wired[3].url='/demos/gr-estates/#alerts'; wired[4].url='/demos/gr-estates/#ai'; wired[5].url='saved-homes.html';
     var stack=[
       ['PayProp','Payments · rent & landlord payouts'],['TDS (Custodial)','Compliance · deposit protection'],
       ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
@@ -378,8 +382,10 @@
       ['Aztec / 3CX','Telephony · the phone system'],['Google Workspace','Email, calendar & drive'],
       ['SignRequest','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
     ];
-    var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
-    var scards=stack.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected to the hub</div></div>'; }).join('');
+    var SYSURL={'PayProp':'https://uk.payprop.com','TDS (Custodial)':'https://www.tenancydepositscheme.com','Goodlord':'https://www.goodlord.co','Fixflo':'https://www.fixflo.com','Reports2Go':'https://www.reports2go.co.uk','Rightmove':'https://www.rightmove.co.uk','OnTheMarket':'https://www.onthemarket.com','Google Workspace':'https://admin.google.com','SignRequest':'https://signrequest.com','Meta Business':'https://business.facebook.com'};
+    function ext(u){ return u?'<a class="syslink" href="'+esc(u)+'" target="_blank" rel="noopener">Open ↗</a>':''; }
+    var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+(s.url?' · '+ext(s.url):'')+'</div></div>'; }).join('');
+    var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected'+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
     return '<h2 class="vt">Connections</h2><div class="vsub">Every system, whether its data is flowing to the hub, and when it last came in. Only what\'s true.</div>'
       +'<div class="secttl">Wired in · live data ('+wired.length+')</div><div class="sysg">'+wcards+'</div>'
       +'<div class="secttl">Your stack · not yet wired ('+stack.length+')</div><div class="sysg">'+scards+'</div>'
@@ -396,8 +402,8 @@
 
   function viewReviews(){
     var r=D.reviews; if(!r) return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google.</div><div class="card">Loading…</div>';
-    var rows=(r.branches||[]).map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</span></div>'; }).join('');
-    if(r.removals) rows+='<div class="branch"><span>'+esc(r.removals.name||'G.R. Removals')+' <span style="color:var(--muted);font-size:.8rem">(sister co.)</span></span><span class="sc"><b>'+(r.removals.rating||'—')+'★</b> · '+(r.removals.count||0)+'</span></div>';
+    var rows=(r.branches||[]).map(function(b){ return '<div class="branch"><span>'+esc(b.name)+(b.url?' <a class="syslink" href="'+esc(b.url)+'" target="_blank" rel="noopener">↗</a>':'')+'</span><span class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</span></div>'; }).join('');
+    if(r.removals) rows+='<div class="branch"><span>'+esc(r.removals.name||'G.R. Removals')+' <span style="color:var(--muted);font-size:.8rem">(sister co.)</span>'+(r.removals.url?' <a class="syslink" href="'+esc(r.removals.url)+'" target="_blank" rel="noopener">↗</a>':'')+'</span><span class="sc"><b>'+(r.removals.rating||'—')+'★</b> · '+(r.removals.count||0)+'</span></div>';
     return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google · '+(r.average||'—')+'★ across '+(r.total||0)+' estate reviews.</div><div class="card"><h3>By branch</h3>'+rows+'</div>';
   }
 
@@ -537,15 +543,14 @@
       fetch('/api/reviews').then(function(r){return r.json();}).catch(function(){return null;}),
       fetch('/api/social').then(function(r){return r.json();}).catch(function(){return null;}),
       fetch('/api/team').then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
+      fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
       D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
-      D.enquiries=(res[6]&&res[6].enquiries)||null; D.enqTotal=(res[6]&&res[6].total!=null)?res[6].total:null;
       var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
+      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; D.enqTotal=(d&&d.total!=null)?d.total:null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }
       else { gate('Couldn\'t load the hub, try again.'); }

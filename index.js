@@ -1615,31 +1615,31 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       const since = new Date(Date.now() - 30 * 864e5).toISOString();
-      let all = [], total = null; const inc = {};
+      const sinceQ = "filter%5Bcreated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=";
+      let all = [], total = null; const inc = {}; const seen = {};
+      function absorb(b) { if (!b) return; (b.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; }); (b.data || []).forEach(function (d) { if (d && d.id && !seen[d.id]) { seen[d.id] = 1; all.push(d); } }); }
       try {
-        for (let pn = 1; pn <= 6; pn++) {
-          const r = await streetGet(env, "/enquiries?filter%5Bcreated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=" + pn);
-          if (!r.ok || !r.body) break;
-          (r.body.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; });
-          const data = r.body.data || [];
-          all = all.concat(data);
-          const pg = (r.body.meta && r.body.meta.pagination) || {};
-          if (pg.total != null) total = pg.total;
-          const tp = pg.total_pages || 1;
-          if (pn >= tp || data.length < 100) break;
-        }
+        const first = await streetGet(env, "/enquiries?" + sinceQ + "1");
+        let tp = 1;
+        if (first && first.ok && first.body) { absorb(first.body); const pg = (first.body.meta && first.body.meta.pagination) || {}; total = (pg.total != null) ? pg.total : null; tp = pg.total_pages || 1; }
+        // Street returns enquiries oldest-first, so the newest are on the LAST pages — grab the last few.
+        for (let p = tp; p > tp - 3 && p > 1; p--) { const r = await streetGet(env, "/enquiries?" + sinceQ + p); if (r && r.ok && r.body) absorb(r.body); }
       } catch (_) {}
       function kindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
       const enquiries = all.map(function (d) {
         const a = d.attributes || {};
-        const prop = (a.property_uuid && inc[a.property_uuid]) ? (inc[a.property_uuid].attributes || {}) : null;
-        const br = (a.branch_uuid && inc[a.branch_uuid]) ? (inc[a.branch_uuid].attributes || {}) : null;
+        const rel = d.relationships || {};
+        const propId = (rel.property && rel.property.data && rel.property.data.id) || a.property_uuid || null;
+        const brId = (rel.branch && rel.branch.data && rel.branch.data.id) || a.branch_uuid || null;
+        const prop = (propId && inc[propId]) ? (inc[propId].attributes || {}) : null;
+        const br = (brId && inc[brId]) ? (inc[brId].attributes || {}) : null;
         return {
           id: d.id, at: a.created_at || null,
           name: ((a.first_name || "") + " " + (a.last_name || "")).trim(),
           email: a.email_address || null, phone: a.telephone_number || null,
           message: a.message || "", source: a.custom_source || null, kind: kindOf(a),
-          property: prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.address || null) : null,
+          propertyId: propId,
+          property: prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.full_address || prop.address || null) : null,
           branch: br ? (br.name || br.branch_name || br.display_name || null) : null
         };
       });
