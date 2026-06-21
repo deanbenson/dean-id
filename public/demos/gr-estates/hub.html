@@ -59,6 +59,12 @@
  .pd{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.15rem .55rem;border-radius:20px}
  .pcc{margin-top:11px;padding-top:10px;border-top:1px solid var(--line);text-align:left;display:grid;gap:4px}
  .pc{font-size:.8rem;color:#54585f;display:flex;gap:7px;align-items:center}.pc span{opacity:.6}
+ .pcc a{color:var(--orange-deep)}
+ .plove{background:rgba(226,103,42,.06);border:1px solid rgba(226,103,42,.16);border-radius:11px;padding:10px 12px;margin-top:12px;text-align:left}
+ .plh{font-size:.74rem;font-weight:700;color:var(--orange-deep)}
+ .pq{font-size:.82rem;color:#54585f;font-style:italic;line-height:1.45;margin-top:4px}
+ .pqa{font-size:.72rem;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:6px}
+ .pqav{width:18px;height:18px;border-radius:50%;object-fit:cover;flex:none}
  .livehead{display:flex;align-items:center;gap:8px;margin:2px 0 14px;color:var(--muted);font-size:.82rem}
  .livedot{width:9px;height:9px;border-radius:50%;background:var(--g);flex:none;animation:pulse 2s infinite}
  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(29,158,117,.45)}70%{box-shadow:0 0 0 8px rgba(29,158,117,0)}100%{box-shadow:0 0 0 0 rgba(29,158,117,0)}}
@@ -176,7 +182,7 @@
     listings:'Live from Street, via the property database.',
     reviews:'Live from your Google Business profiles.',
     roadmap:'Maintained by you and Dean.',
-    staff:'Live from Street (your team records).',
+    staff:'Live from Street, with praise matched from your live Google reviews.',
     profile:'Your role and access in the Hub.',
     valuations:'Will pull from Street (valuations and the diary).',
     viewings:'Will pull from Street (viewings and feedback).',
@@ -195,10 +201,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.9', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.10', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
-  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'1.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'2.0',feed:'1.0',profile:'1.0',changelog:'1.0'};
+  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'1.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.0',profile:'1.0',changelog:'1.0'};
   var CHANGELOG=[
+    {v:'0.10',d:'21 Jun 2026',items:['Staff page v3: grouped by department, with Google-review praise matched to each person','Connections corrected, SignRequest not DocuSign']},
     {v:'0.9',d:'21 Jun 2026',items:['Live Company feed (auto-updating)','Staff v2 with richer profiles','Connections shows your full real system stack','Sticky user block, logo to home','Per-page versions + this changelog']},
     {v:'0.8',d:'21 Jun 2026',items:['Honest data source on every page','Live branches and staff (no hardcoding)','Profile view, admin-only role preview','Phone status corrected']},
     {v:'0.7',d:'21 Jun 2026',items:['Business-level owner home','Shareable URLs, no-jump navigation','Enquiries moved into the hub']},
@@ -366,7 +373,7 @@
       ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · listings & leads'],
       ['OnTheMarket','Portal · listings & leads'],['Snaith Boards','Boards · for-sale / to-let'],
       ['Aztec / 3CX','Telephony · the phone system'],['Google Workspace','Email, calendar & drive'],
-      ['DocuSign','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
+      ['SignRequest','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
     ];
     var wcards=wired.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag g">Live</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
     var scards=stack.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">Not wired</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">in use, not connected to the hub</div></div>'; }).join('');
@@ -404,18 +411,45 @@
   }
 
   function dept(t){ t=(t||'').toLowerCase(); if(t.indexOf('director')>=0)return 'Leadership'; if(t.indexOf('property manager')>=0)return 'Property management'; if(t.indexOf('manager')>=0||t.indexOf('valuer')>=0)return 'Sales & valuations'; if(t.indexOf('progress')>=0)return 'Sales progression'; if(t.indexOf('lettings')>=0||t.indexOf('negotiator')>=0)return 'Lettings'; if(t.indexOf('social')>=0||t.indexOf('marketing')>=0)return 'Marketing'; if(t.indexOf('account')>=0||t.indexOf('admin')>=0)return 'Accounts & admin'; if(t.indexOf('tech')>=0)return 'Tech'; return 'Team'; }
+  function firstNameOf(n){ return ((n||'').split(/\s+/)[0]||'').replace(/[^A-Za-z]/g,''); }
+  function staffReviewMentions(first){
+    var revs=(D.reviews&&D.reviews.reviews)||[]; var hits=[];
+    if(!first||first.length<3) return hits;
+    var re=new RegExp('\\b'+first+'\\b','i');
+    revs.forEach(function(rv){ if(rv&&rv.text&&re.test(rv.text)) hits.push(rv); });
+    return hits;
+  }
+  function snippetAround(text,name){
+    text=String(text||''); var i=text.toLowerCase().indexOf((name||'').toLowerCase()); if(i<0)i=0;
+    var start=Math.max(0,i-46), end=Math.min(text.length,i+92);
+    var s=text.slice(start,end).replace(/\s+/g,' ').trim();
+    return (start>0?'… ':'')+s+(end<text.length?' …':'');
+  }
+  function staffCard(p){
+    var first=firstNameOf(p.name); var hits=staffReviewMentions(first);
+    var av=p.photo?'<span class="pav" style="background-image:url(\''+esc(p.photo)+'\')"></span>':'<span class="pav ini">'+esc(initials(p.name||''))+'</span>';
+    var contact='';
+    if(p.branch) contact+='<div class="pc"><span aria-hidden="true">⌂</span>'+esc(p.branch)+'</div>';
+    if(p.email) contact+='<div class="pc"><span aria-hidden="true">✉</span><a href="mailto:'+esc(p.email)+'">'+esc(p.email)+'</a></div>';
+    if(p.phone) contact+='<div class="pc"><span aria-hidden="true">☎</span><a href="tel:'+esc((p.phone||'').replace(/\s+/g,''))+'">'+esc(p.phone)+'</a></div>';
+    var love='';
+    if(hits.length){ var h=hits[0]; var rav=h.photo?'<img class="pqav" src="'+esc(h.photo)+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">':''; love='<div class="plove"><div class="plh">★ Praised in '+hits.length+' Google review'+(hits.length>1?'s':'')+'</div><div class="pq">“'+esc(snippetAround(h.text,first))+'”</div><div class="pqa">'+rav+'<span>'+esc(h.author||'a happy client')+(h.branch?(', '+esc(h.branch)):'')+'</span></div></div>'; }
+    return '<div class="pcard">'+av+'<div class="pn">'+esc(p.name||'')+'</div><div class="pt">'+esc(p.title||'')+'</div>'+(contact?'<div class="pcc">'+contact+'</div>':'')+love+'</div>';
+  }
   function viewStaff(){
     var team=D.team||[];
     if(!team.length) return '<h2 class="vt">Staff</h2><div class="vsub">Live from Street.</div><div class="card">Team syncing…</div>';
-    var withExtra=team.filter(function(p){return p.email||p.phone||p.photo;}).length;
-    var cards=team.map(function(p){
-      var photo=p.photo?'<span class="pav" style="background-image:url(\''+esc(p.photo)+'\')"></span>':'<span class="pav ini">'+esc(initials(p.name||''))+'</span>';
-      var contact='';
-      if(p.email) contact+='<div class="pc"><span aria-hidden="true">✉</span>'+esc(p.email)+'</div>';
-      if(p.phone) contact+='<div class="pc"><span aria-hidden="true">☎</span>'+esc(p.phone)+'</div>';
-      return '<div class="pcard">'+photo+'<div class="pn">'+esc(p.name||'')+'</div><div class="pt">'+esc(p.title||'')+'</div><div class="pd">'+esc(dept(p.title))+'</div>'+(contact?'<div class="pcc">'+contact+'</div>':'')+'</div>';
+    var order=['Leadership','Sales & valuations','Sales progression','Lettings','Property management','Marketing','Accounts & admin','Tech','Team'];
+    var groups={}; team.forEach(function(p){ var d=dept(p.title); (groups[d]=groups[d]||[]).push(p); });
+    var praised=0; team.forEach(function(p){ if(staffReviewMentions(firstNameOf(p.name)).length) praised++; });
+    var branchN=(D.branches&&D.branches.length)||null;
+    var withExtra=team.filter(function(p){return p.email||p.phone||p.photo||p.branch;}).length;
+    var stats='<div class="tiles">'+tile(team.length,'People',true)+tile(branchN!=null?branchN:'—','Branches')+tile(Object.keys(groups).length,'Departments')+tile(praised,'Praised by name')+'</div>';
+    var sections=order.filter(function(d){return groups[d];}).map(function(d){
+      return '<div class="secttl">'+esc(d)+' <span style="color:var(--muted);font-weight:600;text-transform:none;letter-spacing:0">· '+groups[d].length+'</span></div><div class="pgrid">'+groups[d].map(staffCard).join('')+'</div>';
     }).join('');
-    return '<h2 class="vt">Staff</h2><div class="vsub">Your team, live from Street · '+team.length+' people.'+(withExtra?'':' Name and role are what Street exposes for the team today; photos and contact details appear here automatically when they\'re on the Street profiles.')+'</div><div class="pgrid">'+cards+'</div>';
+    var note=withExtra?'':' Names, roles and review praise are live; photos and contact details light up here automatically once they\'re on the Street profiles.';
+    return '<h2 class="vt">Staff <span class="vtag big">v3</span></h2><div class="vsub">Your whole team, live from Street, with the praise they\'ve earned in your Google reviews.'+note+'</div>'+stats+sections;
   }
   function viewFeed(){
     var leads=D.leads||[]; var ev=[];

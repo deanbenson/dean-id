@@ -1833,7 +1833,8 @@ export default {
               title: titleOverride[fn] || a.job_title || "",
               email: a.email || a.email_address || null,
               phone: a.telephone_number || a.phone_number || a.mobile_number || a.contact_number || a.telephone || null,
-              photo: a.profile_image_url || a.avatar_url || a.photo_url || a.image_url || a.profile_photo_url || null
+              photo: a.profile_image_url || a.avatar_url || a.photo_url || a.image_url || a.profile_photo_url || null,
+              branch: a.branch_name || a.office_name || a.office || (a.branch && a.branch.name) || null
             };
           });
         // Team members who aren't in the CRM (e.g. social media manager) — added by hand.
