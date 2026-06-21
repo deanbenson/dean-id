@@ -340,6 +340,31 @@
       out.innerHTML=feed+'<div class="secttl" style="margin-top:14px">Per dataset — what the last sync did</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Dataset</th><th>Local / Street</th><th>Fetched → mapped → stored</th><th>Heal</th><th>Columns</th><th>Last error</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">Fetched → mapped → stored shows exactly where rows are lost. If fetched is high but stored is 0, the Last error column says why (e.g. a missing column, or a Cloudflare limit). Heal shows what the self-repair did: add-columns means it widened the table; rearm means it restarted the backfill.</div>';
     }).catch(function(){ if(b){b.disabled=false;b.textContent='Diagnose';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Diagnostics error.</div>'; });
   };
+  window.grTest=function(){
+    var b=document.getElementById('testbtn'); if(b){b.disabled=true;b.textContent='Testing…';}
+    var out=document.getElementById('diagout'); if(out)out.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-top:10px">Running one dataset (tenancies) sync right now, inline, and reporting exactly what happens…</div>';
+    fetch('/api/sync-test?name=tenancies',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      if(b){b.disabled=false;b.textContent='Test sync';}
+      if(!out)return;
+      if(!d||!d.ok){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Test failed: '+esc((d&&d.error)||'no response')+'</div>'; return; }
+      var dg=d.diag||{};
+      function row(k,v){ return '<tr><td style="font-weight:600;white-space:nowrap;padding-right:14px">'+esc(k)+'</td><td style="font-family:monospace;font-size:.78rem">'+v+'</td></tr>'; }
+      var rows='';
+      rows+=row('Dataset', esc(d.name)+' → table '+esc(String(d.table)));
+      rows+=row('Rows before', esc(String(d.before)));
+      rows+=row('Rows after', '<b>'+esc(String(d.after))+'</b>');
+      rows+=row('Stored this run', esc(String(d.stored)));
+      rows+=row('Took', d.took_ms+' ms');
+      if(d.threw) rows+=row('THREW', '<span style="color:#c2541d">'+esc(d.threw)+'</span>');
+      if(dg.heal) rows+=row('Heal', esc(dg.heal.action)+(dg.heal.added&&dg.heal.added.length?(' · added '+esc(dg.heal.added.join(', '))):''));
+      if(dg.fetched!=null) rows+=row('Fetched → mapped → stored', dg.fetched+' → '+dg.mapped+' → '+dg.stored);
+      if(dg.errors&&dg.errors.length) rows+=row('Errors', '<span style="color:#c2541d">'+esc(dg.errors.map(function(x){return (x.stage||'')+': '+(x.detail||'');}).join(' | '))+'</span>');
+      else if(dg.err) rows+=row('Last error', '<span style="color:#c2541d">'+esc(dg.err)+'</span>');
+      var ok=(typeof d.after==='number'&&d.after>0);
+      var verdict=ok?('<div style="color:#1d9e75;font-weight:700;margin:6px 0">STORED OK — '+d.after+' rows now in the table.</div>'):('<div style="color:#c2541d;font-weight:700;margin:6px 0">Stored nothing. The reason is in the rows below.</div>');
+      out.innerHTML='<div class="secttl">Inline sync test — tenancies (run just now)</div>'+verdict+'<table class="enq" style="font-size:.82rem"><tbody>'+rows+'</tbody></table>';
+    }).catch(function(){ if(b){b.disabled=false;b.textContent='Test sync';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Test error.</div>'; });
+  };
   window.grCloseDrawer=function(){ var o=document.getElementById('rowdrawer'); if(o)o.parentNode.removeChild(o); };
   function fieldRows(obj){ if(!obj||typeof obj!=='object') return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; var ks=Object.keys(obj); if(!ks.length) return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; return ks.map(function(k){ var v=obj[k]; var disp; if(v==null||v==='') disp='<span style="color:var(--muted)">—</span>'; else if(typeof v==='object') disp='<code class="fjson">'+esc(JSON.stringify(v,null,1))+'</code>'; else if(typeof v==='boolean') disp=v?'Yes':'No'; else disp=esc(String(v)); return '<div class="frow"><span class="fk">'+esc(k)+'</span><span class="fv">'+disp+'</span></div>'; }).join(''); }
   window.grRow=function(name,id){
@@ -575,11 +600,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.37', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.38', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.38',d:'21 Jun 2026',items:['New Test sync button: runs one dataset (tenancies) sync right now, inline, and reports the exact truth in seconds — rows before, rows after, what stored, and the precise error if it stores nothing. No background timing, no ambiguity','This is the definitive end to guesswork: one click tells us whether storing a Street dataset works, and if not, exactly why']},
     {v:'0.37',d:'21 Jun 2026',items:['Found why the Street datasets stopped filling: enquiries and the rest were sharing one sync run, and the heavy new prioritising step was timing the run out right after enquiries finished, so everything else got killed before it could even start, or log why','Fix: enquiries and the other datasets now run in separate passes, each with a full budget, and the heavy prioritising step is gone. The datasets fill steadily as the rotation comes round','Sync now drives the stuck datasets directly, and a heartbeat is written before any work so a stall can never again hide from Diagnose']},
     {v:'0.36',d:'21 Jun 2026',items:['Closed the last blind spot: the new prioritised sync does bookkeeping queries up front, and if THAT hit a Cloudflare limit it was still failing silently. It is now wrapped so any such error is captured and shown in Diagnose','Diagnose now shows what the last sync rotation actually picked to work on, so you can see it moving through the backlog','This makes the next Diagnose definitive: if a dataset still will not fill, the reason will be on screen']},
     {v:'0.35',d:'21 Jun 2026',items:['Error checking, 10x. Every sync now records exactly what it did at each stage (pulled, mapped, stored) and the precise reason for any failure, including the exact database message and which record, and any Cloudflare limit. Nothing is swallowed as a vague "no rows"','New Diagnose button shows it all: a live feed of the most recent errors, and per dataset the fetched-mapped-stored flow, what the self-repair did, missing columns, and the last error in plain text','Fixed a real bug the old checking hid: the schema repair was DROPPING a table to rebuild it, which briefly wiped Viewings to 0. It now adds the missing columns in place instead, so a populated table can never be emptied','Empty datasets are now filled first, so anything stuck at 0 races to 100% instead of waiting hours for its turn']},
@@ -811,7 +837,7 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button><button id="auditbtn" class="syncnow" onclick="grAudit()" title="Check our local copy matches Street, field by field">Check data</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="See exactly what each sync did and any errors">Diagnose</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div><div id="auditout"></div><div id="diagout"></div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button><button id="auditbtn" class="syncnow" onclick="grAudit()" title="Check our local copy matches Street, field by field">Check data</button><button id="diagbtn" class="syncnow" onclick="grDiag()" title="See exactly what each sync did and any errors">Diagnose</button><button id="testbtn" class="syncnow" onclick="grTest()" title="Run one dataset sync inline, right now, and report exactly what happens">Test sync</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div><div id="auditout"></div><div id="diagout"></div></div>';
     var syncRows='';
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');

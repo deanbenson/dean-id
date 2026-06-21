@@ -2157,6 +2157,30 @@ export default {
       return respond(JSON.stringify({ ok: true, started: true }), 200, J);
     }
 
+    // Run ONE dataset's sync inline (awaited, not in the background) and report the truth: rows before/after,
+    // what it stored, the heal action, and any error — caught right here so nothing can hide. This is the
+    // definitive "does syncing this dataset actually work right now" test. Bounded (chunk 4) so it's quick.
+    if (path === "/api/sync-test" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const db = env.gr_estates;
+      const want = url.searchParams.get("name") || "tenancies";
+      const e = extrasReg().find(function (x) { return x.name === want; });
+      if (!e) return respond(JSON.stringify({ ok: false, error: "unknown dataset: " + want }), 400, J);
+      const tbl = ddlTable(e.ddl) || e.name;
+      let before = null, after = null, stored = null, threw = null, diag = null;
+      try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); before = (c && c.n) || 0; } catch (eB) { before = "no table"; }
+      const t0 = Date.now();
+      try { stored = await syncStreetResource(env, e.name, e.path, e.ddl, e.map, Object.assign({}, e.opts, { chunk: 4 })); }
+      catch (eR) { threw = String((eR && eR.message) || eR).slice(0, 240); }
+      const ms = Date.now() - t0;
+      try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); after = (c && c.n) || 0; } catch (eA) { after = "no table"; }
+      try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + e.name + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, name: e.name, table: tbl, before: before, after: after, stored: stored, threw: threw, took_ms: ms, diag: diag }), 200, J);
+    }
+
     // Diagnostic probe: hit the real Street API with several endpoint/parameter variations and report what
     // comes back (status, rows, total, JSON:API type, first record's attribute keys). Tells us, from fact,
     // whether viewings/valuations/offers exist for this account and exactly how to pull them. Admin-gated.
