@@ -152,6 +152,34 @@
   function fmt(ts){ if(!ts)return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
   function initials(n){ return (n||'').split(/\s+/).map(function(x){return x[0]||'';}).join('').slice(0,2).toUpperCase(); }
   function srcLine(id){ return '<div class="srcline"><span class="vtag">v'+(VER[id]||'0.1')+'</span> <span aria-hidden="true">⚯</span> Data, '+esc(SRC[id]||'from the relevant system.')+'</div>'; }
+  function ensureLocal(name){
+    if(D['L_'+name]!==undefined) return;
+    D['L_'+name]=null;
+    fetch('/api/local?name='+encodeURIComponent(name),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D['L_'+name]={rows:(d&&d.rows)||[],total:(d&&d.total)||0,at:(d&&d.synced_at)||null}; if(ROUTE===name) renderView(false); }).catch(function(){ D['L_'+name]={rows:[],total:0,at:null}; if(ROUTE===name) renderView(false); });
+  }
+  function localLoading(title){ return '<h2 class="vt">'+esc(title)+'</h2><div class="vsub">Loading from your local copy…</div><div class="card" style="color:var(--muted)">One moment…</div>'; }
+  function localSync(L){ return L.at?(' · synced '+ago(new Date(L.at).getTime())):''; }
+  function viewViewings(){
+    ensureLocal('viewings'); var L=D.L_viewings; if(!L) return localLoading('Viewings');
+    var body;
+    if(!L.rows.length) body='<div class="card" style="color:var(--muted)">No viewings in the local copy yet. They appear within ~15 minutes of the next sync.</div>';
+    else body='<table class="enq"><thead><tr><th>When</th><th>Status</th><th>Property</th><th>Branch</th></tr></thead><tbody>'+L.rows.map(function(v){ var t=v.start||v.created_at; return '<tr><td>'+(t?esc(fmt(new Date(t).getTime())):'—')+'</td><td>'+esc(v.status||'—')+'</td><td>'+esc(v.address||'—')+'</td><td>'+esc(v.branch||'—')+'</td></tr>'; }).join('')+'</tbody></table>';
+    return '<h2 class="vt">Viewings</h2><div class="vsub">Every viewing in Street, from the local copy. '+L.total+' total'+localSync(L)+'.</div>'+body;
+  }
+  function viewValuations(){
+    ensureLocal('valuations'); var L=D.L_valuations; if(!L) return localLoading('Valuations');
+    var body;
+    if(!L.rows.length) body='<div class="card" style="color:var(--muted)">No valuations in the local copy yet.</div>';
+    else body='<table class="enq"><thead><tr><th>When</th><th>Status</th><th>Address</th><th>Source</th><th>Branch</th></tr></thead><tbody>'+L.rows.map(function(v){ var t=v.start||v.created_at; return '<tr><td>'+(t?esc(fmt(new Date(t).getTime())):'—')+'</td><td>'+esc(v.status||'—')+'</td><td>'+esc(v.address||'—')+'</td><td>'+esc(v.lead_source||'—')+'</td><td>'+esc(v.branch||'—')+'</td></tr>'; }).join('')+'</tbody></table>';
+    return '<h2 class="vt">Valuations</h2><div class="vsub">Valuations booked in Street, from the local copy. '+L.total+' total'+localSync(L)+'.</div>'+body;
+  }
+  function viewContacts(){
+    ensureLocal('contacts'); var L=D.L_contacts; if(!L) return localLoading('Contacts');
+    var body;
+    if(!L.rows.length) body='<div class="card" style="color:var(--muted)">No contacts in the local copy yet.</div>';
+    else body='<table class="enq"><thead><tr><th>Added</th><th>Name</th><th>Contact</th><th>Status</th></tr></thead><tbody>'+L.rows.map(function(c){ var ct=[c.email,c.phone].filter(Boolean).map(esc).join('<br>'); return '<tr><td>'+(c.created_at?esc(fmt(new Date(c.created_at).getTime())):'—')+'</td><td>'+esc(c.name||'—')+'</td><td>'+(ct||'—')+'</td><td>'+esc(c.status||'—')+'</td></tr>'; }).join('')+'</tbody></table>';
+    return '<h2 class="vt">Contacts</h2><div class="vsub">Buyers, sellers, landlords and tenants from Street, newest first. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+'.</div>'+body;
+  }
 
   window.grLogout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} boot(); };
   window.grSave=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} boot(); };
@@ -192,10 +220,10 @@
     roadmap:'Maintained by you and Dean.',
     staff:'Live from Street, with praise matched from your live Google reviews.',
     profile:'Your role and access in the Hub.',
-    valuations:'Will pull from Street (valuations and the diary).',
-    viewings:'Will pull from Street (viewings and feedback).',
+    valuations:'Live from your local copy, synced from Street.',
+    viewings:'Live from your local copy, synced from Street.',
     progression:'Will pull from Street (sales progression and chains).',
-    contacts:'Will pull from Street (all contacts).',
+    contacts:'Live from your local copy, synced from Street.',
     calendar:'Will pull from Street (appointments and key dates).',
     marketing:'Will pull from the portals (Rightmove, OnTheMarket) and Meta.',
     tenancies:'Will pull from Street (tenancies and rent).',
@@ -209,10 +237,11 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.14', BUILD='21 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
-  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.0',changelog:'1.0'};
+  var HUB_VERSION='0.15', BUILD='21 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
+  var VER={home:'1.2',connections:'1.3',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.0',valuations:'1.0',contacts:'1.0'};
   var CHANGELOG=[
+    {v:'0.15',d:'21 Jun 2026',items:['Viewings, Valuations and Contacts pages now live, read instantly from the local copy','Owner home shows real valuations and viewings booked this week']},
     {v:'0.14',d:'21 Jun 2026',items:['All core Street data now syncs into the local copy on a cron: viewings, valuations, applicants, offers and contacts','Connections shows what is in the local copy, per dataset','Role preview moved into your profile as Assume a colleague\'s view']},
     {v:'0.13',d:'21 Jun 2026',items:['Enquiries now read from a fast local copy synced from Street every 15 minutes, instant and always newest','Connections shows what data is flowing in and the split across systems','Cross-links to the real systems throughout']},
     {v:'0.12',d:'21 Jun 2026',items:['Cross-links: Connections opens each system, Reviews open in Google, enquiries link to the property, home tiles jump to their page']},
@@ -316,7 +345,8 @@
     var staff=(D.team&&D.team.length)||null;
     var branches=(D.branches&&D.branches.length)?D.branches:null;
     var branchN=branches?branches.length:((rv&&rv.branches)?rv.branches.length:null);
-    var tiles=tile(pf?pf.total:'—','Properties live',true,null,'listings')+tile(pf?pf.sale:'—','For sale',false,null,'listings')+tile(pf?pf['let']:'—','To let',false,null,'listings')+tile(branchN!=null?branchN:'—','Branches',false,null,'map')+tile(staff!=null?staff:'—','Team',false,null,'staff')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews',false,null,'reviews');
+    var pl=D.pipeline||{};
+    var tiles=tile(pf?pf.total:'—','Properties live',true,null,'listings')+tile(pf?pf.sale:'—','For sale',false,null,'listings')+tile(pf?pf['let']:'—','To let',false,null,'listings')+tile(pl.valuations_week!=null?pl.valuations_week:'—','Valuations / wk',false,null,'valuations')+tile(pl.viewings_week!=null?pl.viewings_week:'—','Viewings / wk',false,null,'viewings')+tile(branchN!=null?branchN:'—','Branches',false,null,'map')+tile(staff!=null?staff:'—','Team',false,null,'staff')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews',false,null,'reviews');
     var revByName={}; (rv&&rv.branches||[]).forEach(function(b){ revByName[(b.name||'').toLowerCase()]=b; });
     var branchRows;
     if(branches){ branchRows=branches.map(function(b){ var rb=revByName[(b.name||'').toLowerCase()]; var sc=rb?('<b>'+rb.rating+'★</b> · '+rb.count+' reviews'):'<span style="color:var(--muted)">reviews syncing</span>'; return '<div class="branch"><span>'+esc(b.name)+(b.town?' <span style="color:var(--muted);font-size:.8rem">'+esc(b.town)+'</span>':'')+'</span><span class="sc">'+sc+'</span></div>'; }).join(''); }
@@ -327,7 +357,7 @@
     var max=0;(pf&&pf.byTown||[]).forEach(function(t){if(t.n>max)max=t.n;});
     var areas=(pf&&pf.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">—</div>';
     var chan='<div class="row"><span class="ic">✉</span><span>Website enquiries</span><span class="tm">'+leads.length+' total · '+nW+' this week</span></div><div class="row"><span class="ic">★</span><span>Be-first buyer alerts</span><span class="tm">'+(st.alerts!=null?st.alerts:0)+'</span></div><div class="row"><span class="ic">✦</span><span>My G.R. Estates signups</span><span class="tm">'+(st.waitlist!=null?st.waitlist:0)+'</span></div>';
-    var gaps='<div class="row" style="color:var(--muted)">Sales pipeline &amp; completions</div><div class="row" style="color:var(--muted)">Rent roll, arrears &amp; occupancy</div><div class="row" style="color:var(--muted)">Revenue &amp; fees</div><div class="row" style="color:var(--muted)">Phone &amp; portal enquiries</div><div style="font-size:.76rem;color:var(--muted);margin-top:8px">These light up as we wire Street\'s sales, lettings and finance feeds.</div>';
+    var gaps='<div class="row" style="color:var(--muted)">Sales completions &amp; fall-throughs</div><div class="row" style="color:var(--muted)">Rent roll, arrears &amp; occupancy (PayProp)</div><div class="row" style="color:var(--muted)">Revenue &amp; fees</div><div class="row" style="color:var(--muted)">Phone &amp; portal performance</div><div style="font-size:.76rem;color:var(--muted);margin-top:8px">These light up as we wire Street\'s sales, lettings and finance feeds.</div>';
     return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">'+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+(branchN!=null?(' · '+branchN+' branches'):'')+(staff!=null?(' · '+staff+' staff'):'')+'</div>'
       +'<div class="tiles">'+tiles+'</div>'
       +'<div class="secttl">Service lines</div>'+svc
@@ -537,6 +567,9 @@
     else if(id==='staff')body=viewStaff();
     else if(id==='feed')body=viewFeed();
     else if(id==='changelog')body=viewChangelog();
+    else if(id==='viewings')body=viewViewings();
+    else if(id==='valuations')body=viewValuations();
+    else if(id==='contacts')body=viewContacts();
     else body=viewSoon(id);
     return body+srcLine(id);
   }
@@ -573,7 +606,7 @@
       fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
-      D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
+      D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.pipeline=(res[1]&&res[1].pipeline)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
       var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();

@@ -1667,7 +1667,18 @@ export default {
       } catch (_) {}
       let listings_at = null;
       try { if (env.LISTINGS) { const cur = await env.LISTINGS.get("current"); if (cur) { const c = JSON.parse(cur); listings_at = c.generated_at || null; } } } catch (_) {}
-      return respond(JSON.stringify({ ok: true, portfolio: portfolio, listings_at: listings_at, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      let pipeline = {};
+      try {
+        const wk = new Date(Date.now() - 7 * 864e5).toISOString();
+        const cntq = async function (sql, arg) { try { const r = arg ? await env.gr_estates.prepare(sql).bind(arg).first() : await env.gr_estates.prepare(sql).first(); return (r && r.n) || 0; } catch (_) { return 0; } };
+        pipeline.viewings = await cntq("SELECT COUNT(*) AS n FROM viewings");
+        pipeline.viewings_week = await cntq("SELECT COUNT(*) AS n FROM viewings WHERE created_at >= ?", wk);
+        pipeline.valuations = await cntq("SELECT COUNT(*) AS n FROM valuations");
+        pipeline.valuations_week = await cntq("SELECT COUNT(*) AS n FROM valuations WHERE created_at >= ?", wk);
+        pipeline.applicants = await cntq("SELECT COUNT(*) AS n FROM applicants");
+        pipeline.contacts = await cntq("SELECT COUNT(*) AS n FROM contacts");
+      } catch (_) {}
+      return respond(JSON.stringify({ ok: true, portfolio: portfolio, listings_at: listings_at, pipeline: pipeline, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
     // Ask Georgina, inside the Hub — a plain-language copilot over the live business data. Admin-gated.
@@ -1763,6 +1774,23 @@ export default {
       });
       enquiries.sort(function (x, y) { return (new Date(y.at).getTime() || 0) - (new Date(x.at).getTime() || 0); });
       return respond(JSON.stringify({ ok: true, count: enquiries.length, total: total, window_days: 30, enquiries: enquiries.slice(0, 200) }), 200, J);
+    }
+
+    // Read a synced local dataset (D1). Whitelisted tables only. Admin-gated, instant.
+    if (path === "/api/local" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const name = String(url.searchParams.get("name") || "");
+      const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1 };
+      if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
+      let rows = [], total = 0, at = null;
+      try { const r = await env.gr_estates.prepare("SELECT * FROM " + name + " ORDER BY created_at DESC LIMIT 200").all(); rows = (r && r.results) || []; } catch (_) {}
+      try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); total = (c && c.n) || 0; } catch (_) {}
+      const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
+      try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
+      return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.
