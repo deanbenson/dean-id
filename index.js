@@ -1389,6 +1389,9 @@ function ddlColumns(ddl) {
   return m[1].split(",").map(function (s) { return s.trim().replace(/^"/, "").split(/["\s(]/)[0]; })
     .filter(function (c) { const u = c.toUpperCase(); return c && u !== "PRIMARY" && u !== "FOREIGN" && u !== "UNIQUE" && u !== "CHECK"; });
 }
+// The real table name a CREATE statement targets (some sync resources, e.g. sales_applicants, write to a
+// shared table like "applicants").
+function ddlTable(ddl) { const m = String(ddl).match(/CREATE TABLE IF NOT EXISTS\s+([A-Za-z0-9_]+)/i); return m ? m[1] : null; }
 // Self-heal schema drift. CREATE TABLE IF NOT EXISTS will NOT widen a table that already exists with an
 // older, narrower column set — e.g. a resource first mirrored generically as (id, created_at, updated_at, raw)
 // and later promoted to one column per field. The INSERT then names columns the table doesn't have, every
@@ -1401,34 +1404,49 @@ function ddlColumns(ddl) {
 async function _resetBackfill(env, name) {
   try { if (env.LISTINGS) { await env.LISTINGS.put("sync:" + name + ":backfill", JSON.stringify({ done: false, page: 1 })); await env.LISTINGS.delete("sync:" + name + ":cursor"); } } catch (_) {}
 }
-async function healTable(env, db, name, ddl) {
-  if (!db || name === "enquiries") return false;
+// Append to a global ring-buffer of the most recent sync errors, so "what's going wrong" lives in one place
+// instead of being swallowed. Newest first, capped. Never throws.
+async function logSyncError(env, name, stage, detail) {
+  if (!env || !env.LISTINGS || !detail) return;
   try {
-    const row = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
-    if (!row || !row.sql) return false; // table doesn't exist yet — it'll be created in the right shape
+    const entry = { at: new Date().toISOString(), name: name, stage: stage, detail: String(detail).slice(0, 240) };
+    let log = []; try { const v = await env.LISTINGS.get("sync:errlog"); if (v) log = JSON.parse(v) || []; } catch (_) {}
+    log.unshift(entry); if (log.length > 60) log = log.slice(0, 60);
+    await env.LISTINGS.put("sync:errlog", JSON.stringify(log));
+  } catch (_) {}
+}
+// Non-destructively reconcile a table to the shape this resource needs, and REPORT exactly what it did.
+//  - Adds any missing columns with ALTER TABLE ADD COLUMN. Existing rows are kept (the new column is null until
+//    that row is next upserted). It NEVER drops a table, so a populated table can no longer be wiped to 0.
+//  - If Street holds rows we don't have and the backfill is wrongly flagged complete, re-arms a full walk.
+// Returns { action, added:[...], rearmed, error } so the caller can record it in the diagnostics.
+async function healTable(env, db, name, ddl, knownLocal) {
+  const res = { action: "none", added: [], rearmed: false, error: null };
+  if (!db || name === "enquiries") return res;
+  const tbl = ddlTable(ddl) || name; // schema ops target the real table (e.g. sales_offers -> offers)
+  try {
+    const row = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").bind(tbl).first();
+    if (!row || !row.sql) return res; // doesn't exist yet — it'll be created in the right shape
     const have = {}; ddlColumns(row.sql).forEach(function (c) { have[c] = 1; });
-    const missing = ddlColumns(ddl).filter(function (c) { return c && !have[c]; });
-    if (missing.length) { // schema drift: rebuild to the current shape and re-arm a full backfill
-      await db.prepare("DROP TABLE IF EXISTS " + name).run();
-      await db.prepare(ddl).run();
-      await _resetBackfill(env, name);
-      return true;
+    const missing = ddlColumns(ddl).filter(function (c) { return c && c !== "id" && !have[c]; });
+    for (let i = 0; i < missing.length; i++) {
+      try { await db.prepare("ALTER TABLE " + tbl + " ADD COLUMN \"" + missing[i] + "\"").run(); res.added.push(missing[i]); }
+      catch (e) { res.error = "add " + missing[i] + ": " + String((e && e.message) || e).slice(0, 150); await logSyncError(env, name, "heal", res.error); }
     }
-    // No drift. But if Street has rows for this resource while we hold none and the backfill is already marked
-    // complete, the table is stuck — an earlier run finished the walk without ever storing (e.g. while the old
-    // schema was rejecting every insert), so the top-up now finds nothing new and it can never catch up. Re-arm
-    // the full backfill so the whole history walks in again. Guarded by total>0 so a genuinely-empty resource
-    // (e.g. invoices, 0 in Street) never loops.
+    if (res.added.length) res.action = "add-columns";
+    // Re-arm a stalled backfill: Street has rows, we hold fewer, yet the walk is flagged complete (or we just
+    // widened the table and want the existing rows re-written with the new columns populated).
     let total = null; try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + name + ":total"); if (t != null) total = parseInt(t, 10) || 0; } } catch (_) {}
     if (total && total > 0) {
-      const cnt = await db.prepare("SELECT COUNT(*) AS n FROM " + name).first();
-      if (!cnt || !cnt.n) {
+      let local = (knownLocal != null) ? knownLocal : 0;
+      if (knownLocal == null) { try { const cnt = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); local = (cnt && cnt.n) || 0; } catch (_) {} }
+      if (local < total) {
         let done = false; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); done = !!(p && p.done); } } } catch (_) {}
-        if (done) { await _resetBackfill(env, name); return true; }
+        if (done || res.added.length) { await _resetBackfill(env, name); res.rearmed = true; res.action = res.added.length ? "add-columns+rearm" : "rearm"; }
       }
     }
-    return false;
-  } catch (_) { return false; }
+    return res;
+  } catch (e) { res.error = String((e && e.message) || e).slice(0, 200); res.action = "error"; await logSyncError(env, name, "heal", res.error); return res; }
 }
 // Sync a Street list resource into a D1 table so the Hub reads a fast, COMPLETE local copy.
 // Two phases, tracked per resource in KV:
@@ -1445,14 +1463,17 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
   const incr = opts.incr !== false;
   if (!env || !env.STREET_API_TOKEN || !env.gr_estates) return 0;
   const db = env.gr_estates;
+  try { // catch-all so any Cloudflare runtime error (subrequest limit, D1/KV failure) is recorded, not lost
   await migrateSchema(env);
-  try { await db.prepare(ddl).run(); } catch (e) {}
+  try { await db.prepare(ddl).run(); } catch (e) { await logSyncError(env, name, "ddl", String((e && e.message) || e).slice(0, 180)); }
   let bf = { done: false, page: 1 };
   try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:" + name + ":backfill"); if (v) { const p = JSON.parse(v); if (p) bf = p; } } } catch (_) {}
-  // Self-heal schema drift before reading/writing (see healTable). If the table was rebuilt, its backfill
-  // was reset, so re-read bf as a fresh full walk.
-  const healed = await healTable(env, db, name, ddl);
-  if (healed) bf = { done: false, page: 1 };
+  // Non-destructively reconcile the table to the current shape before reading/writing (see healTable). If it
+  // re-armed the backfill, treat this run as a fresh full walk.
+  const healRes = await healTable(env, db, name, ddl);
+  if (healRes.rearmed) bf = { done: false, page: 1 };
+  const errs = []; // every error captured this run, with stage + detail (+ row id where relevant)
+  if (healRes.error) errs.push({ stage: "heal", detail: healRes.error });
   const mode = !bf.done ? "backfill" : (incr ? "topup" : "recycle");
   const inc = {}, all = [], seen = {};
   let status = 0, err = null, pages = 0, totalPages = null, totalRecords = null, reachedEnd = false;
@@ -1472,19 +1493,42 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
     for (let pn = startPage; pn <= endPage; pn++) {
       const r = await streetGet(env, qbase + pn);
       status = r.status || status;
-      if (!r.ok) { err = (r.body && r.body.errors) ? JSON.stringify(r.body.errors).slice(0, 180) : ("HTTP " + (r.status || "?")); break; }
-      if (!r.body) { err = "no body"; break; }
+      if (!r.ok) { err = (r.body && r.body.errors) ? JSON.stringify(r.body.errors).slice(0, 180) : ("HTTP " + (r.status || "?")); errs.push({ stage: "fetch", detail: "HTTP " + (r.status || "?") + " on page " + pn + (r.body && r.body.errors ? " " + JSON.stringify(r.body.errors).slice(0, 140) : "") }); break; }
+      if (!r.body) { err = "no body"; errs.push({ stage: "fetch", detail: "empty body on page " + pn }); break; }
       pages++; absorb(r.body);
       const tp = totalPages || 1;
       if (pn >= tp || (r.body.data || []).length < 100) { reachedEnd = true; break; }
     }
-  } catch (e) { err = String((e && e.message) || e).slice(0, 180); }
+  } catch (e) { err = String((e && e.message) || e).slice(0, 180); errs.push({ stage: "fetch", detail: err }); }
   let mapped = 0, stored = 0, writeErr = null;
   if (all.length) {
-    const ups = all.map(function (d) { try { return mapFn(db, d, inc); } catch (e) { if (!writeErr) writeErr = "map: " + String((e && e.message) || e).slice(0, 150); return null; } }).filter(Boolean);
-    mapped = ups.length;
-    for (let i = 0; i < ups.length; i += 40) { const slice = ups.slice(i, i + 40); try { await db.batch(slice); stored += slice.length; } catch (e) { if (!writeErr) writeErr = "write: " + String((e && e.message) || e).slice(0, 150); } }
+    // Map each record to a bound statement, keeping the record alongside so we can name the offending row.
+    const pairs = [];
+    for (let i = 0; i < all.length; i++) {
+      const d = all[i];
+      try { pairs.push({ id: d && d.id, stmt: mapFn(db, d, inc) }); }
+      catch (e) { const m = "map: " + String((e && e.message) || e).slice(0, 150); if (!writeErr) writeErr = m; if (errs.length < 12) errs.push({ stage: "map", id: d && d.id, detail: m }); }
+    }
+    mapped = pairs.length;
+    // Fast path: batch in chunks. If a chunk throws, fall back to running each row alone so we capture the
+    // EXACT database error (e.g. "table x has no column named y") AND keep the rows that do succeed.
+    for (let i = 0; i < pairs.length; i += 40) {
+      const slice = pairs.slice(i, i + 40);
+      try { await db.batch(slice.map(function (p) { return p.stmt; })); stored += slice.length; }
+      catch (e) {
+        for (let j = 0; j < slice.length; j++) {
+          try { await slice[j].stmt.run(); stored++; }
+          catch (e2) { const m = String((e2 && e2.message) || e2).slice(0, 160); if (!writeErr) writeErr = "write: " + m; if (errs.length < 12) errs.push({ stage: "write", id: slice[j].id, detail: m }); }
+        }
+      }
+    }
   }
+  // Snapshot what the table actually looks like now, so the diagnostics can show schema drift directly.
+  let actualCols = [];
+  try { const sm = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").bind(ddlTable(ddl) || name).first(); if (sm && sm.sql) actualCols = ddlColumns(sm.sql); } catch (_) {}
+  const expectedCols = ddlColumns(ddl);
+  const missingCols = expectedCols.filter(function (c) { return actualCols.indexOf(c) < 0; });
+  if (errs.length) { for (let i = 0; i < Math.min(errs.length, 4); i++) await logSyncError(env, name, errs[i].stage, (errs[i].id ? (errs[i].id + ": ") : "") + errs[i].detail); }
   try { if (env.LISTINGS) {
     if (mode === "topup") {
       if (!err) await env.LISTINGS.put("sync:" + name + ":cursor", new Date(Date.now() - 120000).toISOString());
@@ -1499,9 +1543,17 @@ async function syncStreetResource(env, name, path, ddl, mapFn, opts) {
     await env.LISTINGS.put("sync:" + name + ":at", new Date().toISOString());
     await env.LISTINGS.put("sync:" + name + ":delta", String(stored));
     if (totalRecords != null) await env.LISTINGS.put("sync:" + name + ":total", String(totalRecords));
-    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({ status: status, fetched: all.length, mapped: mapped, stored: stored, pages: pages, mode: mode, total_pages: totalPages, backfill: (bf.done ? "complete" : ("page " + bf.page)), healed: healed, err: err || writeErr }));
-  } } catch (_) {}
+    await env.LISTINGS.put("sync:" + name + ":diag", JSON.stringify({
+      at: new Date().toISOString(), mode: mode, status: status,
+      fetched: all.length, mapped: mapped, stored: stored, pages: pages, total_pages: totalPages, street_total: totalRecords,
+      heal: { action: healRes.action, added: healRes.added, rearmed: healRes.rearmed },
+      cols_expected: expectedCols.length, cols_actual: actualCols.length, missing_cols: missingCols,
+      errors: errs.slice(0, 12), errcount: errs.length,
+      backfill: (bf.done ? "complete" : ("page " + bf.page)), err: err || writeErr
+    }));
+  } } catch (eKv) { await logSyncError(env, name, "kv", String((eKv && eKv.message) || eKv).slice(0, 180)); }
   return stored;
+  } catch (eFatal) { await logSyncError(env, name, "fatal", String((eFatal && eFatal.message) || eFatal).slice(0, 200)); return 0; }
 }
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
 function _branch(d, inc) { const id = _relId(d, "branch") || (d.attributes || {}).branch_uuid; const b = (id && inc[id]) ? (inc[id].attributes || {}) : null; return b ? (b.name || b.branch_name || b.display_name || null) : null; }
@@ -1613,18 +1665,34 @@ function extrasReg() {
   ];
 }
 async function syncOneExtra(env, name) { const e = extrasReg().find(function (x) { return x.name === name; }); if (!e) return 0; try { return await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) { return 0; } }
-// Sync the next `count` resources in rotation, advancing a KV cursor. Keeps each invocation light so we
-// never blow the Worker subrequest budget — over a few ticks everything backfills, then stays incremental.
+// Sync up to `count` Street resources per tick. Two improvements over a plain round-robin:
+//   1. Heal sweep first — non-destructively reconcile every table's shape (cheap, no Street calls), so a
+//      single tick or one "Sync now" corrects all datasets at once instead of waiting for the rotation.
+//   2. Coverage-aware order — sync the datasets that are furthest behind first (empty ones before
+//      partially-filled), so a dataset stuck at 0 races to 100% instead of waiting hours for its slot.
+//      Once everything is complete it falls back to a light round-robin top-up so changes still flow in.
 async function syncExtrasRotating(env, count) {
-  const reg = extrasReg(); const n = Math.max(1, count || 1);
-  // Up-front heal sweep: repair every drifted table in one pass (cheap schema-only ops, no Street calls), so a
-  // single tick or one "Sync now" corrects ALL datasets at once instead of waiting for the rotation to crawl
-  // round to each. Tables already in the right shape are skipped; rebuilt ones get their backfill reset and
-  // refill on their rotation turn. Runs before the fetch loop so it never competes for the subrequest budget.
-  if (env && env.gr_estates) { for (let i = 0; i < reg.length; i++) { try { await healTable(env, env.gr_estates, reg[i].name, reg[i].ddl); } catch (_) {} } }
-  let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
-  for (let i = 0; i < n; i++) { const e = reg[(idx + i) % reg.length]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
-  try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
+  const reg = extrasReg(); const db = env && env.gr_estates; const n = Math.max(1, count || 1);
+  if (!db) return;
+  const meta = [];
+  for (let i = 0; i < reg.length; i++) {
+    const e = reg[i];
+    const tbl = ddlTable(e.ddl) || e.name;
+    let total = null, local = 0;
+    try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); local = (c && c.n) || 0; } catch (_) {}
+    try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + e.name + ":total"); if (t != null) total = parseInt(t, 10); } } catch (_) {}
+    try { await healTable(env, db, e.name, e.ddl, local); } catch (_) {}
+    meta.push({ e: e, i: i, local: local, complete: (total != null && local >= total) });
+  }
+  const behind = meta.filter(function (m) { return !m.complete; });
+  behind.sort(function (a, b) { if ((a.local === 0) !== (b.local === 0)) return a.local === 0 ? -1 : 1; return a.i - b.i; });
+  let picks = behind.slice(0, n).map(function (m) { return m.e; });
+  if (!picks.length) { // everything complete — light round-robin top-up
+    let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
+    for (let k = 0; k < n; k++) picks.push(reg[(idx + k) % reg.length]);
+    try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
+  }
+  for (let k = 0; k < picks.length; k++) { const e = picks[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
 }
 // Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
 function extrasForDataset(name) { if (name === "applicants") return ["sales_applicants", "lettings_applicants"]; if (name === "offers") return ["sales_offers", "lettings_offers"]; return [name]; }
@@ -1643,11 +1711,11 @@ export default {
       })());
       return;
     }
-    // Every 15 minutes: enquiries (always, they're time-critical) + the next two Street resources
-    // in rotation. Light enough to never exhaust the budget; the whole set backfills within ~1 hour.
+    // Every 15 minutes: enquiries (always, they're time-critical) + the datasets furthest behind, prioritised
+    // so empty ones fill fast. Bounded per tick so the subrequest budget is safe.
     ctx.waitUntil((async () => {
       await syncEnquiries(env).catch(() => {});
-      await syncExtrasRotating(env, 3).catch(() => {});
+      await syncExtrasRotating(env, 5).catch(() => {});
     })());
   },
   async fetch(request, env, ctx) {
@@ -2051,6 +2119,33 @@ export default {
       return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
     }
 
+    // Deep diagnostics: for EVERY sync resource, the live count, Street total, expected vs actual columns (so
+    // schema drift is visible), and the full last-run diag (fetched/mapped/stored, heal action, exact errors).
+    // Plus a global feed of the most recent errors. Admin-gated. This is the "what's actually going wrong" view.
+    if (path === "/api/sync-diag" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const db = env.gr_estates;
+      const reg = [{ name: "enquiries", ddl: ENQ_DDL }, { name: "listings", ddl: "CREATE TABLE listings (id)" }].concat(extrasReg());
+      const out = [];
+      for (const e of reg) {
+        const tbl = ddlTable(e.ddl) || e.name;
+        let count = 0, at = null, total = null, diag = null, actual = [];
+        try { if (db) { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); count = (c && c.n) || 0; } } catch (eC) { diag = { err: "count: " + String((eC && eC.message) || eC).slice(0, 140) }; }
+        try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + e.name + ":at"); } catch (_) {}
+        try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + e.name + ":total"); if (t != null) total = parseInt(t, 10); } } catch (_) {}
+        try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + e.name + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
+        try { if (db) { const sm = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").bind(tbl).first(); if (sm && sm.sql) actual = ddlColumns(sm.sql); } } catch (_) {}
+        const expected = ddlColumns(e.ddl);
+        const missing = expected.filter(function (c) { return c !== "id" && actual.indexOf(c) < 0; });
+        out.push({ name: e.name, table: tbl, count: count, total: total, at: at, expected: expected.length, actual: actual.length, missing: missing, diag: diag });
+      }
+      let errlog = []; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:errlog"); if (v) errlog = JSON.parse(v) || []; } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, datasets: out, errlog: errlog, now: new Date().toISOString() }), 200, J);
+    }
+
     // Trigger an immediate sync of every Street dataset. Admin-gated. Runs in the background; the hub re-reads shortly after.
     if (path === "/api/sync-now" && request.method === "POST") {
       const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -2060,7 +2155,7 @@ export default {
       if (ctx && ctx.waitUntil) {
         ctx.waitUntil((async () => {
           await syncEnquiries(env).catch(function () {});
-          await syncExtrasRotating(env, 3).catch(function () {});
+          await syncExtrasRotating(env, 8).catch(function () {});
         })());
       }
       return respond(JSON.stringify({ ok: true, started: true }), 200, J);
