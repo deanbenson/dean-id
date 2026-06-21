@@ -1565,6 +1565,46 @@ export default {
       return respond(JSON.stringify({ ok: true, portfolio: portfolio, generated_at: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     }
 
+    // Ask Georgina, inside the Hub — a plain-language copilot over the live business data. Admin-gated.
+    if (path === "/api/hub-ask" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      let b = {}; try { b = await request.json(); } catch (_) {}
+      const q = String((b && b.q) || "").trim().slice(0, 400);
+      if (!q) return respond(JSON.stringify({ ok: true, answer: "Ask me anything about the business, like how many enquiries this week, which branch is busiest, or what needs your attention." }), 200, J);
+      if (!env.ANTHROPIC_API_KEY) return respond(JSON.stringify({ ok: true, answer: "The assistant isn't switched on yet." }), 200, J);
+      const data = {};
+      try {
+        if (env.LISTINGS) {
+          const listed = await env.LISTINGS.list({ prefix: "lead:", limit: 1000 });
+          let total = 0, today = 0, week = 0, street = 0; const byKind = {};
+          const t0 = new Date(); t0.setHours(0, 0, 0, 0); const today0 = t0.getTime(); const week0 = Date.now() - 6048e5;
+          for (const k of (listed.keys || [])) {
+            if (k.name === "lead:err") continue;
+            try { const v = JSON.parse(await env.LISTINGS.get(k.name)); total++; if ((v.at || 0) >= today0) today++; if ((v.at || 0) >= week0) week++; if (v.streetOk) street++; byKind[v.kind || "other"] = (byKind[v.kind || "other"] || 0) + 1; } catch (_) {}
+          }
+          data.leads = { total: total, today: today, this_week: week, percent_into_street: total ? Math.round(street / total * 100) : 0, by_type: byKind };
+          try { const wl = await env.LISTINGS.list({ prefix: "waitlist:", limit: 1000 }); data.waitlist_signups = (wl.keys || []).length; } catch (_) {}
+          try { const al = await env.LISTINGS.list({ prefix: "alert:", limit: 1000 }); data.be_first_alerts = (al.keys || []).length; } catch (_) {}
+          try { const rv = await env.LISTINGS.get("google:reviewsv5"); if (rv) { const r = JSON.parse(rv); data.reviews = { average: r.average, total: r.total, by_branch: (r.branches || []).map(function (x) { return { name: x.name, rating: x.rating, count: x.count }; }) }; } } catch (_) {}
+        }
+        if (env.gr_estates) {
+          const t = await env.gr_estates.prepare("SELECT COUNT(*) total, SUM(CASE WHEN kind='sale' THEN 1 ELSE 0 END) sales, SUM(CASE WHEN kind='let' THEN 1 ELSE 0 END) lets, AVG(CASE WHEN kind='sale' THEN price END) avgSale, AVG(CASE WHEN kind='let' THEN price END) avgLet FROM listings").first();
+          if (t) data.portfolio = { total: t.total, for_sale: t.sales, to_let: t.lets, avg_asking_price: t.avgSale ? Math.round(t.avgSale) : null, avg_rent_pcm: t.avgLet ? Math.round(t.avgLet) : null };
+          const tw = await env.gr_estates.prepare("SELECT town, COUNT(*) n FROM listings WHERE town IS NOT NULL AND town<>'' GROUP BY town ORDER BY n DESC LIMIT 8").all();
+          data.listings_by_town = ((tw && tw.results) || []).map(function (r) { return { town: r.town, count: r.n }; });
+        }
+      } catch (_) {}
+      const sys = "You are the assistant inside G.R. Estates' private staff Hub. G.R. Estates is an award-winning independent estate and letting agency in Teesside (offices in Stockton, Normanby and Redcar). Answer the staff member's question using ONLY the live business data provided as JSON below. Be brief, warm and specific, and use the real numbers. If the data does not cover the question, say so plainly and suggest where in the Hub they'd find it. Plain text only, no markdown headings, at most a short paragraph or a few short lines. Never use long dashes.";
+      const userMsg = "LIVE HUB DATA (JSON):\n" + JSON.stringify(data) + "\n\nStaff question: " + q;
+      let answer = "";
+      try { const r1 = await claudeCall(env, sys, [{ role: "user", content: userMsg }], null, 350, ASK_MODEL); answer = deDash(claudeText(r1)); } catch (_) { answer = ""; }
+      if (!answer) answer = "I couldn't get an answer just now, give me a moment and try again.";
+      return respond(JSON.stringify({ ok: true, answer: answer }), 200, J);
+    }
+
     // Real Instagram + Facebook posts (cached in KV, refreshed hourly from Meta's Graph API).
     if (path === "/api/social") {
       let data = null;

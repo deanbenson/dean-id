@@ -4,168 +4,315 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content="noindex, nofollow"/>
-<title>Hub · G.R. Estates (command centre)</title>
+<title>Hub · G.R. Estates</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
- :root{--ink:#2c2e33;--orange:#e2672a;--orange-deep:#c2541d;--cream:#edeae6;--paper:#fff;--line:#e1dace;--muted:#76726b;--panel:#e7e1d8;--sans:'Inter',-apple-system,sans-serif;--serif:'Quicksand',sans-serif}
+ :root{--ink:#2c2e33;--orange:#e2672a;--orange-deep:#c2541d;--cream:#edeae6;--paper:#fff;--line:#e1dace;--muted:#76726b;--panel:#e7e1d8;--sans:'Inter',-apple-system,sans-serif;--serif:'Quicksand',sans-serif;--g:#1d9e75;--a:#e0992a;--r:#d2492b}
  *{box-sizing:border-box;margin:0;padding:0}
  body{font-family:var(--sans);color:var(--ink);background:var(--cream);line-height:1.5;-webkit-font-smoothing:antialiased}
- .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
- header{background:var(--panel);border-bottom:1px solid #ddd5c8}
- header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
- .ttl{font-family:var(--serif);font-weight:700;font-size:1.15rem}.ttl .k{color:var(--orange)}
- .ttl small{font-weight:600;color:var(--muted);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
- .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer;text-decoration:none;display:inline-block}
- .btn:hover{border-color:var(--orange)}
- .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
- .gate{max-width:380px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
- .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}
- .gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+ a{color:inherit;text-decoration:none}
+ .gate{max-width:380px;margin:90px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+ .gate h1{font-family:var(--serif);font-size:1.3rem;margin-bottom:6px}.gate p{color:var(--muted);font-size:.9rem;margin-bottom:16px}
  .gate input{width:100%;border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;margin-bottom:12px}
- .intro{margin:26px 0 6px}
- .intro h1{font-family:var(--serif);font-weight:700;font-size:1.7rem;letter-spacing:-.01em}
- .intro p{color:var(--muted);margin-top:4px;max-width:60ch}
- .secttl{font-family:var(--serif);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:30px 0 12px;display:flex;align-items:center;gap:10px}
- .secttl .ln{flex:1;height:1px;background:var(--line)}
- .sysgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:13px}
- .sys{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 6px 18px rgba(44,46,51,.05);position:relative}
- .sys h3{font-family:var(--serif);font-size:1.02rem;margin-bottom:3px;padding-right:74px}
- .sys .what{color:#54585f;font-size:.85rem;line-height:1.45}
- .sys .where{color:var(--muted);font-size:.74rem;margin-top:9px}
- .sys .live{display:inline-block;margin-top:9px;font-size:.78rem;font-weight:700;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.15rem .5rem;border-radius:6px}
- .pill{position:absolute;top:15px;right:16px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.18rem .5rem;border-radius:20px}
- .p-live{background:rgba(29,158,117,.14);color:#157a59}
- .p-conn{background:rgba(59,130,196,.14);color:#2f6aa0}
- .p-pend{background:rgba(226,103,42,.14);color:var(--orange-deep)}
- .p-plan{background:rgba(118,114,107,.14);color:#5f5b53}
+ .btn{font:inherit;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:.5rem .9rem;cursor:pointer}
+ .btn-p{background:var(--orange);color:#fff;border-color:var(--orange)}.btn-p:hover{background:var(--orange-deep)}
+ .shell{display:grid;grid-template-columns:214px 1fr;min-height:100vh}
+ .side{background:var(--panel);border-right:1px solid #ddd5c8;padding:14px 11px;position:sticky;top:0;height:100vh;overflow:auto}
+ .brand{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-weight:700;font-size:1.08rem;padding:4px 8px 10px}.brand .k{color:var(--orange)}
+ .gl{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:13px 8px 4px}
+ .nv{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:.86rem;color:#52555c;cursor:pointer}
+ .nv:hover{background:rgba(255,255,255,.5)}
+ .nv.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 4px rgba(44,46,51,.07)}
+ .nv .ic{width:17px;text-align:center;flex:none;opacity:.8}
+ .dot{width:7px;height:7px;border-radius:50%;margin-left:auto;flex:none}
+ .main{min-width:0;display:flex;flex-direction:column}
+ .askwrap{position:sticky;top:0;background:rgba(237,234,230,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:11px 22px;z-index:5;display:flex;align-items:center;gap:10px}
+ .menu-b{display:none}
+ .ask{flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:.5rem .8rem;max-width:640px}
+ .ask input{flex:1;border:0;outline:0;font:inherit;background:none;color:var(--ink)}
+ .ask .sp{color:var(--orange)}
+ .ask button{border:0;background:var(--orange);color:#fff;font:inherit;font-weight:600;font-size:.82rem;border-radius:8px;padding:.35rem .8rem;cursor:pointer}
+ .view{padding:20px 22px 64px;max-width:1080px}
+ h2.vt{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:-.01em}
+ .vsub{color:var(--muted);font-size:.9rem;margin-top:2px;margin-bottom:18px}
+ .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:13px;margin-bottom:8px}
+ .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .tile.acc{background:linear-gradient(155deg,#fff,#fbf1e9)}
+ .tile .n{font-family:var(--serif);font-weight:700;font-size:1.65rem;line-height:1.05}
+ .tile .n .st{color:var(--g);font-size:.9rem;font-weight:600}
+ .tile .l{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;margin-top:5px}
+ .secttl{font-family:var(--serif);font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:26px 0 11px}
+ .cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
+ .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .card h3{font-family:var(--serif);font-size:1.02rem;margin-bottom:8px}
+ .row{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:.86rem}.row:first-of-type{border-top:0}
+ .row .ic{width:16px;flex:none;opacity:.7;margin-top:1px}.row .tm{margin-left:auto;color:var(--muted);font-size:.78rem;white-space:nowrap}
+ .kind{font-size:.7rem;font-weight:700;padding:.1rem .45rem;border-radius:6px;background:rgba(226,103,42,.12);color:var(--orange-deep);text-transform:capitalize}
+ .sysg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+ .sys{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:0 6px 18px rgba(44,46,51,.05)}
+ .sys .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .sys .nm{font-weight:600;font-size:.92rem}
+ .rag{font-size:.68rem;font-weight:700;padding:.12rem .45rem;border-radius:20px}
+ .rag.g{background:rgba(29,158,117,.14);color:#157a59}.rag.a{background:rgba(224,153,42,.16);color:#9a6612}.rag.r{background:rgba(210,73,43,.14);color:var(--orange-deep)}.rag.n{background:rgba(118,114,107,.14);color:#5f5b53}
+ .sys .dta{font-size:.8rem;color:#54585f;margin-top:7px}.sys .fr{font-size:.72rem;color:var(--muted);margin-top:3px}
  .road{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
- .rcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
- .rcol h4{font-family:var(--serif);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;font-weight:700}
- .rdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
- .ritem{font-size:.85rem;padding:7px 0;border-top:1px solid var(--line);color:#43464d}
- .ritem:first-of-type{border-top:0}
- .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}
- .tool{display:block;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;text-decoration:none;color:inherit;transition:.15s;box-shadow:0 6px 18px rgba(44,46,51,.05)}
- .tool:hover{border-color:var(--orange);transform:translateY(-2px)}
- .tool b{font-family:var(--serif);font-size:1rem;display:block;margin-bottom:2px}
- .tool span{color:var(--muted);font-size:.84rem}
- .tool .ar{color:var(--orange);font-weight:700;float:right}
- .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:30px 0 44px}
- @media(max-width:760px){.road{grid-template-columns:repeat(2,1fr)}}
+ .rcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 15px}
+ .rcol h4{font-family:var(--serif);font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;font-weight:700}
+ .rdot{width:8px;height:8px;border-radius:50%;flex:none}.ritem{font-size:.84rem;padding:7px 0;border-top:1px solid var(--line);color:#43464d}.ritem:first-of-type{border-top:0}
+ .brow{display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:9px;font-size:.84rem;margin:8px 0}
+ .bar{height:9px;background:#efe7dd;border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--orange-deep))}
+ .branch{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}.branch:first-of-type{border-top:0}
+ .branch .sc{font-family:var(--serif);font-weight:700}.branch .sc b{color:var(--orange)}
+ .chips{display:flex;gap:7px;flex-wrap:wrap;margin:4px 0 2px}
+ .chip{font-size:.78rem;color:#54585f;background:#faf7f2;border:1px solid var(--line);border-radius:20px;padding:.3rem .7rem;cursor:pointer}.chip:hover{border-color:var(--orange)}
+ .qa{margin:14px 0}.qq{font-weight:600;margin-bottom:5px}.aa{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;white-space:pre-wrap;font-size:.92rem;line-height:1.6}
+ .soon{background:#fff;border:1px dashed var(--line);border-radius:16px;padding:48px 30px;text-align:center;color:var(--muted)}
+ .soon .bg{font-family:var(--serif);font-size:1.3rem;color:var(--ink);margin:6px 0}
+ .soon .tag{display:inline-block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--orange-deep);background:rgba(226,103,42,.1);padding:.2rem .6rem;border-radius:20px;margin-top:10px}
+ .ovl{display:none}
+ @media(max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .side{position:fixed;left:0;top:0;bottom:0;width:240px;transform:translateX(-100%);transition:.22s;z-index:40}
+  .side.open{transform:none}
+  .menu-b{display:inline-flex}
+  .cols{grid-template-columns:1fr}.road{grid-template-columns:1fr 1fr}
+  .ovl.show{display:block;position:fixed;inset:0;background:rgba(20,20,20,.35);z-index:35}
+ }
  @media(max-width:480px){.road{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<header><div class="wrap"><span class="ttl">G.<span class="k">R.</span> Estates · Hub<small>command centre</small></span><span><a class="btn" href="leads.html" id="enqLink" style="display:none">Enquiries →</a> <button class="btn" onclick="logout()">Lock</button></span></div></header>
-<div class="wrap" id="app"></div>
+<div id="root"></div>
 <script>
 (function(){
-  var app=document.getElementById('app');
+  var root=document.getElementById('root');
+  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false;
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  window.logout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} var el=document.getElementById('enqLink'); if(el) el.style.display='none'; render(); };
+  function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
+  function ago(ts){ if(!ts) return ''; var s=Math.floor((Date.now()-ts)/1000); if(s<60)return 'just now'; var m=Math.floor(s/60); if(m<60)return m+' min ago'; var h=Math.floor(m/60); if(h<24)return h+' hr ago'; var d=Math.floor(h/24); return d+' day'+(d>1?'s':'')+' ago'; }
+  function fmt(ts){ if(!ts)return ''; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+
+  window.grLogout=function(){ try{ localStorage.removeItem('grAdminKey'); }catch(e){} boot(); };
+  window.grSave=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} boot(); };
   function gate(err){
-    var el=document.getElementById('enqLink'); if(el) el.style.display='none';
-    app.innerHTML='<div class="gate"><h1>G.R. Estates Hub</h1><p>Your command centre. Enter the admin key to continue.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="save()">Open hub</button></div>';
-    var i=document.getElementById('k'); if(i){ i.focus(); i.addEventListener('keydown',function(e){ if(e.key==="Enter") save(); }); }
+    root.innerHTML='<div class="gate"><h1>G.R. Estates Hub</h1><p>Your command centre. Enter the admin key to continue.</p><input id="k" type="password" placeholder="Admin key" autocomplete="off">'+(err?'<p style="color:#c2541d">'+esc(err)+'</p>':'')+'<button class="btn btn-p" style="width:100%" onclick="grSave()">Open hub</button></div>';
+    var i=document.getElementById('k'); if(i){ i.focus(); i.addEventListener('keydown',function(e){ if(e.key==="Enter") grSave(); }); }
   }
-  window.save=function(){ var el=document.getElementById('k'); var v=el?el.value:''; try{ localStorage.setItem('grAdminKey',(v||'').trim()); }catch(e){} render(); };
 
-  var SYSTEMS=[
-    {n:"Website",w:"Your public site — listings, valuation, reviews, alerts",where:"Cloudflare (demo on dean.id)",s:"live",live:"site"},
-    {n:"Street CRM",w:"The single source of truth — listings, contacts, enquiries, team",where:"Street (cloud)",s:"live",live:"portfolio"},
-    {n:"Google reviews",w:"Live ratings across your branches",where:"Google Business Profile",s:"live",live:"reviews"},
-    {n:"Website leads",w:"Every enquiry captured and pushed into Street",where:"Worker → Street",s:"live",live:"leads"},
-    {n:"Be-first alerts",w:"Buyer alert signups, sent into Street as applicants",where:"Worker → Street",s:"live",live:"alerts"},
-    {n:"Ask Georgina (AI)",w:"24/7 assistant answering buyer & seller questions",where:"Claude",s:"live"},
-    {n:"Portals",w:"Rightmove, Zoopla & OnTheMarket listing feeds",where:"via Street",s:"conn"},
-    {n:"Payments & compliance",w:"Client money, statements, AML, certificates",where:"Street",s:"conn"},
-    {n:"Maintenance & inventory",w:"Works orders and tenancy operations",where:"Street",s:"conn"},
-    {n:"Phone system",w:"Calls today — the foundation for the AI front desk",where:"Telephony",s:"conn"},
-    {n:"Social (Instagram/Facebook)",w:"Live feed on the site",where:"Meta",s:"pend",note:"needs Facebook reconnected"},
-    {n:"AI front desk",w:"24/7 calls answered, booked and routed",where:"Planned",s:"plan"},
-    {n:"Per-user logins",w:"Staff roles and secure sign-in",where:"Planned",s:"plan"}
+  var NAV=[
+    {g:'Overview',items:[
+      {id:'home',l:'Home',ic:'⌂',rag:'g'},
+      {id:'connections',l:'Connections',ic:'⚯',rag:'a'},
+      {id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}
+    ]},
+    {g:'Pipeline',items:[
+      {id:'enquiries',l:'Enquiries',ic:'✉',href:'leads.html',rag:'g'},
+      {id:'valuations',l:'Valuations',ic:'£',rag:'g'},
+      {id:'viewings',l:'Viewings',ic:'◷',rag:'g'},
+      {id:'progression',l:'Progression',ic:'↗',rag:'g'}
+    ]},
+    {g:'People',items:[
+      {id:'contacts',l:'Contacts',ic:'☰',rag:'g'},
+      {id:'calendar',l:'Calendar',ic:'▦',rag:'g'}
+    ]},
+    {g:'Property',items:[
+      {id:'listings',l:'Listings',ic:'⌂',rag:'g'},
+      {id:'marketing',l:'Marketing',ic:'◈',rag:'a'}
+    ]},
+    {g:'Lettings',items:[
+      {id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},
+      {id:'maintenance',l:'Maintenance',ic:'✸',rag:'a'}
+    ]},
+    {g:'Services',items:[
+      {id:'removals',l:'Removals',ic:'⊟',rag:'g'},
+      {id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}
+    ]},
+    {g:'Money',items:[
+      {id:'accounts',l:'Accounts',ic:'$',rag:'g'},
+      {id:'compliance',l:'Compliance',ic:'✓',rag:'a'}
+    ]},
+    {g:'Insight',items:[
+      {id:'analytics',l:'Analytics',ic:'▤',rag:'g'},
+      {id:'reviews',l:'Reviews',ic:'★',rag:'g'}
+    ]},
+    {g:'Team',items:[
+      {id:'staff',l:'Staff',ic:'☺',rag:'g'},
+      {id:'feed',l:'Company feed',ic:'❏',rag:'g'},
+      {id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}
+    ]},
+    {g:'',items:[ {id:'settings',l:'Settings',ic:'⚙',rag:'g'} ]}
   ];
-  var PLAN=[
-    {t:"New website + live listings",s:"live"},
-    {t:"Leads captured into Street",s:"live"},
-    {t:"Live Google reviews",s:"live"},
-    {t:"Ask Georgina (AI assistant)",s:"live"},
-    {t:"Saved + recently viewed homes",s:"live"},
-    {t:"Instant valuation funnel",s:"live"},
-    {t:"Be-first property alerts → Street",s:"live"},
-    {t:"This Hub command centre",s:"now"},
-    {t:"Branch routing for leads",s:"next"},
-    {t:"Company feed — live wins",s:"next"},
-    {t:"Owner BI / reporting in the Hub",s:"next"},
-    {t:"AI front desk — phone + web 24/7",s:"later"},
-    {t:"Per-user logins + staff roles",s:"later"},
-    {t:"Connect Instagram / Facebook",s:"later"},
-    {t:"Make it G.R.-owned + go live",s:"later"}
-  ];
-  var TOOLS=[
-    {t:"Enquiries inbox",d:"Every website lead, with stats",href:"leads.html"},
-    {t:"The live website",d:"Your public site",href:"/demos/gr-estates/"},
-    {t:"Valuation funnel",d:"Instant guide + booking",href:"valuation.html"},
-    {t:"My G.R. Estates",d:"Saved + recently viewed",href:"saved-homes.html"}
-  ];
-
-  function liveVal(sys,D){
-    if(sys.live==='site') return 'Live now';
-    if(sys.live==='portfolio') return (D.portfolio&&D.portfolio.total!=null)? (D.portfolio.total+' on the market') : '';
-    if(sys.live==='reviews') return (D.reviews&&D.reviews.average)? (D.reviews.average+'★ · '+(D.reviews.total||0)+' reviews') : '';
-    if(sys.live==='leads') return (D.leadsCount!=null)? (D.leadsCount+' captured') : '';
-    if(sys.live==='alerts') return (D.stats&&D.stats.alerts!=null)? (D.stats.alerts+' signed up') : '';
-    return '';
-  }
-  function pill(s){ var m={live:['p-live','Live'],conn:['p-conn','Connected'],pend:['p-pend','Pending'],plan:['p-plan','Planned']}; var x=m[s]||m.plan; return '<span class="pill '+x[0]+'">'+x[1]+'</span>'; }
-  function sysCard(sys,D){
-    var lv=liveVal(sys,D);
-    return '<div class="sys">'+pill(sys.s)+'<h3>'+esc(sys.n)+'</h3><div class="what">'+esc(sys.w)+'</div>'
-      +(lv?'<span class="live">'+esc(lv)+'</span>':'')
-      +'<div class="where">'+esc(sys.where)+(sys.note?(' · '+esc(sys.note)):'')+'</div></div>';
-  }
-  function roadmap(){
-    var groups=[['live','Live','#1d9e75'],['now','Building now','#e2672a'],['next','Next up','#3b82c4'],['later','Later','#9a958c']];
-    return '<div class="road">'+groups.map(function(g){
-      var items=PLAN.filter(function(r){ return r.s===g[0]; });
-      var li=items.map(function(r){ return '<div class="ritem">'+esc(r.t)+'</div>'; }).join('')||'<div class="ritem" style="color:#9a958c">—</div>';
-      return '<div class="rcol"><h4><span class="rdot" style="background:'+g[2]+'"></span>'+g[1]+'</h4>'+li+'</div>';
-    }).join('')+'</div>';
-  }
-  function tools(){
-    return '<div class="tools">'+TOOLS.map(function(t){ return '<a class="tool" href="'+t.href+'"><span class="ar">→</span><b>'+esc(t.t)+'</b><span>'+esc(t.d)+'</span></a>'; }).join('')+'</div>';
-  }
-  function paint(D){
-    var live=0; for(var i=0;i<SYSTEMS.length;i++){ if(SYSTEMS[i].s==='live') live++; }
-    app.innerHTML='<div class="intro"><h1>Good to see you 👋</h1><p>Your whole operation on one screen: every connected system and its status, and the master plan for what we\'re building. '+live+' systems live and feeding the business.</p></div>'
-      +'<div class="secttl">Connected systems<span class="ln"></span></div><div class="sysgrid">'+SYSTEMS.map(function(s){ return sysCard(s,D); }).join('')+'</div>'
-      +'<div class="secttl">The master plan<span class="ln"></span></div>'+roadmap()
-      +'<div class="secttl">Jump into the tools<span class="ln"></span></div>'+tools()
-      +'<div class="foot">Live from your site, Street and Google. This is the start — more systems and dashboards plug in here over time.</div>';
-  }
-  window.render=function(){
-    if(!key()){ gate(); return; }
-    var el=document.getElementById('enqLink'); if(el) el.style.display='';
-    app.innerHTML='<div class="intro"><h1>Loading…</h1></div>';
-    var hKey={'x-admin-key':key()};
-    Promise.all([
-      fetch('/api/leads',{headers:hKey}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
-      fetch('/api/hub',{headers:hKey}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
-      fetch('/api/reviews').then(function(r){ return r.json(); }).catch(function(){ return null; })
-    ]).then(function(res){
-      var d=res[0]||{};
-      var D={ leadsCount:(d&&d.count!=null)?d.count:null, stats:(d&&d.stats)||{}, portfolio:(res[1]&&res[1].portfolio)||null, reviews:res[2]||null };
-      paint(D);
-    }).catch(function(e){
-      if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn’t work — try again.'); }
-      else { app.innerHTML='<div class="intro"><h1>Couldn’t load the hub</h1><p>Please try again in a moment.</p></div>'; }
-    });
+  var LIVE={home:1,connections:1,ask:1,listings:1,reviews:1,roadmap:1};
+  var SOON={
+    valuations:'Booked valuations, the diary and outcomes, from Street.',
+    viewings:'Every viewing, with feedback collected automatically.',
+    progression:'Sales from offer to completion, with chain status.',
+    contacts:'Buyers, sellers, landlords and tenants in one place.',
+    calendar:'Appointments, viewings, valuations and key dates.',
+    marketing:'Rightmove, OnTheMarket and social performance, plus what needs a post.',
+    tenancies:'Live tenancies, renewals and rent.',
+    maintenance:'Works orders and contractor jobs.',
+    removals:'G.R. Removals jobs, bookings and its 5.0-star reviews.',
+    mortgages:'Mortgage referrals and outcomes.',
+    accounts:'Client money, landlord statements and invoices.',
+    compliance:'Gas, EICR and EPC tracking, plus AML checks.',
+    analytics:'Trends, comparisons and snapshot views you can pin.',
+    staff:'The team, roles and performance.',
+    feed:'Live company wins, everyone sees their own feed.',
+    settings:'People and access, plus integrations.'
   };
-  render();
+  var PLAN=[
+    {t:'New website + live listings',s:'live'},{t:'Leads into Street',s:'live'},{t:'Live Google reviews',s:'live'},
+    {t:'Ask Georgina (AI)',s:'live'},{t:'Saved + recently viewed',s:'live'},{t:'Instant valuation funnel',s:'live'},
+    {t:'Be-first property alerts',s:'live'},{t:'The Hub command centre',s:'live'},
+    {t:'Ask Georgina inside the Hub',s:'now'},{t:'Connections / healthcheck',s:'now'},
+    {t:'Branch routing for leads',s:'next'},{t:'Role dashboards',s:'next'},{t:'Company feed',s:'next'},
+    {t:'AI front desk (phone)',s:'later'},{t:'Per-user logins + roles',s:'later'},{t:'Make it G.R.-owned + go live',s:'later'}
+  ];
+
+  function ragColor(c){ return c==='g'?'var(--g)':c==='a'?'var(--a)':c==='r'?'var(--r)':'var(--muted)'; }
+  function computeRag(){
+    var e=null; for(var i=0;i<NAV.length;i++){ for(var j=0;j<NAV[i].items.length;j++){ if(NAV[i].items[j].id==='enquiries') e=NAV[i].items[j]; if(NAV[i].items[j].id==='connections'){ NAV[i].items[j].rag = (D.socialOk? 'g':'a'); } } }
+    if(e){ var pct=(D.leads&&D.leads.length)? Math.round(D.leads.filter(function(L){return L.streetOk;}).length/D.leads.length*100):100; e.rag = pct>=100?'g':'a'; }
+  }
+
+  function go(id){ var it=findItem(id); if(it&&it.href){ location.href=it.href; return; } ROUTE=id; NAVOPEN=false; renderShell(); }
+  window.grGo=go;
+  function findItem(id){ for(var i=0;i<NAV.length;i++)for(var j=0;j<NAV[i].items.length;j++) if(NAV[i].items[j].id===id) return NAV[i].items[j]; return null; }
+  window.grToggleNav=function(){ NAVOPEN=!NAVOPEN; var s=document.getElementById('side'); var o=document.getElementById('ovl'); if(s)s.classList.toggle('open',NAVOPEN); if(o)o.classList.toggle('show',NAVOPEN); };
+
+  function navHTML(){
+    var h='<div class="brand"><span>G.<span class="k">R.</span> Hub</span></div>';
+    NAV.forEach(function(grp){
+      if(grp.g) h+='<div class="gl">'+grp.g+'</div>';
+      grp.items.forEach(function(it){
+        h+='<div class="nv'+(it.id===ROUTE?' on':'')+'" onclick="grGo(\''+it.id+'\')"><span class="ic">'+it.ic+'</span>'+esc(it.l)+'<span class="dot" style="background:'+ragColor(it.rag)+'"></span></div>';
+      });
+    });
+    return h;
+  }
+
+  function tile(n,l,acc,sub){ return '<div class="tile'+(acc?' acc':'')+'"><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
+
+  function viewHome(){
+    var leads=D.leads||[]; var today0=new Date(); today0.setHours(0,0,0,0); today0=today0.getTime(); var week0=Date.now()-6048e5;
+    var nT=0,nW=0,nS=0; leads.forEach(function(L){ if((L.at||0)>=today0)nT++; if((L.at||0)>=week0)nW++; if(L.streetOk)nS++; });
+    var pct=leads.length?Math.round(nS/leads.length*100):0;
+    var pf=D.portfolio, rv=D.reviews, st=D.stats||{};
+    var tiles=tile(leads.length,'Enquiries',true)+tile(nW,'This week')+tile(nT,'Today')+tile(pct+'%','Into Street')
+      +tile(pf?pf.total:'—','On the market')+tile(rv&&rv.average?rv.average.toFixed(1)+'★':'—','Reviews')+tile(st.alerts!=null?st.alerts:'—','Be-first alerts');
+    var acts=leads.slice(0,6).map(function(L){ return '<div class="row"><span class="ic">✉</span><span><span class="kind">'+esc(L.kind||'enquiry')+'</span> '+esc(L.name||'New enquiry')+'</span><span class="tm">'+ago(L.at)+'</span></div>'; }).join('')||'<div class="row" style="color:var(--muted)">No enquiries yet, they\'ll appear here live.</div>';
+    var backup=leads.filter(function(L){return !L.streetOk;}).length;
+    var needs='';
+    if(backup) needs+='<div class="row"><span class="ic" style="color:var(--a)">●</span>'+backup+' lead'+(backup>1?'s':'')+' to double-check (backup only)</div>';
+    if(st.alerts) needs+='<div class="row"><span class="ic" style="color:var(--orange)">●</span>'+st.alerts+' be-first buyer'+(st.alerts>1?'s':'')+' to match</div>';
+    if(!D.socialOk) needs+='<div class="row"><span class="ic" style="color:var(--r)">●</span>Social feed is offline, reconnect Facebook</div>';
+    if(!needs) needs='<div class="row" style="color:var(--g)">All clear. Nothing needs you right now.</div>';
+    return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">Your whole front-of-house, live. '+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+' · all branches</div>'
+      +'<div class="tiles">'+tiles+'</div>'
+      +'<div class="secttl">Today at a glance</div><div class="cols"><div class="card"><h3>Live activity</h3>'+acts+'</div><div class="card"><h3>Needs you</h3>'+needs+'</div></div>';
+  }
+
+  function viewConnections(){
+    var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[];
+    var lastLead=leads.length?ago(leads[0].at):'none yet';
+    var sys=[
+      {nm:'Street CRM',rag:'g',st:'Healthy',dta:(pf?pf.total:'—')+' listings · 13 staff · 3 offices',fr:'live, source of truth'},
+      {nm:'Google reviews',rag:'g',st:'Healthy',dta:(rv?rv.total:'—')+' reviews · '+(rv&&rv.average?rv.average.toFixed(1):'—')+' average',fr:rv&&rv.generated_at?('updated '+ago(new Date(rv.generated_at).getTime())):'live'},
+      {nm:'Website + leads',rag:'g',st:'Live',dta:leads.length+' leads captured, flowing to Street',fr:'last lead '+lastLead},
+      {nm:'Be-first alerts',rag:'g',st:'Live',dta:(st.alerts!=null?st.alerts:0)+' buyers signed up',fr:'into Street as applicants'},
+      {nm:'Ask Georgina (AI)',rag:'g',st:'Online',dta:'on the site and in this hub',fr:'responding now'},
+      {nm:'My G.R. Estates',rag:'g',st:'Live',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'saved + alerts'},
+      {nm:'Social (Meta)',rag:'r',st:'Offline',dta:'Instagram / Facebook feed not showing',fr:'needs Facebook reconnect'},
+      {nm:'Phone system',rag:'n',st:'Connected',dta:'calls today, AI front desk to come',fr:'ready to wire'}
+    ];
+    var cards=sys.map(function(s){ return '<div class="sys"><div class="top"><span class="nm">'+esc(s.nm)+'</span><span class="rag '+s.rag+'">'+esc(s.st)+'</span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+'</div></div>'; }).join('');
+    return '<h2 class="vt">Connections</h2><div class="vsub">Everything wired in, whether it\'s healthy, and the data it holds.</div><div class="sysg">'+cards+'</div>';
+  }
+
+  function viewListings(){
+    var p=D.portfolio;
+    if(!p) return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div><div class="card">Loading…</div>';
+    var max=0;(p.byTown||[]).forEach(function(t){if(t.n>max)max=t.n;});
+    var towns=(p.byTown||[]).slice(0,6).map(function(t){ return '<div class="brow"><span>'+esc(t.town)+'</span><span class="bar"><i style="width:'+(max?Math.round(t.n/max*100):0)+'%"></i></span><span style="text-align:right;font-weight:600">'+t.n+'</span></div>'; }).join('');
+    var types=(p.byType||[]).slice(0,8).map(function(t){ return '<span class="chip">'+esc(t.type)+' · '+t.n+'</span>'; }).join('');
+    return '<h2 class="vt">Listings</h2><div class="vsub">Live from your property database.</div>'
+      +'<div class="tiles">'+tile(p.total||0,'On the market',true)+tile(p.sale||0,'For sale')+tile(p.let||0,'To let')+tile(money(p.avgSale),'Avg asking')+tile(p.avgLetPcm!=null?money(p.avgLetPcm):'—','Avg rent pcm')+'</div>'
+      +'<div class="secttl">Where</div><div class="card">'+(towns||'No data')+'</div>'
+      +(types?'<div class="secttl">By type</div><div class="chips">'+types+'</div>':'');
+  }
+
+  function viewReviews(){
+    var r=D.reviews;
+    if(!r) return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google.</div><div class="card">Loading…</div>';
+    var rows=(r.branches||[]).map(function(b){ return '<div class="branch"><span>'+esc(b.name)+'</span><span class="sc"><b>'+(b.rating||'—')+'★</b> · '+(b.count||0)+'</span></div>'; }).join('');
+    if(r.removals) rows+='<div class="branch"><span>'+esc(r.removals.name||'G.R. Removals')+' <span style="color:var(--muted);font-size:.8rem">(sister co.)</span></span><span class="sc"><b>'+(r.removals.rating||'—')+'★</b> · '+(r.removals.count||0)+'</span></div>';
+    return '<h2 class="vt">Reviews</h2><div class="vsub">Live from Google · '+(r.average||'—')+'★ across '+(r.total||0)+' estate reviews.</div><div class="card"><h3>By branch</h3>'+rows+'</div>';
+  }
+
+  function viewRoadmap(){
+    var groups=[['live','Live','#1d9e75'],['now','Building now','#e2672a'],['next','Next up','#3b82c4'],['later','Later','#9a958c']];
+    var road='<div class="road">'+groups.map(function(g){ var items=PLAN.filter(function(r){return r.s===g[0];}); var li=items.map(function(r){return '<div class="ritem">'+esc(r.t)+'</div>';}).join('')||'<div class="ritem" style="color:#9a958c">—</div>'; return '<div class="rcol"><h4><span class="rdot" style="background:'+g[2]+'"></span>'+g[1]+'</h4>'+li+'</div>'; }).join('')+'</div>';
+    return '<h2 class="vt">Roadmap</h2><div class="vsub">What we\'re building, and what\'s coming. Everyone can see this.</div>'+road;
+  }
+
+  function viewAsk(){
+    var log=ASKLOG.map(function(x){ return '<div class="qa"><div class="qq">'+esc(x.q)+'</div><div class="aa">'+(x.a===null?'<span style="color:var(--muted)">Thinking…</span>':esc(x.a))+'</div></div>'; }).join('');
+    var chips='<div class="chips">'+['Anything need my attention?','How many enquiries this week?','Which area has the most listings?','How are our reviews doing?'].map(function(c){ return '<span class="chip" onclick="grAsk(\''+c.replace(/'/g,"\\'")+'\')">'+c+'</span>'; }).join('')+'</div>';
+    return '<h2 class="vt">Ask Georgina</h2><div class="vsub">Ask anything about the business in plain English. She answers from your live data.</div>'+chips+(log||'<div class="card" style="color:var(--muted)">Try one of the suggestions above, or use the ask bar at the top of any page.</div>');
+  }
+
+  function viewSoon(id){
+    var it=findItem(id);
+    return '<h2 class="vt">'+esc(it?it.l:'Coming soon')+'</h2><div class="vsub">A module in the master plan.</div><div class="soon"><div style="font-size:1.6rem">🧭</div><div class="bg">'+esc(it?it.l:'')+' is on the way</div><div>'+esc(SOON[id]||'Part of the Hub, coming soon.')+'</div><div class="tag">Planned</div></div>';
+  }
+
+  function viewFor(id){
+    if(id==='home')return viewHome(); if(id==='connections')return viewConnections(); if(id==='ask')return viewAsk();
+    if(id==='listings')return viewListings(); if(id==='reviews')return viewReviews(); if(id==='roadmap')return viewRoadmap();
+    return viewSoon(id);
+  }
+
+  window.grAsk=function(q){
+    q=(q==null?'':String(q)).trim(); if(!q||ASKING) return;
+    var inp=document.getElementById('askin'); if(inp) inp.value='';
+    ASKLOG.unshift({q:q,a:null}); ASKING=true; ROUTE='ask'; renderShell();
+    fetch('/api/hub-ask',{method:'POST',headers:{'content-type':'application/json','x-admin-key':key()},body:JSON.stringify({q:q})})
+      .then(function(r){return r.json();}).then(function(d){ ASKLOG[0].a=(d&&d.answer)||'No answer.'; }).catch(function(){ ASKLOG[0].a='Sorry, I couldn\'t reach the assistant just now.'; })
+      .then(function(){ ASKING=false; if(ROUTE==='ask') renderShell(); });
+  };
+
+  function renderShell(){
+    computeRag();
+    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side">'+navHTML()+'</aside><div class="main">'
+      +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina: how many enquiries this week?" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div><button class="btn" onclick="grLogout()">Lock</button></div>'
+      +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
+  }
+
+  function boot(){
+    if(!key()){ gate(); return; }
+    root.innerHTML='<div class="gate"><h1>G.R. Estates Hub</h1><p>Loading your command centre…</p></div>';
+    var hk={'x-admin-key':key()};
+    Promise.all([
+      fetch('/api/leads',{headers:hk}).then(function(r){ if(r.status===403) throw 'auth'; return r.json(); }),
+      fetch('/api/hub',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch('/api/reviews').then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch('/api/social').then(function(r){return r.json();}).catch(function(){return null;})
+    ]).then(function(res){
+      var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
+      D.portfolio=(res[1]&&res[1].portfolio)||null; D.reviews=res[2]||null;
+      D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
+      renderShell();
+    }).catch(function(e){
+      if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }
+      else { gate('Couldn\'t load the hub, try again.'); }
+    });
+  }
+  boot();
 })();
 </script>
 </body>

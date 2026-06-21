@@ -98,6 +98,69 @@ An Owner-only "People & access" area inside the Hub:
 
 This is the foundational build we parked: real per-user logins + roles, living under G.R.'s own account.
 
+## Navigation & the helicopter home (the IA)
+As the Hub grows, a **left sidebar grouped by how an agency thinks** scales far better than top tabs (which run out of room). The groups:
+
+- **Overview** — Home (helicopter view) · Healthcheck (systems status) · Analytics (graphs, comparisons, snapshots)
+- **Pipeline** — Enquiries, Valuations, Viewings, Sales progression
+- **People** — Contacts (buyers, sellers, landlords, tenants), Calendar (appointments & key dates)
+- **Property** — Listings, Portals, Marketing & social
+- **Lettings** — Tenancies, Maintenance, Inventory
+- **Services** — Removals (G.R. Removals), Mortgages
+- **Money** — Client accounts, Statements, Compliance & AML
+- **Team** — Staff directory, Company feed, Roadmap
+- **Settings** — People & access, Integrations
+
+Each item is a module; most start as "planned" and light up as we build. The sidebar is **role-aware** (per the three layers): a negotiator simply doesn't see Money or Settings, and removals staff land on the Removals module.
+
+### Two modules worth calling out
+- **Analytics** — the graphs/comparisons/snapshots layer. Trends over time (enquiries, valuations, viewings, leads by source), a conversion funnel (enquiry → viewing → offer → sale), comparisons (branch vs branch, this month vs last, sales vs lets), demand signals (what people search and ask the AI for), and saved **snapshot** views (a one-glance weekly/monthly summary you can pin or have emailed). This is where "how's the business doing?" gets answered visually.
+- **Healthcheck** — a live status board for the whole stack. Every system shown green / amber / red with its last-sync time and last error: Street reachable, listings refreshed, reviews refreshed, leads and alerts flowing, the hourly cron running, the social token valid. The "is everything OK?" page for you and Georgina. Buildable now from the timestamps and error markers we already store.
+
+### Removals sits in here too
+G.R. Removals is a service line, so it gets its own **Removals** module (jobs/bookings, enquiries, its 5.0★ reviews) and a KPI tile on the home, kept separate from the estate-agency numbers so the two businesses stay legible on their own terms.
+
+**The home is a helicopter view** — it opens on the KPIs that matter to the owner, with a live activity feed and a "needs you" panel:
+
+- **KPIs:** enquiries (this week) + % into Street · valuations booked · viewings · live listings (sale/let) · review score · be-first alerts. (Sales agreed / completions and phone answered/missed join once we have that data.)
+- **Live activity:** recent enquiries, valuations, reviews, alerts, new instructions.
+- **Needs you:** unactioned enquiries, valuations to confirm, reviews to reply to.
+
+Everything else is one click away in the sidebar, and a KPI drills straight into its module. The current `hub.html` (systems + plan) is the seed; this turns it into the proper app shell.
+
+## Red / amber / green everywhere
+There's a lot in the Hub, so it has to tell you where to look. Every nav item, group and module carries a status dot: **green** (all good), **amber** (needs focus), **red** (problem). A group shows its worst child's colour, so you can scan the sidebar and go straight to what needs you. The home leads with a short "what needs your focus today" from the ambers and reds.
+
+## Ask Georgina, inside the Hub
+The site's AI assistant also lives in the Hub as a **plain-language copilot over your own data** — a persistent ask bar at the top of every page. "How many valuations this week?", "Which branch is busiest?", "Anything need my attention?", "Summarise today's enquiries." This is the owner-BI-you-can-just-ask differentiator from the market research, and it means nobody has to learn where every number lives — they can ask. Same friendly Georgina, now pointed at the business.
+
+## Connections (systems, health & data)
+One module that answers "is everything wired in, healthy, and up to date?" Each system as a card with a RAG status, the data it holds (179 listings, 13 staff, 281 reviews…), and when it last came in (synced 4 min ago). It folds the Healthcheck idea in: Street reachable, listings/reviews fresh, leads and alerts flowing, social token valid, cron running. Buildable now from timestamps and error markers we already store.
+
+## Each role lands on its own dashboard
+The Home is role-specific — same Hub, different front page:
+
+- **Owner (Georgina)** — the full helicopter view: every KPI, all branches, money, healthcheck.
+- **Partner / Dev (Dean)** — that plus the engine room: connections, integrations, deploy.
+- **Manager (Vikki)** — her office's pipeline and team performance.
+- **Negotiator (sales / lettings)** — a focused worklist: my leads, my viewings, today's diary.
+- **Marketing (Tia)** — the Marketing dashboard (below).
+- **Accounts (Rosie)** — the finance dashboard.
+
+## The company feed as the default
+A personalised feed makes a great landing for most staff: company wins (new instructions, sales and lets agreed, 5★ reviews, team shout-outs) mixed with your own items (your leads, your viewings, your properties). **Everyone sees their own feed** — the business pulse plus their day. The KPI dashboard sits alongside for whoever wants the numbers.
+
+## Marketing module (and Tia's home)
+Where Rightmove, OnTheMarket and Zoopla live, plus social and the marketing effort:
+
+- **Portal performance** — views, clicks and leads per portal, featured/premium spend, which listings are underperforming and need a boost.
+- **Social** — Instagram / Facebook reach, scheduled posts, engagement (once Meta is reconnected).
+- **Needs a post** — a worklist: new instructions to launch, price reductions to announce, open houses to promote, 5★ reviews to share.
+- **Review drive** — prompt review requests at the right moment.
+- **Effort & spend** — where the budget goes, and the return by channel.
+
+Some portal stats depend on each portal's reporting access (via Street or the portal back-ends), so a few tiles fill in as we connect those.
+
 ## Decision log
 - **Logins rollout (decided):** Owner + Partner only for now, on the shared key. Build the modules richer first; per-user logins + the full role model come later, as the foundational build, under G.R.'s own account.
 - **Roadmap (done):** now a live module inside the Hub ("What we're building"), not a doc on a laptop.
