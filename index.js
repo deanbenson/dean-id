@@ -1432,16 +1432,19 @@ async function syncStreetResource(env, name, path, ddl, mapFn) {
 function _relId(d, key) { const rel = (d.relationships || {})[key]; return (rel && rel.data && rel.data.id) || null; }
 function _branch(d, inc) { const id = _relId(d, "branch") || (d.attributes || {}).branch_uuid; const b = (id && inc[id]) ? (inc[id].attributes || {}) : null; return b ? (b.name || b.branch_name || b.display_name || null) : null; }
 async function syncStreetExtras(env, includeHeavy) {
-  const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT)";
+  const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT)";
   const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, branch TEXT)";
   const APP_DDL = "CREATE TABLE IF NOT EXISTS applicants (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, name TEXT, max_price INTEGER, min_beds INTEGER, lead_rating TEXT, branch TEXT)";
   const OFF_DDL = "CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, kind TEXT, created_at TEXT, address TEXT, amount INTEGER, status TEXT, branch TEXT)";
   const CON_DDL = "CREATE TABLE IF NOT EXISTS contacts (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT, phone TEXT, status TEXT)";
-  function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch").bind(d.id, a.created_at || null, a.start || null, a.status || null, a.address || a.public_address || null, _branch(d, inc)); }
+  function mView(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO viewings (id,created_at,start,status,address,branch,property_id) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,branch=excluded.branch,property_id=excluded.property_id").bind(d.id, a.created_at || null, a.start || null, a.status || null, a.address || a.public_address || null, _branch(d, inc), _relId(d, "property") || a.property_uuid || null); }
   function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO valuations (id,created_at,start,status,address,lead_source,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET start=excluded.start,status=excluded.status,address=excluded.address,lead_source=excluded.lead_source,branch=excluded.branch").bind(d.id, a.created_at || null, a.start || null, a.status || a.custom_status || null, a.address || null, a.lead_source || null, _branch(d, inc)); }
   function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch").bind(d.id, kind, a.created_at || null, a.name || null, (req.max_price != null ? Math.round(req.max_price) : null), beds, a.lead_rating || null, _branch(d, inc)); }; }
   function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO offers (id,kind,created_at,address,amount,status,branch) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch").bind(d.id, kind, a.created_at || a.offer_made_at || null, a.address || null, (a.offer_amount != null ? Math.round(a.offer_amount) : null), a.status || null, _branch(d, inc)); }; }
   function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO contacts (id,created_at,name,email,phone,status) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status").bind(d.id, a.created_at || null, nm, em, ph, st); }
+  try { await env.gr_estates.prepare("ALTER TABLE viewings ADD COLUMN property_id TEXT").run(); } catch (_) {}
+  // one-time: re-backfill viewings so the new property_id column fills for the recent window
+  try { if (env.LISTINGS && !(await env.LISTINGS.get("migrate:view_propid"))) { await env.LISTINGS.delete("sync:viewings:cursor"); await env.LISTINGS.put("migrate:view_propid", "1"); } } catch (_) {}
   try { await syncStreetResource(env, "viewings", "/viewings", VIEW_DDL, mView); } catch (_) {}
   try { await syncStreetResource(env, "valuations", "/valuations", VAL_DDL, mVal); } catch (_) {}
   try { await syncStreetResource(env, "sales_applicants", "/sales-applicants", APP_DDL, mApp("sale")); } catch (_) {}
@@ -1791,6 +1794,27 @@ export default {
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
       return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows }), 200, J);
+    }
+
+    // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).
+    if (path === "/api/property-hub" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const id = String(url.searchParams.get("id") || "");
+      if (!id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
+      const db = env.gr_estates;
+      let property = null, enquiries = [], viewings = [];
+      try { property = await db.prepare("SELECT id,kind,status,price,address,town,postcode,beds,baths,type,style,updated_at FROM listings WHERE id = ?").bind(id).first(); } catch (_) {}
+      try { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE property_id = ? ORDER BY created_at DESC LIMIT 300").bind(id).all(); enquiries = (r && r.results) || []; } catch (_) {}
+      try { const r = await db.prepare("SELECT id,created_at,start,status,address,branch FROM viewings WHERE property_id = ? ORDER BY COALESCE(start,created_at) DESC LIMIT 300").bind(id).all(); viewings = (r && r.results) || []; } catch (_) {}
+      const label = property ? property.address : ((enquiries[0] && enquiries[0].property) || (viewings[0] && viewings[0].address) || null);
+      const branch = property ? null : ((enquiries[0] && enquiries[0].branch) || (viewings[0] && viewings[0].branch) || null);
+      const byKind = {}; enquiries.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
+      const uniq = {}; enquiries.forEach(function (e) { const kk = (e.email || e.phone || e.name || e.id); if (kk) uniq[kk] = 1; });
+      const counts = { enquiries: enquiries.length, viewings: viewings.length, people: Object.keys(uniq).length };
+      return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, byKind: byKind, counts: counts }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.
