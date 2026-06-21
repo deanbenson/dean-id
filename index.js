@@ -1796,7 +1796,18 @@ export default {
       try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); total = (c && c.n) || 0; } catch (_) {}
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
-      return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows }), 200, J);
+      let syncing = false;
+      if (total === 0 && env.STREET_API_TOKEN) {
+        try {
+          const last = env.LISTINGS ? await env.LISTINGS.get("sync:kick:at") : null;
+          if (!last || (Date.now() - new Date(last).getTime() > 60000)) {
+            if (env.LISTINGS) await env.LISTINGS.put("sync:kick:at", new Date().toISOString());
+            if (ctx && ctx.waitUntil) ctx.waitUntil((name === "enquiries" ? syncEnquiries(env) : syncStreetExtras(env, true)).catch(function () {}));
+          }
+          syncing = true;
+        } catch (_) {}
+      }
+      return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows, syncing: syncing }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).
@@ -1838,6 +1849,20 @@ export default {
         out.push({ table: t[0], label: t[1], count: count, at: at, cadence: t[2], today: today, lastDelta: delta });
       }
       return respond(JSON.stringify({ ok: true, datasets: out, now: new Date().toISOString() }), 200, J);
+    }
+
+    // Trigger an immediate sync of every Street dataset. Admin-gated. Runs in the background; the hub re-reads shortly after.
+    if (path === "/api/sync-now" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (ctx && ctx.waitUntil) {
+        ctx.waitUntil(syncEnquiries(env).catch(function () {}));
+        ctx.waitUntil(syncStreetExtras(env, true).catch(function () {}));
+        ctx.waitUntil(refreshD1(env).catch(function () {}));
+      }
+      return respond(JSON.stringify({ ok: true, started: true }), 200, J);
     }
 
     // Intelligent cross-data search for the hub: properties, enquiries, contacts, viewings, valuations. Admin-gated (PII).
