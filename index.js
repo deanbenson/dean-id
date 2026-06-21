@@ -1674,6 +1674,7 @@ async function syncOneExtra(env, name) { const e = extrasReg().find(function (x)
 async function syncExtrasRotating(env, count) {
   const reg = extrasReg(); const db = env && env.gr_estates; const n = Math.max(1, count || 1);
   if (!db) return;
+  try { // catch-all: if the bookkeeping loop itself hits a Cloudflare limit, record it instead of dying silently
   const meta = [];
   for (let i = 0; i < reg.length; i++) {
     const e = reg[i];
@@ -1692,7 +1693,10 @@ async function syncExtrasRotating(env, count) {
     for (let k = 0; k < n; k++) picks.push(reg[(idx + k) % reg.length]);
     try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); } catch (_) {}
   }
-  for (let k = 0; k < picks.length; k++) { const e = picks[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (_) {} }
+  // Record what this run is attempting, so even a mid-run failure leaves a trail.
+  try { if (env.LISTINGS) await env.LISTINGS.put("sync:extras:lastrun", JSON.stringify({ at: new Date().toISOString(), behind: behind.length, picked: picks.map(function (p) { return p.name; }) })); } catch (_) {}
+  for (let k = 0; k < picks.length; k++) { const e = picks[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (ex) { await logSyncError(env, e.name, "run", String((ex && ex.message) || ex).slice(0, 200)); } }
+  } catch (eFatal) { await logSyncError(env, "extras-rotate", "fatal", String((eFatal && eFatal.message) || eFatal).slice(0, 200)); }
 }
 // Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
 function extrasForDataset(name) { if (name === "applicants") return ["sales_applicants", "lettings_applicants"]; if (name === "offers") return ["sales_offers", "lettings_offers"]; return [name]; }
@@ -2143,7 +2147,8 @@ export default {
         out.push({ name: e.name, table: tbl, count: count, total: total, at: at, expected: expected.length, actual: actual.length, missing: missing, diag: diag });
       }
       let errlog = []; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:errlog"); if (v) errlog = JSON.parse(v) || []; } } catch (_) {}
-      return respond(JSON.stringify({ ok: true, datasets: out, errlog: errlog, now: new Date().toISOString() }), 200, J);
+      let lastrun = null; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:lastrun"); if (v) lastrun = JSON.parse(v); } } catch (_) {}
+      return respond(JSON.stringify({ ok: true, datasets: out, errlog: errlog, lastrun: lastrun, now: new Date().toISOString() }), 200, J);
     }
 
     // Trigger an immediate sync of every Street dataset. Admin-gated. Runs in the background; the hub re-reads shortly after.
