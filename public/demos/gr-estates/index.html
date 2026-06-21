@@ -586,7 +586,9 @@
 .ab-form input,.ab-form select{border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem;font:inherit;background:#fff;width:100%;color:var(--ink)}
 .ab-row{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px}
 .ab-form .btn{width:100%;justify-content:center}
-.ab-thanks{font-weight:600;color:var(--orange-deep);margin-top:4px}
+.ab-thanks{font-weight:600;color:var(--orange-deep);margin-top:4px;line-height:1.5}
+.ab-consent{font-size:.74rem;color:var(--muted);margin-top:2px;line-height:1.5}
+.ab-consent a{color:var(--orange-deep);text-decoration:underline}
 @media(max-width:760px){.alertband{grid-template-columns:1fr;padding:28px}.ab-row{grid-template-columns:1fr 1fr}}
 </style>
 <section id="alerts" style="padding-top:0">
@@ -605,7 +607,8 @@
           <select name="beds" aria-label="Minimum bedrooms"><option value="">Beds</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select>
         </div>
         <button class="btn btn-dark" type="submit">Notify me</button>
-        <p class="ab-thanks" style="display:none">You're on the list. We'll be in touch the moment something lands. ✓</p>
+        <p class="ab-consent">By signing up you agree to receive property alerts from G.R. Estates. No spam, unsubscribe any time. <a href="legal.html#privacy">Privacy</a>.</p>
+        <p class="ab-thanks" style="display:none"></p>
       </form>
     </div>
   </div>
@@ -613,11 +616,17 @@
 <script>
 window.alertSignup=function(e,f){
   e.preventDefault();
-  try{ var fd={}; Array.prototype.forEach.call(f.elements,function(el){ if(el.name) fd[el.name]=el.value; });
-    fetch('/api/alert',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:fd.email||'',kind:fd.kind||'sale',area:fd.area||'',beds:fd.beds||''})}).catch(function(){});
-  }catch(_){}
-  var t=f.querySelector('.ab-thanks'); if(t)t.style.display='block';
+  var fd={}; try{ Array.prototype.forEach.call(f.elements,function(el){ if(el.name) fd[el.name]=el.value; }); }catch(_){}
+  try{ fetch('/api/alert',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:fd.email||'',kind:fd.kind||'sale',area:fd.area||'',beds:fd.beds||''})}).catch(function(){}); }catch(_){}
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var kindTxt=(fd.kind==='let')?'to rent':'to buy';
+  var beds=fd.beds?(fd.beds+'+ bed '):'';
+  var areaTxt=fd.area?(' in '+esc(fd.area)):'';
+  var summary=beds+'homes '+kindTxt+areaTxt;
+  var t=f.querySelector('.ab-thanks'); if(t){ t.innerHTML='You\'re on the list. 🎉<br>We\'ll keep watch for <b>'+summary+'</b> and be in touch the moment the right one lands, often before it hits the portals.'; t.style.display='block'; }
+  var c=f.querySelector('.ab-consent'); if(c) c.style.display='none';
   Array.prototype.forEach.call(f.elements,function(el){ if(el.tagName!=='BUTTON') el.disabled=true; });
+  var b=f.querySelector('button'); if(b){ b.disabled=true; b.textContent='Done ✓'; }
   return false;
 };
 </script>
