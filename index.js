@@ -1687,16 +1687,28 @@ async function syncOneExtra(env, name) { const e = extrasReg().find(function (x)
 //      partially-filled), so a dataset stuck at 0 races to 100% instead of waiting hours for its slot.
 //      Once everything is complete it falls back to a light round-robin top-up so changes still flow in.
 async function syncExtrasRotating(env, count) {
-  const reg = extrasReg(); const n = Math.max(1, count || 1);
-  if (!env || !env.gr_estates) return;
+  const reg = extrasReg(); const db = env && env.gr_estates; const n = Math.max(1, count || 1);
+  if (!db) return;
   try {
-    // Light rotation: pick the next N in order, write a heartbeat FIRST (so even a mid-run kill leaves a
-    // trail), then sync them. Each resource heals itself inside syncStreetResource — no heavy pre-pass that
-    // could time the invocation out before anything runs. Empties fill as the cursor comes round.
+    // Make sure every table exists up front (cheap, idempotent CREATE IF NOT EXISTS, no Street calls) so nothing
+    // ever shows "no such table" and an unsynced dataset simply reads as 0 rows, ready to fill.
+    for (let i = 0; i < reg.length; i++) { try { await db.prepare(reg[i].ddl).run(); } catch (_) {} }
+    // Lightweight prioritisation: a single COUNT per table (no schema reads, no ALTERs, no Street calls — this
+    // is what kept the old pre-pass fast enough NOT to time out) to find which datasets are still empty, and
+    // sync those FIRST so a dataset stuck at 0 fills before ones that already have rows. Each resource still
+    // heals itself inside syncStreetResource. Heartbeat is written before any Street fetch.
+    const meta = [];
+    for (let i = 0; i < reg.length; i++) {
+      const e = reg[i]; const tbl = ddlTable(e.ddl) || e.name; let local = 0;
+      try { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); local = (c && c.n) || 0; } catch (_) { local = 0; }
+      meta.push({ e: e, i: i, local: local });
+    }
     let idx = 0; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:rot"); idx = v ? (parseInt(v, 10) || 0) : 0; } } catch (_) {}
-    const picked = [];
-    for (let i = 0; i < n; i++) picked.push(reg[(idx + i) % reg.length]);
-    try { if (env.LISTINGS) { await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); await env.LISTINGS.put("sync:extras:lastrun", JSON.stringify({ at: new Date().toISOString(), picked: picked.map(function (p) { return p.name; }) })); } } catch (_) {}
+    const empties = meta.filter(function (m) { return m.local === 0; });
+    const rest = meta.filter(function (m) { return m.local > 0; }).sort(function (a, b) { return ((a.i - idx + reg.length) % reg.length) - ((b.i - idx + reg.length) % reg.length); });
+    const order = empties.concat(rest);
+    const picked = order.slice(0, n).map(function (m) { return m.e; });
+    try { if (env.LISTINGS) { await env.LISTINGS.put("sync:extras:rot", String((idx + n) % reg.length)); await env.LISTINGS.put("sync:extras:lastrun", JSON.stringify({ at: new Date().toISOString(), empties: empties.length, picked: picked.map(function (p) { return p.name; }) })); } } catch (_) {}
     for (let k = 0; k < picked.length; k++) { const e = picked[k]; try { await syncStreetResource(env, e.name, e.path, e.ddl, e.map, e.opts); } catch (ex) { await logSyncError(env, e.name, "run", String((ex && ex.message) || ex).slice(0, 200)); } }
   } catch (eFatal) { await logSyncError(env, "extras-rotate", "fatal", String((eFatal && eFatal.message) || eFatal).slice(0, 200)); }
 }
@@ -2141,7 +2153,7 @@ export default {
       for (const e of reg) {
         const tbl = ddlTable(e.ddl) || e.name;
         let count = 0, at = null, total = null, diag = null, actual = [];
-        try { if (db) { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); count = (c && c.n) || 0; } } catch (eC) { diag = { err: "count: " + String((eC && eC.message) || eC).slice(0, 140) }; }
+        try { if (db) { const c = await db.prepare("SELECT COUNT(*) AS n FROM " + tbl).first(); count = (c && c.n) || 0; } } catch (eC) { const m = String((eC && eC.message) || eC); if (m.indexOf("no such table") < 0) diag = { err: "count: " + m.slice(0, 140) }; }
         try { if (env.LISTINGS) at = await env.LISTINGS.get("sync:" + e.name + ":at"); } catch (_) {}
         try { if (env.LISTINGS) { const t = await env.LISTINGS.get("sync:" + e.name + ":total"); if (t != null) total = parseInt(t, 10); } } catch (_) {}
         try { if (env.LISTINGS) { const dg = await env.LISTINGS.get("sync:" + e.name + ":diag"); if (dg) diag = JSON.parse(dg); } } catch (_) {}
@@ -2164,7 +2176,7 @@ export default {
       // Run the extras INLINE (awaited) so the response proves what actually happened — the background path
       // can be cut short. enquiries keeps backfilling on its own cron; kick it in the background too.
       let threw = null;
-      try { await syncExtrasRotating(env, 5); } catch (e) { threw = String((e && e.message) || e).slice(0, 200); }
+      try { await syncExtrasRotating(env, 4); } catch (e) { threw = String((e && e.message) || e).slice(0, 200); }
       let lastrun = null; try { if (env.LISTINGS) { const v = await env.LISTINGS.get("sync:extras:lastrun"); if (v) lastrun = JSON.parse(v); } } catch (_) {}
       if (ctx && ctx.waitUntil) ctx.waitUntil(syncEnquiries(env).catch(function () {}));
       return respond(JSON.stringify({ ok: true, started: true, ran: true, threw: threw, lastrun: lastrun }), 200, J);
