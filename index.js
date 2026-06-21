@@ -1470,7 +1470,7 @@ function _t(v) {
 // drift that was failing inserts); and resets every backfill so the full history re-walks into the new shape.
 async function migrateSchema(env) {
   if (!env || !env.gr_estates) return;
-  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v4"))) return; } catch (_) { return; }
+  try { if (env.LISTINGS && (await env.LISTINGS.get("migrate:schema_v5"))) return; } catch (_) { return; }
   const db = env.gr_estates;
   for (const t of ["enquiries", "applicants", "contacts", "listings"]) { try { await db.prepare("ALTER TABLE " + t + " ADD COLUMN raw TEXT").run(); } catch (_) {} }
   for (const t of ["viewings", "valuations", "offers"]) {
@@ -1483,7 +1483,7 @@ async function migrateSchema(env) {
     "tasks", "task_types", "portal_listings", "e_sign_documents", "questionnaire_responses", "activity", "lettings_applications", "maintenance_requests", "network_settings"];
   for (const t of rebuild) { try { await db.prepare("DROP TABLE IF EXISTS " + t).run(); } catch (_) {} }
   try { if (env.LISTINGS) { const names = ["enquiries", "viewings", "valuations", "sales_applicants", "lettings_applicants", "sales_offers", "lettings_offers", "contacts"].concat(rebuild); for (const n of names) { await env.LISTINGS.delete("sync:" + n + ":backfill"); } } } catch (_) {}
-  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v4", "1"); } catch (_) {}
+  try { if (env.LISTINGS) await env.LISTINGS.put("migrate:schema_v5", "1"); } catch (_) {}
 }
 const VIEW_DDL = "CREATE TABLE IF NOT EXISTS viewings (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, end_at TEXT, viewing_type TEXT, status TEXT, address TEXT, branch TEXT, property_id TEXT, raw TEXT)";
 const VAL_DDL = "CREATE TABLE IF NOT EXISTS valuations (id TEXT PRIMARY KEY, created_at TEXT, start TEXT, status TEXT, address TEXT, lead_source TEXT, valuation_type TEXT, branch TEXT, raw TEXT)";
@@ -1513,7 +1513,13 @@ function schemaRes(name, path, fields, opts) {
   const map = function (db, d) {
     const a = d.attributes || {};
     const vals = [d.id];
-    for (let i = 0; i < fields.length; i++) { const v = a[fields[i]]; vals.push(v == null ? null : (typeof v === "object" ? JSON.stringify(v) : v)); }
+    for (let i = 0; i < fields.length; i++) {
+      const v = a[fields[i]];
+      if (v == null) vals.push(null);
+      else if (typeof v === "boolean") vals.push(v ? 1 : 0);       // D1 only binds null/number/string
+      else if (typeof v === "object") vals.push(JSON.stringify(v)); // address, dates, phone lists → JSON
+      else vals.push(v);
+    }
     vals.push(JSON.stringify(d));
     const stmt = db.prepare(sql);
     return stmt.bind.apply(stmt, vals);
@@ -2042,6 +2048,56 @@ export default {
         } catch (e) { out.push({ q: c, error: String((e && e.message) || e).slice(0, 160) }); }
       }
       return respond(JSON.stringify({ ok: true, probe: out }, null, 2), 200, J);
+    }
+
+    // Data audit: prove the local copy is a faithful, complete mirror of Street. For each resource we compare
+    // our row count to Street's real total (coverage %), and field-by-field check a live sample against the
+    // exact record we stored (structural field parity + value match). Admin-gated.
+    if (path === "/api/data-audit" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const list = [
+        ["enquiries", "/enquiries"], ["viewings", "/viewings"], ["valuations", "/valuations"], ["contacts", "/people"],
+        ["properties_all", "/properties"], ["sales", "/sales"], ["tenancies", "/tenancies"], ["landlords", "/landlords"],
+        ["vendors", "/vendors"], ["tenants", "/tenants"], ["inspections", "/inspections"], ["interested_applicants", "/interested-applicants"],
+        ["property_keys", "/property-keys"], ["maintenance_jobs", "/maintenance-jobs"], ["move_outs", "/move-outs"], ["solicitors", "/solicitors"],
+        ["todos", "/todos"], ["follow_ups", "/follow-ups"], ["sales_instructions", "/sales-instructions"], ["lettings_instructions", "/lettings-instructions"],
+        ["areas", "/areas"], ["brands", "/brands"], ["companies", "/companies"], ["branches_all", "/branches"], ["users_all", "/users"]
+      ];
+      const out = [];
+      for (const [name, path] of list) {
+        let total = null, localCount = 0, sample = 0, found = 0, fieldOk = 0, valMatch = 0, valTotal = 0; const missing = [];
+        try {
+          const r = await streetGet(env, path + "?page%5Bsize%5D=4");
+          const b = r.body || {}; const pg = (b.meta && b.meta.pagination) || {};
+          total = (pg.total != null) ? pg.total : ((pg.total_count != null) ? pg.total_count : ((pg.count != null) ? pg.count : null));
+          const recs = b.data || []; sample = recs.length;
+          try { if (env.gr_estates) { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + name).first(); localCount = (c && c.n) || 0; } } catch (_) {}
+          for (const rec of recs) {
+            let row = null; try { if (env.gr_estates) row = await env.gr_estates.prepare("SELECT raw FROM " + name + " WHERE id = ?").bind(rec.id).first(); } catch (_) {}
+            if (!row || !row.raw) continue;
+            found++;
+            let stored = {}; try { stored = JSON.parse(row.raw) || {}; } catch (_) {}
+            const liveA = rec.attributes || {}, storedA = stored.attributes || {};
+            const liveKeys = Object.keys(liveA);
+            const miss = liveKeys.filter(function (k) { return !(k in storedA); });
+            if (miss.length === 0) fieldOk++;
+            miss.forEach(function (k) { if (missing.indexOf(k) < 0) missing.push(k); });
+            liveKeys.forEach(function (k) { valTotal++; if (JSON.stringify(liveA[k]) === JSON.stringify(storedA[k])) valMatch++; });
+          }
+        } catch (_) {}
+        out.push({
+          name: name, streetTotal: total, localCount: localCount,
+          coverage: (total != null && total > 0) ? Math.min(100, Math.round(localCount / total * 100)) : (total === 0 ? 100 : null),
+          sample: sample, found: found,
+          fieldParity: found ? Math.round(fieldOk / found * 100) : null,
+          valueMatch: valTotal ? Math.round(valMatch / valTotal * 100) : null,
+          missingFields: missing.slice(0, 8)
+        });
+      }
+      return respond(JSON.stringify({ ok: true, audit: out }, null, 2), 200, J);
     }
 
     // Intelligent cross-data search for the hub: properties, enquiries, contacts, viewings, valuations. Admin-gated (PII).

@@ -298,6 +298,21 @@
       out.innerHTML='<div class="secttl">Street probe — what each endpoint actually returns <a class="syslink" href="https://developers.street.co.uk/docs/street-open-api/api-reference" target="_blank" rel="noopener" style="font-weight:600;font-size:.8rem">Open API docs ↗</a></div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Query</th><th>HTTP</th><th>Rows / total</th><th>Type / error</th><th>Fields</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">Tested against the official <a class="syslink" href="https://developers.street.co.uk/docs/street-open-api/api-reference" target="_blank" rel="noopener">Street Open API reference</a>. A green HTTP with rows is wired in; 404 means that exact path is not on this account.</div>';
     }).catch(function(){ if(b){b.disabled=false;b.textContent='Probe Street';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Probe error.</div>'; });
   };
+  window.grAudit=function(){
+    var b=document.getElementById('auditbtn'); if(b){b.disabled=true;b.textContent='Checking…';}
+    var out=document.getElementById('auditout'); if(out)out.innerHTML='<div style="color:var(--muted);font-size:.82rem;margin-top:10px">Comparing every dataset against live Street, field by field…</div>';
+    fetch('/api/data-audit',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      if(b){b.disabled=false;b.textContent='Check data';}
+      if(!out)return;
+      if(!d||!d.audit){ out.innerHTML='<div style="color:var(--orange-deep);font-size:.82rem;margin-top:10px">Audit failed.</div>'; return; }
+      function pc(v,good){ if(v==null)return '<span style="color:var(--muted)">—</span>'; var c=v>=good?'#1d9e75':(v>=80?'#a96514':'#c2541d'); return '<span style="color:'+c+';font-weight:700">'+v+'%</span>'; }
+      var rows=d.audit.map(function(a){
+        var cov=(a.streetTotal!=null)?((a.localCount||0).toLocaleString('en-GB')+' / '+a.streetTotal.toLocaleString('en-GB')):(a.localCount||0);
+        return '<tr><td style="font-weight:600">'+esc(a.name)+'</td><td>'+cov+'</td><td>'+pc(a.coverage,99)+'</td><td>'+pc(a.fieldParity,100)+'</td><td>'+pc(a.valueMatch,90)+'</td><td style="font-size:.71rem;color:var(--orange-deep)">'+esc((a.missingFields||[]).join(', '))+'</td></tr>';
+      }).join('');
+      out.innerHTML='<div class="secttl">Data audit — local copy vs live Street</div><div style="overflow:auto"><table class="enq" style="font-size:.8rem"><thead><tr><th>Dataset</th><th>Local / Street</th><th>Coverage</th><th>Fields match</th><th>Values match</th><th>Missing fields</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="font-size:.76rem;color:var(--muted);margin-top:6px">Coverage = how much of Street we hold. Fields match = our stored record contains every field Street returns (structural purity). Values match = sampled values identical (a lower figure just means those records changed in Street since we last synced, not an error).</div>';
+    }).catch(function(){ if(b){b.disabled=false;b.textContent='Check data';} if(out)out.innerHTML='<div style="color:var(--orange-deep)">Audit error.</div>'; });
+  };
   window.grCloseDrawer=function(){ var o=document.getElementById('rowdrawer'); if(o)o.parentNode.removeChild(o); };
   function fieldRows(obj){ if(!obj||typeof obj!=='object') return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; var ks=Object.keys(obj); if(!ks.length) return '<div class="frow"><span class="fv" style="color:var(--muted)">No fields.</span></div>'; return ks.map(function(k){ var v=obj[k]; var disp; if(v==null||v==='') disp='<span style="color:var(--muted)">—</span>'; else if(typeof v==='object') disp='<code class="fjson">'+esc(JSON.stringify(v,null,1))+'</code>'; else if(typeof v==='boolean') disp=v?'Yes':'No'; else disp=esc(String(v)); return '<div class="frow"><span class="fk">'+esc(k)+'</span><span class="fv">'+disp+'</span></div>'; }).join(''); }
   window.grRow=function(name,id){
@@ -486,10 +501,10 @@
 
   var NAV=[
     {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
-    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
-    {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
-    {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
-    {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'maintenance',l:'Maintenance',ic:'✸',rag:'a'}]},
+    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
+    {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'vendors',l:'Vendors',ic:'☺',rag:'g'},{id:'landlords',l:'Landlords',ic:'☺',rag:'g'},{id:'tenants',l:'Tenants',ic:'☺',rag:'g'},{id:'solicitors',l:'Solicitors',ic:'§',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
+    {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'properties_all',l:'All properties',ic:'⌂',rag:'g'},{id:'property_keys',l:'Keys',ic:'⚿',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
+    {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'inspections',l:'Inspections',ic:'✓',rag:'g'},{id:'maintenance_jobs',l:'Maintenance',ic:'✸',rag:'g'},{id:'move_outs',l:'Move outs',ic:'⊠',rag:'g'}]},
     {g:'Services',items:[{id:'removals',l:'Removals',ic:'⊟',rag:'g'},{id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}]},
     {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
     {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'}]},
@@ -533,10 +548,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.29', BUILD='21 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1};
+  var HUB_VERSION='0.30', BUILD='21 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
+  var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.4',connections:'1.5',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.30',d:'21 Jun 2026',items:['New Check data button audits the local copy against live Street, field by field: coverage (how much of Street we hold), field parity (every field present) and value match — objective proof the data is clean and complete','Fixed boolean fields (a tenancy is active, a property is_sales) that were silently blocking storage; affected datasets rebuild clean','Feed screens for everything: Sales, Vendors, Landlords, Tenants, Solicitors, All properties, Property keys, Tenancies, Inspections, Maintenance and Move-outs, each browsable with the full-record drawer']},
     {v:'0.29',d:'21 Jun 2026',items:['Every Street dataset now stores one real column per field, named exactly as the API names them (plus the full raw record) — a proper warehouse, matched 100% to Street','Field lists taken straight from the live API for every resource: properties (40 fields), tenancies, vendors, tenants, landlords, solicitors, todos, instructions and the rest','Now talking to the documented production server, street.co.uk/open-api/v1']},
     {v:'0.28',d:'21 Jun 2026',items:['Read the actual Street Open API spec (every path, verified) — no more guessing. Now importing every GET-listable resource exactly as documented: interested applicants, property keys, maintenance jobs, move-outs, solicitors, to-dos and to-do types, follow-ups, invoices, photos & measures, all instructions, areas, brands, companies, branches and users','Corrected wrong guesses against the spec: Tasks is really /todos, photos are /photo-and-measures; and activity/documents/notes/maintenance-requests are POST-only so they are not listed','Probe now uses the official paths and links to the Street API reference']},
     {v:'0.27',d:'21 Jun 2026',items:['Probe confirmed the full Street surface — now importing all of it: every property (1,556, not just the 180 on-market), vendors (1,783), tenants (562), landlords (255), sales/completions (534), tenancies (378) and inspections (163), every field of each','Dropped the endpoints Street does not expose for this account (progressions, keys, maintenance, certificates — those live in Fixflo and the other systems)','That is the whole of Street that holds data, now mirrored locally']},
@@ -760,7 +777,7 @@
     var totalRecords=dataItems.reduce(function(s,x){return s+x.n;},0);
     var bar=dataItems.map(function(x){ return '<i style="width:'+(totalRecords?(x.n/totalRecords*100):0)+'%;background:'+x.c+'" title="'+esc(x.l)+': '+x.n+'"></i>'; }).join('');
     var leg=dataItems.map(function(x){ return '<span><span class="d" style="background:'+x.c+'"></span>'+esc(x.l)+' <b>'+x.n.toLocaleString('en-GB')+'</b></span>'; }).join('');
-    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div></div>';
+    var split='<div class="splitwrap"><div class="splitsum"><b>'+totalRecords.toLocaleString('en-GB')+'</b> records in the local copy — almost all from <b>Street</b>, plus Google reviews and your own website. '+stack.length+' systems in your stack still to connect. '+syncCd('15min','<span style="color:var(--muted)">Next sync in </span>')+'<button id="syncnowbtn" class="syncnow" onclick="grSyncNow()">Sync now</button><button id="probebtn" class="syncnow" onclick="grProbe()" title="Ask Street directly which endpoints return data">Probe Street</button><button id="auditbtn" class="syncnow" onclick="grAudit()" title="Check our local copy matches Street, field by field">Check data</button></div><div class="splitbar">'+bar+'</div><div class="splitleg">'+leg+'</div><div id="probeout"></div><div id="auditout"></div></div>';
     var syncRows='';
     if(D.sync&&D.sync.length){ syncRows='<div class="secttl">In the local copy · synced from Street</div><div class="sysg">'+D.sync.map(function(s){
       var delta=[]; if(s.today!=null&&s.today>0) delta.push('+'+s.today+' today'); if(s.lastDelta!=null) delta.push(s.lastDelta+' in last sync');
@@ -932,8 +949,22 @@
     else if(id==='valuations')body=viewValuations();
     else if(id==='contacts')body=viewContacts();
     else if(id==='property')return viewProperty();
+    else if(GENVIEWS[id])body=viewGeneric(id,GENVIEWS[id]);
     else body=viewSoon(id);
     return body+srcLine(id);
+  }
+  function viewGeneric(name,title){
+    ensureLocal(name); var L=D['L_'+name]; if(!L) return localLoading(title);
+    var sub='<h2 class="vt">'+esc(title)+'</h2><div class="vsub">From your local copy, synced from Street. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+pageSyncLine('15min')+'.</div>';
+    if(!L.rows.length) return sub+localEmpty(name,'15min');
+    var allKeys=Object.keys(L.rows[0]).filter(function(k){return k!=='id'&&k!=='raw';});
+    var pref=allKeys.filter(function(k){return /full_name|^name$|address|title|^status$|amount|price|rent|^start$|start_date|due_date|inspection_date|move_out_date|created_at/.test(k);});
+    var disp=pref.concat(allKeys.filter(function(k){return pref.indexOf(k)<0;})).slice(0,6);
+    var cols=disp.map(function(k){ return {key:k,label:k.replace(/_/g,' '),
+      html:function(r){ var v=r[k]; if(v==null||v==='')return '—'; var s=String(v); if(s.charAt(0)==='{'||s.charAt(0)==='[')return '<span style="color:var(--muted)" title="structured field — open the row to see it">…</span>'; if((/_at$|_date$|^start$|^end$/.test(k))&&/^\d{4}-\d\d-\d\d/.test(s))return smartDate(s); if(/price|amount|fee|rent|deposit/.test(k)&&/^-?\d+(\.\d+)?$/.test(s))return '£'+Number(s).toLocaleString('en-GB'); if(s.length>60)return esc(s.slice(0,60))+'…'; return esc(s); },
+      sortVal:function(r){ var v=r[k]; if(/_at$|_date$|^start$|^end$/.test(k))return v?new Date(v).getTime():0; if(/price|amount|fee|rent|deposit/.test(k))return Number(v)||0; return v==null?'':String(v); },
+      text:function(r){return r[k];} }; });
+    return sub+dataTable('gen_'+name,L.rows,cols,'Search '+esc(title)+'…',name);
   }
 
   window.grAsk=function(q){
