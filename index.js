@@ -1608,6 +1608,45 @@ export default {
       return respond(JSON.stringify({ ok: true, answer: answer }), 200, J);
     }
 
+    // All enquiries in Street (website, portals, phone) — the real stream, not just our captures. Admin-gated.
+    if (path === "/api/enquiries" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const since = new Date(Date.now() - 30 * 864e5).toISOString();
+      let all = [], total = null; const inc = {};
+      try {
+        for (let pn = 1; pn <= 6; pn++) {
+          const r = await streetGet(env, "/enquiries?filter%5Bcreated_from%5D=" + encodeURIComponent(since) + "&page%5Bsize%5D=100&page%5Bnumber%5D=" + pn);
+          if (!r.ok || !r.body) break;
+          (r.body.included || []).forEach(function (x) { if (x && x.id) inc[x.id] = x; });
+          const data = r.body.data || [];
+          all = all.concat(data);
+          const pg = (r.body.meta && r.body.meta.pagination) || {};
+          if (pg.total != null) total = pg.total;
+          const tp = pg.total_pages || 1;
+          if (pn >= tp || data.length < 100) break;
+        }
+      } catch (_) {}
+      function kindOf(a) { if (a.request_valuation || a.property_to_sell || a.property_to_let) return "valuation"; if (a.request_viewing) return "viewing"; return "contact"; }
+      const enquiries = all.map(function (d) {
+        const a = d.attributes || {};
+        const prop = (a.property_uuid && inc[a.property_uuid]) ? (inc[a.property_uuid].attributes || {}) : null;
+        const br = (a.branch_uuid && inc[a.branch_uuid]) ? (inc[a.branch_uuid].attributes || {}) : null;
+        return {
+          id: d.id, at: a.created_at || null,
+          name: ((a.first_name || "") + " " + (a.last_name || "")).trim(),
+          email: a.email_address || null, phone: a.telephone_number || null,
+          message: a.message || "", source: a.custom_source || null, kind: kindOf(a),
+          property: prop ? (prop.public_address || prop.display_address || prop.inline_address || prop.address || null) : null,
+          branch: br ? (br.name || br.branch_name || br.display_name || null) : null
+        };
+      });
+      enquiries.sort(function (x, y) { return (new Date(y.at).getTime() || 0) - (new Date(x.at).getTime() || 0); });
+      return respond(JSON.stringify({ ok: true, count: enquiries.length, total: total, window_days: 30, enquiries: enquiries.slice(0, 200) }), 200, J);
+    }
+
     // Live branches from Street (no hardcoding the office list). Admin-gated.
     if (path === "/api/branches" && request.method === "GET") {
       const J = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=1800" };

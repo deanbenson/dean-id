@@ -178,7 +178,7 @@
     home:'Live from Street (listings, team, branches), Google reviews and the website.',
     connections:'Live status and timestamps from each connected system.',
     ask:'Answers from your live Street, reviews and website data.',
-    enquiries:'Live from the website, flowing into Street.',
+    enquiries:'Live from Street, every enquiry from the website, portals and phone.',
     listings:'Live from Street, via the property database.',
     reviews:'Live from your Google Business profiles.',
     roadmap:'Maintained by you and Dean.',
@@ -197,14 +197,15 @@
     accounts:'Will pull from Street client accounts and your accounting.',
     compliance:'Will pull from Street (certificates) and your AML checks.',
     analytics:'Will be computed from your live Hub data.',
-    feed:'Live from website enquiries and activity across the business.',
+    feed:'Live from Street, every enquiry as it lands, from all sources.',
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.10', BUILD='21 Jun 2026';
+  var HUB_VERSION='0.11', BUILD='21 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1};
-  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'1.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.0',profile:'1.0',changelog:'1.0'};
+  var VER={home:'1.1',connections:'1.2',ask:'1.0',enquiries:'2.0',listings:'1.0',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.0',changelog:'1.0'};
   var CHANGELOG=[
+    {v:'0.11',d:'21 Jun 2026',items:['Enquiries now reads every enquiry in Street, website, portals and phone, not just our captures','Company feed streams the real Street enquiry activity']},
     {v:'0.10',d:'21 Jun 2026',items:['Staff page v3: grouped by department, with Google-review praise matched to each person','Connections corrected, SignRequest not DocuSign']},
     {v:'0.9',d:'21 Jun 2026',items:['Live Company feed (auto-updating)','Staff v2 with richer profiles','Connections shows your full real system stack','Sticky user block, logo to home','Per-page versions + this changelog']},
     {v:'0.8',d:'21 Jun 2026',items:['Honest data source on every page','Live branches and staff (no hardcoding)','Profile view, admin-only role preview','Phone status corrected']},
@@ -343,16 +344,18 @@
   }
 
   function viewEnquiries(){
-    var leads=D.leads||[]; var byKind={valuation:0,viewing:0,contact:0,other:0}; leads.forEach(function(L){ var k=L.kind||'other'; byKind[k]=(byKind[k]||0)+1; });
+    var enq=D.enquiries;
+    if(enq==null) return '<h2 class="vt">Enquiries</h2><div class="vsub">Loading from Street…</div><div class="card" style="color:var(--muted)">Fetching every enquiry in Street…</div>';
+    var byKind={valuation:0,viewing:0,contact:0}; enq.forEach(function(L){ var k=L.kind||'contact'; byKind[k]=(byKind[k]||0)+1; });
     function chip(f,lab){ return '<span class="chip'+(ENQFILTER===f?' on':'')+'" onclick="grEnqFilter(\''+f+'\')">'+lab+'</span>'; }
-    var chips='<div class="efilt">'+chip('all','All ('+leads.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')')+'</div>';
-    var shown=leads.filter(function(L){ return ENQFILTER==='all'||(L.kind||'contact')===ENQFILTER; });
+    var chips='<div class="efilt">'+chip('all','All ('+enq.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')')+'</div>';
+    var shown=enq.filter(function(L){ return ENQFILTER==='all'||(L.kind||'contact')===ENQFILTER; });
     var body;
-    if(!leads.length) body='<div class="card" style="color:var(--muted)">No enquiries yet. They\'ll appear here the moment someone uses a form on the site.</div>';
-    else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries yet.</div>';
-    else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var ins=L.streetOk?'<span class="ok">✓ Street</span>':'<span class="no">backup</span>'; return '<tr><td>'+esc(fmt(L.at))+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+esc((L.message||'').slice(0,180))+'</td><td>'+ins+'</td></tr>'; }).join('');
-      body='<table class="enq"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Message</th><th>Street</th></tr></thead><tbody>'+rows+'</tbody></table>'; }
-    return '<h2 class="vt">Enquiries</h2><div class="vsub">Every website lead, flowing into Street. Newest first.</div>'+chips+body;
+    if(!enq.length) body='<div class="card" style="color:var(--muted)">No enquiries in Street in the last 30 days.</div>';
+    else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries.</div>';
+    else { var rows=shown.map(function(L){ var c=[L.email,L.phone].filter(Boolean).map(esc).join('<br>'); var meta=[L.property,L.branch].filter(Boolean).map(esc).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return '<tr><td>'+(L.at?esc(fmt(new Date(L.at).getTime())):'—')+'</td><td><span class="kind">'+esc(L.kind||'enquiry')+'</span></td><td>'+esc(L.name||'—')+'</td><td>'+(c||'—')+'</td><td>'+(meta||'<span style="color:var(--muted)">—</span>')+src+'</td></tr>'; }).join('');
+      body='<table class="enq"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Contact</th><th>Property / branch</th></tr></thead><tbody>'+rows+'</tbody></table>'; }
+    return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, the portals and the phone. Last 30 days, newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' in the window'):'')+'.</div>'+chips+body;
   }
 
   function viewConnections(){
@@ -452,16 +455,16 @@
     return '<h2 class="vt">Staff <span class="vtag big">v3</span></h2><div class="vsub">Your whole team, live from Street, with the praise they\'ve earned in your Google reviews.'+note+'</div>'+stats+sections;
   }
   function viewFeed(){
-    var leads=D.leads||[]; var ev=[];
-    leads.forEach(function(L){ ev.push({at:L.at,ic:(L.kind==='valuation'?'£':L.kind==='viewing'?'◷':'✉'),txt:'New '+esc(L.kind||'enquiry')+' enquiry'+(L.name?' from '+esc(L.name):''),sub:(L.streetOk?'landed in Street':'captured')}); });
+    var enq=D.enquiries||[]; var ev=[];
+    enq.forEach(function(L){ ev.push({at:(L.at?new Date(L.at).getTime():0),ic:(L.kind==='valuation'?'£':L.kind==='viewing'?'◷':'✉'),txt:'New '+esc(L.kind||'enquiry')+' enquiry'+(L.name?' from '+esc(L.name):''),sub:[L.property,L.branch,(L.source?'via '+L.source:'')].filter(Boolean).map(esc).join(' · ')||'in Street'}); });
     ev.sort(function(a,b){ return (b.at||0)-(a.at||0); });
     var body;
-    if(!ev.length) body='<div class="card" style="color:var(--muted)">Quiet for now. New enquiries and activity will stream in here the moment they happen.</div>';
-    else body='<div class="card">'+ev.slice(0,40).map(function(e){ return '<div class="feedrow"><span class="fic">'+e.ic+'</span><div><div>'+e.txt+'</div><div style="color:var(--muted);font-size:.8rem">'+esc(e.sub)+'</div></div><span class="ft">'+ago(e.at)+'</span></div>'; }).join('')+'</div>';
-    return '<h2 class="vt">Company feed</h2><div class="vsub">Live activity across the business, newest first.</div><div class="livehead"><span class="livedot"></span> Updating automatically</div>'+body;
+    if(!ev.length) body='<div class="card" style="color:var(--muted)">Quiet in the last 30 days. New enquiries stream in here the moment they hit Street.</div>';
+    else body='<div class="card">'+ev.slice(0,50).map(function(e){ return '<div class="feedrow"><span class="fic">'+e.ic+'</span><div><div>'+e.txt+'</div><div style="color:var(--muted);font-size:.8rem">'+e.sub+'</div></div><span class="ft">'+ago(e.at)+'</span></div>'; }).join('')+'</div>';
+    return '<h2 class="vt">Company feed</h2><div class="vsub">Live enquiry activity across the business, from every source in Street. Newest first.</div><div class="livehead"><span class="livedot"></span> Updating automatically</div>'+body;
   }
   var FEEDTIMER=null;
-  function startFeed(){ if(FEEDTIMER) return; FEEDTIMER=setInterval(function(){ if(ROUTE!=='feed'){ stopFeed(); return; } fetch('/api/leads',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.leads){ D.leads=d.leads; if(d.stats)D.stats=d.stats; if(ROUTE==='feed') renderView(false); } }).catch(function(){}); }, 40000); }
+  function startFeed(){ if(FEEDTIMER) return; FEEDTIMER=setInterval(function(){ if(ROUTE!=='feed'){ stopFeed(); return; } fetch('/api/enquiries',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.enquiries){ D.enquiries=d.enquiries; if(d.total!=null)D.enqTotal=d.total; if(ROUTE==='feed') renderView(false); } }).catch(function(){}); }, 40000); }
   function stopFeed(){ if(FEEDTIMER){ clearInterval(FEEDTIMER); FEEDTIMER=null; } }
   function viewSoon(id){
     var it=findItem(id); var cfg=SOONCFG[id]||{};
@@ -534,11 +537,13 @@
       fetch('/api/reviews').then(function(r){return r.json();}).catch(function(){return null;}),
       fetch('/api/social').then(function(r){return r.json();}).catch(function(){return null;}),
       fetch('/api/team').then(function(r){return r.json();}).catch(function(){return null;}),
-      fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
+      fetch('/api/branches',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
       D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
+      D.enquiries=(res[6]&&res[6].enquiries)||null; D.enqTotal=(res[6]&&res[6].total!=null)?res[6].total:null;
       var id=(location.hash||'').replace(/^#/,''); if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
     }).catch(function(e){
