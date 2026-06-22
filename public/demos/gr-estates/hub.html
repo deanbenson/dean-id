@@ -43,6 +43,21 @@
  .smeta{font-size:.75rem;color:var(--muted);margin-top:5px}
  .upchip{background:rgba(29,158,117,.1);color:#157a5b;border-radius:20px;padding:1px 8px;font-weight:600}
  .simpact{font-size:.79rem;margin-top:7px;color:#5a564e;border-top:1px dashed var(--line);padding-top:6px}
+ .tdgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:11px;margin:2px 0 18px}
+ .tdcard{background:#fff;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:13px;padding:13px 14px;cursor:pointer;transition:transform .08s,box-shadow .12s}
+ .tdcard:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(0,0,0,.06)}
+ .tdcard.on{border-left-color:var(--orange)}.tdcard.calm{opacity:.62}
+ .tdtop{display:flex;align-items:center;justify-content:space-between}
+ .tdic{font-size:1rem;color:var(--muted)}
+ .tdn{font-family:var(--serif);font-weight:700;font-size:1.7rem;line-height:1}
+ .tdcard.on .tdn{color:var(--orange-deep)}
+ .tdlabel{font-weight:600;font-size:.86rem;margin-top:7px}
+ .tdsub{color:var(--muted);font-size:.75rem;margin-top:1px}
+ .tddiary{margin-bottom:18px;padding:4px 16px}
+ .tddi{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line);font-size:.88rem}
+ .tddi:first-child{border-top:0}
+ .tddt{font-variant-numeric:tabular-nums;font-weight:700;min-width:52px;color:var(--orange-deep)}
+ .tddmeta{color:var(--muted);margin-left:auto;font-size:.78rem;text-align:right}
  .gl{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:13px 8px 4px}
  .nv{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:.86rem;color:#52555c;cursor:pointer}
  .nv:hover{background:rgba(255,255,255,.5)}
@@ -686,11 +701,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.58', BUILD='22 Jun 2026';
+  var HUB_VERSION='0.59', BUILD='22 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.4',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
+  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.59',d:'22 Jun 2026',items:['New "What needs you today" board across the top of Home — the hub now opens on the day\'s actions, pulled live from your Street data: leads to answer, viewings today, valuations booked this week, tenancies ending within 60 days, inspections due or overdue, and open maintenance jobs. Each is a count you can click straight through to','Added a "Today\'s diary" line-up of the actual viewings and valuations happening today, with times and clickable addresses, so the first thing you see each morning is your real schedule','The overview tiles (properties, branches, reviews and so on) move below the action board']},
     {v:'0.58',d:'22 Jun 2026',items:['Connections now shows PayProp as "Access requested, waiting on PayProp" with a "Requested" tag, rather than a plain "to connect". The API access request is in; once their team issues credentials it moves to live and the Money screens (rent roll, arrears, landlord payouts) light up']},
     {v:'0.57',d:'22 Jun 2026',items:['UptimeRobot fully wired up. Your public status page now shows both checks together — the website and the hub backend — and the "System status" link in your website footer points to it. The hub-backend check had its alarm condition the wrong way round (it flagged "operational" as a problem); that\'s corrected, so it reads Up when healthy']},
     {v:'0.56',d:'22 Jun 2026',items:['UptimeRobot is now live and watching from the outside. It pings your website and the hub backend every few minutes from outside Cloudflare, so if anything ever goes fully dark you get an email — even when no one is logged in. That is the one blind spot the in-hub board can\'t cover, because a self-check can\'t report its own death','Added a public status page your customers can check for reassurance, linked as "System status" in the website footer on every page','UptimeRobot moved out of "to connect" and into your live Connections, alongside Street, Google and the rest']},
@@ -837,6 +853,38 @@
   }
   function tile(n,l,acc,sub,route){ return '<div class="tile'+(acc?' acc':'')+(route?' tclick':'')+'"'+(route?' onclick="grGo(\''+route+'\')"':'')+'><div class="n">'+n+(sub?' <span class="st">'+sub+'</span>':'')+'</div><div class="l">'+l+'</div></div>'; }
 
+  function ensureToday(){
+    if(D.today!==undefined) return;
+    D.today=null;
+    fetch('/api/today',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.today=d; if(ROUTE==='home') renderView(false); }).catch(function(){ D.today={ok:false}; if(ROUTE==='home') renderView(false); });
+  }
+  function isToday(ts){ if(!ts)return false; var d=new Date(ts); if(isNaN(d.getTime()))return false; var n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
+  function tdCard(ic,label,n,sub,route){
+    var on=(typeof n==='number'&&n>0); var calm=(n===0);
+    return '<div class="tdcard'+(on?' on':(calm?' calm':''))+'" onclick="grGo(\''+route+'\')"><div class="tdtop"><span class="tdic">'+ic+'</span><span class="tdn">'+(n==null?'—':n)+'</span></div><div class="tdlabel">'+esc(label)+'</div><div class="tdsub">'+esc(sub)+'</div></div>';
+  }
+  function todayBoard(){
+    ensureToday();
+    var t=D.today||{}; var ok=t&&t.ok; var leads=D.leads||[]; var w0=Date.now()-6048e5;
+    var newLeads=leads.filter(function(L){return (L.at||0)>=w0;}).length;
+    var cards=tdCard('✉','Leads to answer',newLeads,newLeads?'new this week':'all caught up','enquiries')
+      +tdCard('◷','Viewings today',(ok?(t.viewings_today||0):null),(ok?((t.viewings_week||0)+' more this week'):'syncing…'),'viewings')
+      +tdCard('£','Valuations this week',(ok?(t.valuations_week||0):null),'appointments booked','valuations')
+      +tdCard('⚿','Tenancies ending',(ok?(t.tenancies_ending||0):null),'within 60 days','tenancies')
+      +tdCard('✓','Inspections due',(ok?(t.inspections_due||0):null),'due or overdue','inspections')
+      +tdCard('✸','Maintenance open',(ok?(t.maintenance_open||0):null),'jobs to progress','maintenance_jobs');
+    var diary='';
+    if(ok){
+      var todays=[];
+      (t.viewing_items||[]).forEach(function(v){ if(isToday(v.start)) todays.push({t:v.start,label:v.address||'Viewing',meta:'Viewing'+(v.status?(' · '+String(v.status).replace(/_/g,' ')):''),pid:v.property_id}); });
+      (t.valuation_items||[]).forEach(function(v){ if(isToday(v.start)) todays.push({t:v.start,label:v.address||'Valuation',meta:'Valuation'+(v.status?(' · '+String(v.status).replace(/_/g,' ')):'')}); });
+      todays.sort(function(a,b){return new Date(a.t).getTime()-new Date(b.t).getTime();});
+      if(todays.length){
+        diary='<div class="secttl">Today’s diary</div><div class="card tddiary">'+todays.map(function(x){ var tm=new Date(x.t).toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit'}); var lab=x.pid?propLink(x.pid,x.label):esc(x.label); return '<div class="tddi"><span class="tddt">'+tm+'</span><span>'+lab+'</span><span class="tddmeta">'+esc(x.meta)+'</span></div>'; }).join('')+'</div>';
+      }
+    }
+    return '<div class="secttl">What needs you today</div><div class="tdgrid">'+cards+'</div>'+diary;
+  }
   function viewHome(){
     var leads=D.leads||[]; var w0=Date.now()-6048e5; var nW=0; leads.forEach(function(L){ if((L.at||0)>=w0)nW++; });
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{};
@@ -860,8 +908,10 @@
     var saved=grSavedList(), recent=lsGet('grHubRecent'); var jump='';
     if(saved.length) jump+='<div class="secttl">Saved properties</div><div class="minirow">'+saved.map(miniPropCard).join('')+'</div>';
     if(recent.length) jump+='<div class="secttl">Recently viewed</div><div class="minirow">'+recent.map(miniPropCard).join('')+'</div>';
-    return '<h2 class="vt">Good to see you 👋</h2><div class="vsub">'+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+(branchN!=null?(' · '+branchN+' branches'):'')+(staff!=null?(' · '+staff+' staff'):'')+'</div>'
-      +'<div class="tiles">'+tiles+'</div>'
+    var _hr=new Date().getHours(), _greet=_hr<12?'Good morning':(_hr<18?'Good afternoon':'Good evening');
+    return '<h2 class="vt">'+_greet+' 👋</h2><div class="vsub">'+(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+(branchN!=null?(' · '+branchN+' branches'):'')+(staff!=null?(' · '+staff+' staff'):'')+'</div>'
+      +todayBoard()
+      +'<div class="secttl">Overview</div><div class="tiles">'+tiles+'</div>'
       +jump
       +'<div class="secttl">Service lines</div>'+svc
       +'<div class="cols" style="margin-top:18px"><div class="card"><h3>Branches</h3>'+branchRows+'</div><div class="card"><h3>Stock by area</h3>'+areas+'</div></div>'

@@ -2148,6 +2148,34 @@ export default {
     }
 
     // Admin: portfolio intelligence for the Hub — live counts + averages from D1. Same key as /api/leads.
+    // Daily-driver digest: the actionable items that need attention today, from the local Street mirror.
+    // Admin-gated. Counts plus a few sample rows per category for the Home "what needs you today" board.
+    if (path === "/api/today" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
+      const db = env.gr_estates;
+      const out = { ok: true };
+      const cnt = async (sql) => { try { const r = await db.prepare(sql).first(); return (r && r.n != null) ? r.n : 0; } catch (_) { return null; } };
+      const rows = async (sql) => { try { const r = await db.prepare(sql).all(); return (r && r.results) || []; } catch (_) { return []; } };
+      if (db) {
+        out.viewings_today = await cnt("SELECT COUNT(*) AS n FROM street_viewings WHERE date(start)=date('now')");
+        out.viewings_week = await cnt("SELECT COUNT(*) AS n FROM street_viewings WHERE date(start) > date('now') AND date(start) <= date('now','+7 day')");
+        out.viewing_items = await rows("SELECT id,start,address,status,property_id FROM street_viewings WHERE date(start) >= date('now') AND date(start) <= date('now','+7 day') ORDER BY start LIMIT 10");
+        out.valuations_week = await cnt("SELECT COUNT(*) AS n FROM street_valuations WHERE date(start) >= date('now') AND date(start) <= date('now','+7 day')");
+        out.valuation_items = await rows("SELECT id,start,address,status FROM street_valuations WHERE date(start) >= date('now') AND date(start) <= date('now','+7 day') ORDER BY start LIMIT 10");
+        out.tenancies_ending = await cnt("SELECT COUNT(*) AS n FROM street_tenancies WHERE date(end_date) >= date('now') AND date(end_date) <= date('now','+60 day')");
+        out.tenancy_items = await rows("SELECT id,end_date,rent_amount,rent_frequency,status FROM street_tenancies WHERE date(end_date) >= date('now') AND date(end_date) <= date('now','+60 day') ORDER BY end_date LIMIT 8");
+        out.inspections_due = await cnt("SELECT COUNT(*) AS n FROM street_inspections WHERE due_date IS NOT NULL AND date(due_date) <= date('now','+14 day') AND inspection_date IS NULL");
+        out.maintenance_open = await cnt("SELECT COUNT(*) AS n FROM street_maintenance_jobs WHERE completed_at IS NULL AND cancelled_at IS NULL");
+        out.maintenance_items = await rows("SELECT id,address,summary,priority,status FROM street_maintenance_jobs WHERE completed_at IS NULL AND cancelled_at IS NULL ORDER BY reported_at DESC LIMIT 6");
+        out.followups_due = await cnt("SELECT COUNT(*) AS n FROM street_follow_ups WHERE due_date IS NOT NULL AND date(due_date) <= date('now')");
+      }
+      return respond(JSON.stringify(out), 200, J);
+    }
+
     if (path === "/api/hub" && request.method === "GET") {
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, { "content-type": "application/json; charset=utf-8" });
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
