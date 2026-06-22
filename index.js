@@ -5,9 +5,23 @@ const ME = {
   stack: ["ai", "tech", "automation", "web", "strategy"],
   currently: "helping businesses do more with less",
   contact: "hello@dean.id",
+  work: "https://dean.id/v1/work",
   built_by: "dean.id",
   _comment: "yes, I tag my own work"
 };
+
+// The work: sites built, fixed or grown under the dean.id stamp.
+// Thor at Hutton Rudby is the first one live in the wild.
+const WORK = [
+  {
+    name: "Thor",
+    what: "Hair salon on the village green at Hutton Rudby, North Yorkshire",
+    url: "https://thorsalon.com",
+    type: "hair salon",
+    launched: "2026-06-22",
+    first: true
+  }
+];
 
 function badgeSVG(theme, cursor, blink) {
   const dark = theme === "dark" || theme === "transparent-dark";
@@ -1976,6 +1990,15 @@ export default {
 
     if (path === "/v1/me") {
       return respond(JSON.stringify(ME, null, 2) + "\n", 200, {
+        "content-type": "application/json; charset=utf-8",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=3600"
+      });
+    }
+
+    // The work: sites stamped by dean.id. Thor at Hutton Rudby is client #1.
+    if (path === "/v1/work") {
+      return respond(JSON.stringify({ count: WORK.length, latest: WORK[0] ? WORK[0].url : null, work: WORK }, null, 2) + "\n", 200, {
         "content-type": "application/json; charset=utf-8",
         "access-control-allow-origin": "*",
         "cache-control": "public, max-age=3600"
