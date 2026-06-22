@@ -1785,26 +1785,22 @@ async function _timedFetch(url, opts, timeoutMs) {
 // Is the public website doing its real jobs? We synthetically run the journeys a visitor would: the page
 // loads, property search returns, the reviews feed answers. Outcomes, not just a server ping.
 async function checkWebsite(env) {
-  const SITE = "https://dean.id";
-  const r = await Promise.all([
-    _timedFetch(SITE + "/demos/gr-estates/"),
-    _timedFetch(SITE + "/api/search?limit=1"),
-    _timedFetch(SITE + "/api/reviews")
-  ]);
-  const home = r[0], search = r[1], reviews = r[2];
-  let searchOk = search.ok; try { if (search.ok) { const j = JSON.parse(search.txt); searchOk = !!(j && (j.results || j.listings || j.total != null)); } } catch (_) {}
-  const journeys = [
-    { k: "Pages load", ok: !!(home.ok && (home.txt || "").indexOf("<html") >= 0), ms: home.ms },
-    { k: "Property search", ok: !!searchOk, ms: search.ms },
-    { k: "Reviews feed", ok: !!reviews.ok, ms: reviews.ms }
-  ];
-  const anyDown = journeys.some(function (j) { return !j.ok; });
-  const ms = Math.max(home.ms || 0, search.ms || 0, reviews.ms || 0);
-  const status = anyDown ? "down" : (ms > 1800 ? "slow" : "up");
+  // A Worker can't fetch its own public zone (Cloudflare rejects the loop), so we probe each journey at
+  // its real source in-process: the static page via the ASSETS binding, search via the D1 listings it
+  // reads, and the reviews feed via the KV it serves. Same outcomes a visitor depends on, no self-fetch.
+  const db = env && env.gr_estates;
+  let pagesOk = false, pagesMs = null;
+  try { if (env && env.ASSETS) { const p0 = Date.now(); const r = await env.ASSETS.fetch(new Request(new URL("/demos/gr-estates/index.html", "https://dean.id"))); pagesMs = Date.now() - p0; pagesOk = !!(r && r.ok); } } catch (_) {}
+  let searchOk = false; try { if (db) { const c = await db.prepare("SELECT COUNT(*) AS n FROM listings").first(); searchOk = !!(c && c.n > 0); } } catch (_) {}
+  let reviewsOk = false; try { if (env && env.LISTINGS) { const r = await env.LISTINGS.get("google:reviewsv5"); if (r) { const j = JSON.parse(r); reviewsOk = !!(j && (j.rating != null || j.overall != null || j.branches)); } } } catch (_) {}
+  const journeys = [{ k: "Pages load", ok: pagesOk }, { k: "Property search", ok: searchOk }, { k: "Reviews feed", ok: reviewsOk }];
+  const okN = journeys.filter(function (j) { return j.ok; }).length;
+  const ms = (pagesMs != null) ? pagesMs : 0;
+  const status = okN === 3 ? (ms > 1800 ? "slow" : "up") : (okN === 0 ? "down" : "slow");
   const failed = journeys.filter(function (j) { return !j.ok; }).map(function (j) { return j.k.toLowerCase(); });
   return { key: "website", name: "Your website", group: "online", status: status, ms: ms,
     detail: journeys.map(function (j) { return (j.ok ? "✓ " : "✗ ") + j.k; }).join("   "),
-    impact: status === "up" ? "Buyers and landlords can browse, search and enquire normally." : (status === "slow" ? "The site is up but responding slowly for visitors." : ("Visitors may struggle to " + (failed.join(" / ") || "use the site") + " right now.")) };
+    impact: status === "up" ? "Buyers and landlords can browse, search and enquire normally." : (okN === 0 ? "The site may be unreachable for visitors right now." : ("Part of the site is degraded — " + failed.join(" / ") + ".")) };
 }
 // Is Street CRM reachable with our credentials, and is the data fresh?
 async function checkStreet(env) {
