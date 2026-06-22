@@ -1,0 +1,6 @@
+# Keep the admin hub SPA fresh: revalidate on every load so deploys are picked up
+# without a manual hard-refresh (cheap 304 when unchanged, full fetch on a new build).
+/demos/gr-estates/hub
+  Cache-Control: no-cache
+/demos/gr-estates/hub.html
+  Cache-Control: no-cache
