@@ -686,11 +686,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.57', BUILD='22 Jun 2026';
+  var HUB_VERSION='0.58', BUILD='22 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.4',connections:'1.9',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
+  var VER={home:'1.4',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.58',d:'22 Jun 2026',items:['Connections now shows PayProp as "Access requested, waiting on PayProp" with a "Requested" tag, rather than a plain "to connect". The API access request is in; once their team issues credentials it moves to live and the Money screens (rent roll, arrears, landlord payouts) light up']},
     {v:'0.57',d:'22 Jun 2026',items:['UptimeRobot fully wired up. Your public status page now shows both checks together — the website and the hub backend — and the "System status" link in your website footer points to it. The hub-backend check had its alarm condition the wrong way round (it flagged "operational" as a problem); that\'s corrected, so it reads Up when healthy']},
     {v:'0.56',d:'22 Jun 2026',items:['UptimeRobot is now live and watching from the outside. It pings your website and the hub backend every few minutes from outside Cloudflare, so if anything ever goes fully dark you get an email — even when no one is logged in. That is the one blind spot the in-hub board can\'t cover, because a self-check can\'t report its own death','Added a public status page your customers can check for reassurance, linked as "System status" in the website footer on every page','UptimeRobot moved out of "to connect" and into your live Connections, alongside Street, Google and the rest']},
     {v:'0.55',d:'22 Jun 2026',items:['System status: fixed the website row that briefly read "down". A worker isn\'t allowed to call its own public address, so the three website journeys are now checked at their real source inside the worker — the page through the assets layer, search through the live listings, reviews through the cached feed. Same truth, reads correctly now','Added a tiny public "liveness" endpoint (/api/up) so an outside monitor can confirm the hub backend is alive even though the hub itself is private and admin-only — the groundwork for UptimeRobot','Added UptimeRobot to your Connections stack: independent, outside-the-building uptime monitoring plus a public status page your customers can check for reassurance']},
@@ -929,7 +930,7 @@
     if(rv&&rv.total){ tiles+='<div class="tile"><div class="ttl"><span class="sysic" style="width:24px;height:24px;font-size:.82rem">★</span>Reviews</div><div class="tnm">'+rv.total.toLocaleString('en-GB')+'</div><div class="tsb"><span class="dotg"></span>'+(rv.average?rv.average.toFixed(1)+' average':'live')+'</div></div>'; }
     // ---- wider stack, still to connect ----
     var stack=[
-      ['PayProp','Payments · rent & landlord payouts'],['TDS (Custodial)','Compliance · deposit protection'],
+      ['PayProp','Payments · rent & landlord payouts','Access requested, waiting on PayProp','Requested'],['TDS (Custodial)','Compliance · deposit protection'],
       ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
       ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · listings & leads'],
       ['OnTheMarket','Portal · listings & leads'],['Snaith Boards','Boards · for-sale / to-let'],
@@ -937,7 +938,7 @@
       ['SignRequest','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
     ];
     var SYSURL={'PayProp':'https://uk.payprop.com','TDS (Custodial)':'https://www.tenancydepositscheme.com','Goodlord':'https://www.goodlord.co','Fixflo':'https://www.fixflo.com','Reports2Go':'https://www.reports2go.co.uk','Rightmove':'https://www.rightmove.co.uk','OnTheMarket':'https://www.onthemarket.com','Google Workspace':'https://admin.google.com','SignRequest':'https://signrequest.com','Meta Business':'https://business.facebook.com','UptimeRobot':'https://uptimerobot.com'};
-    var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys future"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag n">To connect</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">'+esc(s[2]||'in use, not yet wired')+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
+    var scards=stack.map(function(s){ var u=SYSURL[s[0]]; return '<div class="sys future"><div class="top"><span class="nm">'+esc(s[0])+'</span><span class="rag '+(s[3]?'a':'n')+'">'+esc(s[3]||'To connect')+'</span></div><div class="dta">'+esc(s[1])+'</div><div class="fr">'+esc(s[2]||'in use, not yet wired')+(u?' · '+ext(u):'')+'</div></div>'; }).join('');
     // ---- hero status ----
     var withTot=sync.filter(function(s){return s.streetTotal!=null&&s.streetTotal>0;});
     var filling=withTot.filter(function(s){return (s.count||0)<s.streetTotal;}).length;
