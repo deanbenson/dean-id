@@ -1917,6 +1917,18 @@ export default {
       return respond(JSON.stringify({ ok: true, model: ASK_MODEL, health: h, likely_recovered: (h.status === "credit" && stale) }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
     }
 
+    // Public liveness probe for external monitors (e.g. UptimeRobot). No auth and no private data — it lets
+    // an outside service confirm the worker (and the otherwise-invisible hub backend) is alive even when no
+    // one is logged in. A healthy response contains the word "operational" for keyword monitors to match on;
+    // it stays HTTP 200 while the worker runs so a transient binding blip doesn't fire a false "site down".
+    if (path === "/api/up") {
+      let dbOk = true, kvOk = true;
+      try { if (env && env.gr_estates) await env.gr_estates.prepare("SELECT 1 AS n").first(); } catch (_) { dbOk = false; }
+      try { if (env && env.LISTINGS) await env.LISTINGS.get("health:last"); } catch (_) { kvOk = false; }
+      const healthy = dbOk && kvOk;
+      return respond(JSON.stringify({ status: healthy ? "operational" : "degraded", checks: { db: dbOk, kv: kvOk }, ts: new Date().toISOString() }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
+    }
+
     // Live system health board: real probes of the website's journeys, Street, Google and the AI, plus
     // uptime % from a rolling history. Admin-gated (it's a hub view). ?force=1 runs the heavier live probes.
     if (path === "/api/health" && request.method === "GET") {
