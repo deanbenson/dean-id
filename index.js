@@ -11,7 +11,7 @@ const ME = {
 };
 
 // The work: sites built, fixed or grown under the dean.id stamp.
-// Thor at Hutton Rudby is the first one live in the wild.
+// dean.id came first, of course — Thor at Hutton Rudby is the first client live.
 const WORK = [
   {
     name: "Thor",
@@ -19,7 +19,14 @@ const WORK = [
     url: "https://thorsalon.com",
     type: "hair salon",
     launched: "2026-06-22",
-    first: true
+    first_client: true
+  },
+  {
+    name: "dean.id",
+    what: "This — my own site, served as a JSON API. Where it all started",
+    url: "https://dean.id",
+    type: "the origin",
+    note: "site zero (yes, I tag my own work)"
   }
 ];
 
