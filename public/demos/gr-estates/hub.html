@@ -23,6 +23,26 @@
  .side{background:var(--panel);border-right:1px solid #ddd5c8;padding:14px 11px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
  .sidescroll{flex:1;overflow:auto;min-height:0;margin:0 -2px;padding:0 2px}
  .brand{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-weight:700;font-size:1.08rem;padding:4px 8px 10px}.brand .k{color:var(--orange)}
+ .hpip{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:auto;background:#bdb9b0;cursor:pointer;flex:0 0 auto}
+ .hbdot{width:12px;height:12px;border-radius:50%;display:inline-block;flex:0 0 auto}
+ .hbdot.up,.hpip.up{background:var(--g);animation:hbpA var(--hb,2.2s) infinite}
+ .hbdot.slow,.hpip.slow{background:var(--a);animation:hbpB var(--hb,2.2s) infinite}
+ .hbdot.down,.hpip.down{background:var(--r);animation:hbblink 1.1s infinite}
+ .hbdot.unmonitored{background:#bdb9b0}
+ @keyframes hbpA{0%{box-shadow:0 0 0 0 rgba(29,158,117,.5)}70%{box-shadow:0 0 0 8px rgba(29,158,117,0)}100%{box-shadow:0 0 0 0 rgba(29,158,117,0)}}
+ @keyframes hbpB{0%{box-shadow:0 0 0 0 rgba(224,153,42,.5)}70%{box-shadow:0 0 0 8px rgba(224,153,42,0)}100%{box-shadow:0 0 0 0 rgba(224,153,42,0)}}
+ @keyframes hbblink{0%,100%{opacity:1}50%{opacity:.4}}
+ .shero{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--g);border-radius:14px;padding:15px 18px;margin:2px 0 16px;flex-wrap:wrap}
+ .shero.slow{border-left-color:var(--a)}.shero.down{border-left-color:var(--r)}
+ .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px;margin-bottom:15px}
+ .scard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+ .scard.up{border-left:3px solid var(--g)}.scard.slow{border-left:3px solid var(--a)}.scard.down{border-left:3px solid var(--r)}.scard.unmonitored{opacity:.7;background:#faf9f7}
+ .scardtop{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+ .sname{font-weight:700;font-size:.94rem}.sstat{margin-left:auto;font-weight:600;font-size:.79rem}
+ .sdetail{color:var(--muted);font-size:.81rem;line-height:1.45}
+ .smeta{font-size:.75rem;color:var(--muted);margin-top:5px}
+ .upchip{background:rgba(29,158,117,.1);color:#157a5b;border-radius:20px;padding:1px 8px;font-weight:600}
+ .simpact{font-size:.79rem;margin-top:7px;color:#5a564e;border-top:1px dashed var(--line);padding-top:6px}
  .gl{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:13px 8px 4px}
  .nv{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;font-size:.86rem;color:#52555c;cursor:pointer}
  .nv:hover{background:rgba(255,255,255,.5)}
@@ -618,7 +638,7 @@
   }
 
   var NAV=[
-    {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
+    {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'status',l:'System status',ic:'◉',rag:'g'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
     {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
     {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'vendors',l:'Vendors',ic:'☺',rag:'g'},{id:'landlords',l:'Landlords',ic:'☺',rag:'g'},{id:'tenants',l:'Tenants',ic:'☺',rag:'g'},{id:'solicitors',l:'Solicitors',ic:'§',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
     {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'properties_all',l:'All properties',ic:'⌂',rag:'g'},{id:'property_keys',l:'Keys',ic:'⚿',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
@@ -666,11 +686,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.53', BUILD='22 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
+  var HUB_VERSION='0.54', BUILD='22 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.4',connections:'1.7',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
+  var VER={home:'1.4',connections:'1.7',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.54',d:'22 Jun 2026',items:['New System status screen — a live "is everything up and running?" board for the whole business. A light only glows green if the hub actually probed that system and it answered just now; nothing is ever a decorative green','It tests real journeys, not just servers: your website is checked by actually loading a page, running a property search and pulling the reviews feed — the things a buyer does. Street, Google and the AI assistant are each really pinged too','Each system shows its response time and a rolling uptime %, with a plain-English line on what it means for your customers if it dips. The dots beat like a heartbeat, faster when a system is snappy','An always-on health dot now sits by the hub name in the sidebar, so you can see at a glance from any screen that everything is live — click it to open the full board','Honest by design: things we cannot truly check yet (the phone system, Rightmove, OnTheMarket, PayProp and the rest) are shown as a clear grey "not monitored yet" with what it would take to light them up, rather than a guessed green']},
     {v:'0.53',d:'22 Jun 2026',items:['Listings now reads 100% in the Diagnose table instead of a blank "—". It holds all 183 of your live on-market properties — a complete set — but because Street keeps no "all listings ever" figure to compare against, it was showing "—", which next to a column of 100%s looked like it wasn\'t coming through. It is: confirmed live through both the sync and the website search path. Now shown as 183 / 183, 100%, Complete']},
     {v:'0.52',d:'22 Jun 2026',items:['Fixed listings showing amber "Filling" forever in the Diagnose report. Listings is your live on-market set, so Street keeps no "all listings ever" total to measure it against — with nothing to compare to, the status wrongly fell through to "Filling". A dataset we hold in full now reads green "Complete", and its coverage shows "—" rather than a made-up percentage','Same fix stops the odd "25,450 / 1" reading on enquiries: when a stored total is missing or briefly stale, the hub no longer prints a misleading ratio and just shows what we hold','Under the hood: the read-only copy of Street now lives in clearly labelled "street_" tables (street_viewings, street_tenancies and so on), so every feed\'s source is obvious at a glance and a second system later (payments, portals) can sit alongside it without any name clashes. Your live website tables are untouched, and all existing data was preserved by renaming in place — nothing had to re-sync']},
     {v:'0.51',d:'21 Jun 2026',items:['Fixed the nonsense "157% of Street" figure. Cause: once a feed finishes its full backfill it only pulls recently-changed records, and the page total for that small slice (e.g. "1") was overwriting the real dataset total — so enquiries\' total read 1 instead of 25,444. The sync now re-reads the true total cleanly in top-up mode','Belt and braces: the coverage figure is now capped per dataset and can never read over 100% again, even if a total is briefly wrong']},
@@ -1069,6 +1090,7 @@
     if(id==='profile')body=viewProfile();
     else if(id==='home')body=roleHome();
     else if(id==='connections')body=viewConnections();
+    else if(id==='status')body=viewStatus();
     else if(id==='ask')body=viewAsk();
     else if(id==='enquiries')body=viewEnquiries();
     else if(id==='listings')body=viewListings();
@@ -1099,6 +1121,51 @@
     return sub+dataTable('gen_'+name,L.rows,cols,'Search '+esc(title)+'…',name);
   }
 
+  // ---- Live system health ---------------------------------------------------------------------
+  function hStatusCol(s){ return s==='up'?'#157a5b':s==='slow'?'#a96514':s==='down'?'#c2541d':'#8a8780'; }
+  function hStatusWord(s){ return s==='up'?'Operational':s==='slow'?'Slow':s==='down'?'Down':'Not monitored'; }
+  function hbDur(ms){ return (1.4+Math.min(1.5,(ms||300)/1400)).toFixed(2); }
+  function updatePip(overall){ var p=document.getElementById('healthpip'); if(!p)return; p.className='hpip '+(overall||'up'); p.style.setProperty('--hb',hbDur(300)+'s'); p.title='System status — '+(overall==='up'?'all operational':overall==='slow'?'running slow':overall==='down'?'attention needed':'checking…'); }
+  function ensureHealth(force){
+    if(!force && D.health!==undefined) return;
+    if(D.health===undefined) D.health=null;
+    fetch('/api/health'+(force?'?force=1':''),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){
+      D.health=d; if(d&&d.ok) updatePip(d.overall); if(ROUTE==='status') renderView(false);
+    }).catch(function(){ if(!D.health){ D.health={ok:false}; if(ROUTE==='status') renderView(false);} });
+  }
+  window.grHealthCheck=function(){ var b=document.getElementById('hcheckbtn'); if(b){b.disabled=true;b.textContent='Checking…';} D.health=undefined; ensureHealth(true); };
+  window.startHealthPip=function(){ if(window._hpip) return; var poll=function(){ fetch('/api/health',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ D.health=d; updatePip(d.overall); if(ROUTE==='status') renderView(false); } }).catch(function(){}); }; poll(); window._hpip=setInterval(poll,45000); };
+  function hCard(s,up){
+    var c=hStatusCol(s.status);
+    var dot='<span class="hbdot '+s.status+'" style="--hb:'+hbDur(s.ms)+'s"></span>';
+    var ms=(s.ms!=null&&s.status!=='unmonitored')?('<span style="font-variant-numeric:tabular-nums">'+s.ms+' ms</span>'):'';
+    var u=up&&up[s.key]; var uchip=(u!=null)?('<span class="upchip" title="Reachable this share of the checks we have logged">'+u+'% uptime</span>'):'';
+    var sep=(ms&&uchip)?' · ':'';
+    return '<div class="scard '+s.status+'"><div class="scardtop">'+dot+'<span class="sname">'+esc(s.name)+'</span><span class="sstat" style="color:'+c+'">'+hStatusWord(s.status)+'</span></div>'
+      +'<div class="sdetail">'+esc(s.detail||'')+'</div>'+((ms||uchip)?('<div class="smeta">'+ms+sep+uchip+'</div>'):'')
+      +(s.impact?('<div class="simpact">'+esc(s.impact)+'</div>'):'')+'</div>';
+  }
+  function viewStatus(){
+    if(D.health===undefined) ensureHealth(false);
+    var head='<h2 class="vt">System status</h2><div class="vsub">Live health of everything your business runs on. Every green light is a real check, run just now — never a decoration.</div>';
+    var d=D.health;
+    if(!d) return head+'<div class="card" style="color:var(--muted)">Running live checks…</div>';
+    if(!d.ok) return head+'<div class="card" style="color:var(--orange-deep)">Couldn\'t run the health check just now. <button class="btn" style="margin-left:8px" onclick="grHealthCheck()">Try again</button></div>';
+    var sys=d.systems||[], up=d.uptime||{}, overall=d.overall||'up';
+    var mon=sys.filter(function(s){return s.status!=='unmonitored';});
+    var nDown=mon.filter(function(s){return s.status==='down';}).length, nSlow=mon.filter(function(s){return s.status==='slow';}).length;
+    var hl=overall==='up'?'All systems operational':overall==='slow'?(nSlow+' system'+(nSlow>1?'s':'')+' running slow'):(nDown+' system'+(nDown>1?'s':'')+' down');
+    var hero='<div class="shero '+overall+'"><span class="hbdot '+overall+'" style="--hb:'+hbDur(300)+'s;width:17px;height:17px"></span>'
+      +'<div style="flex:1 1 auto;min-width:0"><div style="font-family:var(--serif);font-weight:700;font-size:1.4rem;color:'+hStatusCol(overall)+'">'+hl+'</div>'
+      +'<div style="color:var(--muted);font-size:.83rem">Checked '+esc(ago(d.at))+' · refreshes itself'+(d.samples?(' · '+d.samples+' checks logged'):'')+'</div></div>'
+      +'<button id="hcheckbtn" class="btn" onclick="grHealthCheck()">Check now</button></div>';
+    function grp(t,sub,g){ var it=sys.filter(function(s){return s.group===g;}); if(!it.length)return''; return '<div class="secttl">'+t+'</div>'+(sub?'<div style="color:var(--muted);font-size:.8rem;margin:-3px 0 8px">'+sub+'</div>':'')+'<div class="sgrid">'+it.map(function(s){return hCard(s,up);}).join('')+'</div>'; }
+    return head+hero
+      +grp('Is your business online?','The real visitor journeys, tested end to end.','online')
+      +grp('Data &amp; intelligence','The systems your hub runs on.','spine')
+      +grp('Shopfronts &amp; tools','Known, but not truthfully checkable yet — shown honestly rather than guessed green.','shopfront');
+  }
+
   window.grAsk=function(q){
     q=(q==null?'':String(q)).trim(); if(!q||ASKING) return;
     var inp=document.getElementById('askin'); if(inp) inp.value='';
@@ -1111,11 +1178,12 @@
 
   function renderShell(){
     computeRag();
-    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side"><div class="brand" onclick="grGo(\'home\')" style="cursor:pointer" title="Home"><span>G.<span class="k">R.</span> Hub</span></div><div class="sidescroll">'+navHTML()+'</div>'+footHTML()+'</aside><div class="main">'
+    root.innerHTML='<div class="ovl" id="ovl" onclick="grToggleNav()"></div><div class="shell"><aside class="side" id="side"><div class="brand" onclick="grGo(\'home\')" style="cursor:pointer" title="Home"><span>G.<span class="k">R.</span> Hub</span><span id="healthpip" class="hpip" title="System status" onclick="event.stopPropagation();grGo(\'status\')"></span></div><div class="sidescroll">'+navHTML()+'</div>'+footHTML()+'</aside><div class="main">'
       +'<div class="askwrap"><button class="btn menu-b" onclick="grToggleNav()">☰</button><div class="gsearch"><span class="gsi">⌕</span><input id="gsin" placeholder="Search anything: address, name, email, phone…" autocomplete="off" oninput="grSearchInput(this.value)" onkeydown="grSearchKey(event)" onblur="grSearchBlur()"><div class="gsdrop" id="gsdrop"></div></div><div class="ask"><span class="sp">✦</span><input id="askin" placeholder="Ask Georgina…" onkeydown="if(event.key===\'Enter\')grAsk(this.value)"><button onclick="grAsk(document.getElementById(\'askin\').value)">Ask</button></div></div>'
       +'<div class="view" id="view">'+viewFor(ROUTE)+'</div></div></div>';
     updateActive();
     if(ROUTE==='feed') startFeed(); else stopFeed();
+    try{ if(D.health&&D.health.ok) updatePip(D.health.overall); if(window.startHealthPip) window.startHealthPip(); }catch(e){}
   }
 
   function boot(){

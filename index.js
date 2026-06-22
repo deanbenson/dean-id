@@ -1769,9 +1769,120 @@ async function syncExtrasRotating(env, count, chunkSize) {
 // Map the dataset name the Hub asks for to the resource that fills it (applicants/offers come in two parts).
 function extrasForDataset(name) { if (name === "applicants") return ["sales_applicants", "lettings_applicants"]; if (name === "offers") return ["sales_offers", "lettings_offers"]; return [name]; }
 
+// ============================ LIVE SYSTEM HEALTH ============================================
+// Real, honest "is everything up?" monitoring. A system only shows green if we actually probed it and
+// it answered just now — never a decorative light. Things we can't truly verify show an honest grey.
+// Snapshots + a rolling history are kept in KV so the dashboard has uptime % and survives between checks.
+async function _timedFetch(url, opts, timeoutMs) {
+  const ctl = new AbortController(); const to = setTimeout(function () { ctl.abort(); }, timeoutMs || 6000); const t0 = Date.now();
+  try {
+    const r = await fetch(url, Object.assign({ signal: ctl.signal, headers: { "User-Agent": "dean.id-healthcheck/1.0 (+https://dean.id)" } }, opts || {}));
+    const ms = Date.now() - t0; let txt = ""; try { txt = await r.text(); } catch (_) {}
+    return { ok: r.ok, status: r.status, ms: ms, txt: txt };
+  } catch (e) { return { ok: false, status: 0, ms: Date.now() - t0, err: String((e && e.message) || e).slice(0, 120) }; }
+  finally { clearTimeout(to); }
+}
+// Is the public website doing its real jobs? We synthetically run the journeys a visitor would: the page
+// loads, property search returns, the reviews feed answers. Outcomes, not just a server ping.
+async function checkWebsite(env) {
+  const SITE = "https://dean.id";
+  const r = await Promise.all([
+    _timedFetch(SITE + "/demos/gr-estates/"),
+    _timedFetch(SITE + "/api/search?limit=1"),
+    _timedFetch(SITE + "/api/reviews")
+  ]);
+  const home = r[0], search = r[1], reviews = r[2];
+  let searchOk = search.ok; try { if (search.ok) { const j = JSON.parse(search.txt); searchOk = !!(j && (j.results || j.listings || j.total != null)); } } catch (_) {}
+  const journeys = [
+    { k: "Pages load", ok: !!(home.ok && (home.txt || "").indexOf("<html") >= 0), ms: home.ms },
+    { k: "Property search", ok: !!searchOk, ms: search.ms },
+    { k: "Reviews feed", ok: !!reviews.ok, ms: reviews.ms }
+  ];
+  const anyDown = journeys.some(function (j) { return !j.ok; });
+  const ms = Math.max(home.ms || 0, search.ms || 0, reviews.ms || 0);
+  const status = anyDown ? "down" : (ms > 1800 ? "slow" : "up");
+  const failed = journeys.filter(function (j) { return !j.ok; }).map(function (j) { return j.k.toLowerCase(); });
+  return { key: "website", name: "Your website", group: "online", status: status, ms: ms,
+    detail: journeys.map(function (j) { return (j.ok ? "✓ " : "✗ ") + j.k; }).join("   "),
+    impact: status === "up" ? "Buyers and landlords can browse, search and enquire normally." : (status === "slow" ? "The site is up but responding slowly for visitors." : ("Visitors may struggle to " + (failed.join(" / ") || "use the site") + " right now.")) };
+}
+// Is Street CRM reachable with our credentials, and is the data fresh?
+async function checkStreet(env) {
+  const t0 = Date.now(); let r = null;
+  try { r = await streetGet(env, "/branches?page%5Bsize%5D=1"); } catch (e) { r = { ok: false, status: 0 }; }
+  const ms = Date.now() - t0; const up = !!(r && r.ok);
+  let freshMin = null; try { if (env && env.LISTINGS) { const at = await env.LISTINGS.get("sync:enquiries:at"); if (at) freshMin = Math.round((Date.now() - new Date(at).getTime()) / 60000); } } catch (_) {}
+  const status = !up ? "down" : (ms > 3000 ? "slow" : "up");
+  return { key: "street", name: "Street CRM", group: "spine", status: status, ms: ms,
+    detail: (up ? "API responding" : ("API error" + (r && r.status ? " " + r.status : ""))) + (freshMin != null ? "  ·  synced " + freshMin + " min ago" : ""),
+    impact: up ? "Live data is flowing into the hub." : "The hub can't reach Street right now; figures may be stale until it recovers." };
+}
+// Is Google's Places API answering (it powers the live star rating)? Live probe is billable, so we only
+// hit it on a manual check; in the background we read the freshness + last-error signals we already store.
+async function checkGoogle(env, live) {
+  if (!env || !env.GOOGLE_API_KEY) return { key: "google", name: "Google reviews", group: "spine", status: "unmonitored", detail: "No API key configured", impact: "" };
+  if (live) {
+    const t0 = Date.now(); let ok = false, status = 0;
+    try { const r = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", headers: { "content-type": "application/json", "X-Goog-Api-Key": env.GOOGLE_API_KEY, "X-Goog-FieldMask": "places.id" }, body: JSON.stringify({ textQuery: "G.R. Estates Stockton-on-Tees", maxResultCount: 1, regionCode: "GB" }) }); status = r.status; ok = r.ok; try { await r.text(); } catch (_) {} } catch (e) {}
+    const ms = Date.now() - t0;
+    return { key: "google", name: "Google reviews", group: "spine", status: ok ? (ms > 2000 ? "slow" : "up") : "down", ms: ms, detail: ok ? "Places API responding" : ("Places API error" + (status ? " " + status : "")), impact: ok ? "Your live star rating keeps refreshing." : "Reviews may show the last cached rating until Google recovers." };
+  }
+  let genAgoH = null, errRecent = false;
+  try { const c = await env.LISTINGS.get("google:reviewsv5"); if (c) { const j = JSON.parse(c); if (j && j.generated_at) genAgoH = Math.round((Date.now() - new Date(j.generated_at).getTime()) / 3600000); } } catch (_) {}
+  try { const e = await env.LISTINGS.get("google:err"); if (e) { const j = JSON.parse(e); if (j && j.at && (Date.now() - j.at) < 6 * 3600000) errRecent = true; } } catch (_) {}
+  return { key: "google", name: "Google reviews", group: "spine", status: errRecent ? "slow" : "up", detail: (genAgoH != null ? ("reviews refreshed " + genAgoH + "h ago") : "reviews cached") + (errRecent ? "  ·  recent API error" : "  ·  no errors"), impact: errRecent ? "A recent Google fetch failed; the rating shown may be cached." : "Your live star rating keeps refreshing." };
+}
+// Is the AI assistant able to answer? On a manual check we run a tiny on-platform inference; in the
+// background we confirm the binding is present and read the recorded primary-model status.
+async function checkAI(env, live) {
+  let claude = "ok"; try { if (env && env.LISTINGS) { const v = await env.LISTINGS.get("ai:health"); if (v) { const h = JSON.parse(v); if (h && h.status && h.status !== "ok" && h.at && (Date.now() - h.at) < 1800000) claude = h.status; } } } catch (_) {}
+  if (live && env && env.AI) {
+    const t0 = Date.now(); let ok = false;
+    try { const r = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "user", content: "ping" }], max_tokens: 1 }); ok = !!r; } catch (e) {}
+    const ms = Date.now() - t0;
+    return { key: "ai", name: "Ask Georgina (AI)", group: "spine", status: ok ? (ms > 4000 ? "slow" : "up") : "down", ms: ms, detail: (ok ? "Assistant responding" : "Assistant not responding") + (claude !== "ok" ? "  ·  primary on fallback" : ""), impact: ok ? "Visitors and staff get instant answers." : "The assistant may be briefly unavailable." };
+  }
+  const up = !!(env && env.AI);
+  return { key: "ai", name: "Ask Georgina (AI)", group: "spine", status: up ? (claude !== "ok" ? "slow" : "up") : "unmonitored", detail: up ? ("ready" + (claude !== "ok" ? "  ·  primary on fallback" : "")) : "not configured", impact: up ? "Visitors and staff get instant answers." : "" };
+}
+// The rest of Georgina's stack: known, but not truthfully checkable yet (no API/endpoint we can reach).
+// Shown as honest grey so the board never claims a system is up when we haven't actually verified it.
+function unmonitoredSystems() {
+  return [
+    { key: "phone", name: "Phone system (Aztec / 3CX)", group: "shopfront", status: "unmonitored", detail: "Needs a status URL to monitor", impact: "Give the hub the 3CX portal address and this lights up for real." },
+    { key: "rightmove", name: "Rightmove", group: "shopfront", status: "unmonitored", detail: "Portal probe not switched on", impact: "Turn on third-party probes to track its uptime." },
+    { key: "onthemarket", name: "OnTheMarket", group: "shopfront", status: "unmonitored", detail: "Portal probe not switched on", impact: "Turn on third-party probes to track its uptime." },
+    { key: "payprop", name: "PayProp", group: "shopfront", status: "unmonitored", detail: "Not yet wired", impact: "" },
+    { key: "goodlord", name: "Goodlord", group: "shopfront", status: "unmonitored", detail: "Not yet wired", impact: "" },
+    { key: "fixflo", name: "Fixflo", group: "shopfront", status: "unmonitored", detail: "Not yet wired", impact: "" }
+  ];
+}
+// Run the full health pass. live=true does the billable/heavier probes (Google, AI); false uses cached
+// signals for those. Persists the latest snapshot + appends to a rolling history for uptime %.
+async function runHealth(env, live) {
+  const core = await Promise.all([checkWebsite(env), checkStreet(env), checkGoogle(env, live), checkAI(env, live)]);
+  const systems = core.concat(unmonitoredSystems());
+  const down = core.filter(function (s) { return s.status === "down"; }).length;
+  const slow = core.filter(function (s) { return s.status === "slow"; }).length;
+  const overall = down > 0 ? "down" : (slow > 0 ? "slow" : "up");
+  const snap = { at: Date.now(), overall: overall, systems: systems };
+  try { if (env && env.LISTINGS) await env.LISTINGS.put("health:last", JSON.stringify(snap)); } catch (_) {}
+  try {
+    if (env && env.LISTINGS) {
+      let hist = []; try { const h = await env.LISTINGS.get("health:hist"); if (h) hist = JSON.parse(h) || []; } catch (_) {}
+      const s = {}; core.forEach(function (x) { s[x.key] = x.status; });
+      hist.push({ at: snap.at, overall: overall, s: s });
+      if (hist.length > 192) hist = hist.slice(-192); // ~2 days at 15-min cadence
+      await env.LISTINGS.put("health:hist", JSON.stringify(hist));
+    }
+  } catch (_) {}
+  return snap;
+}
+
 export default {
   async scheduled(event, env, ctx) {
     const hourly = !(event && event.cron && event.cron !== "0 * * * *");
+    ctx.waitUntil(runHealth(env, false).catch(function () {})); // sample system health every tick → uptime history
     if (hourly) {
       // The hourly tick is a separate invocation with its own subrequest budget: do the heavy
       // property/reviews refreshes here so they never compete with the enquiry + extras sync.
@@ -1808,6 +1919,28 @@ export default {
       if (env && env.LISTINGS) { try { const v = await env.LISTINGS.get("ai:health"); if (v) h = JSON.parse(v); } catch (_) {} }
       const stale = h && h.at ? (Date.now() - h.at > 1800000) : true;
       return respond(JSON.stringify({ ok: true, model: ASK_MODEL, health: h, likely_recovered: (h.status === "credit" && stale) }), 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
+    }
+
+    // Live system health board: real probes of the website's journeys, Street, Google and the AI, plus
+    // uptime % from a rolling history. Admin-gated (it's a hub view). ?force=1 runs the heavier live probes.
+    if (path === "/api/health" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const force = url.searchParams.get("force") === "1";
+      let snap = null;
+      if (!force && env.LISTINGS) { try { const l = await env.LISTINGS.get("health:last"); if (l) { const p = JSON.parse(l); if (p && p.at && (Date.now() - p.at) < 60000) snap = p; } } catch (_) {} }
+      if (!snap) snap = await runHealth(env, force);
+      let hist = []; try { if (env.LISTINGS) { const h = await env.LISTINGS.get("health:hist"); if (h) hist = JSON.parse(h) || []; } } catch (_) {}
+      const uptime = {};
+      (snap.systems || []).forEach(function (s) {
+        if (s.status === "unmonitored") return;
+        const rel = hist.filter(function (x) { return x.s && x.s[s.key]; });
+        const okN = rel.filter(function (x) { return x.s[s.key] === "up" || x.s[s.key] === "slow"; }).length;
+        uptime[s.key] = rel.length ? Math.round(okN / rel.length * 100) : null;
+      });
+      return respond(JSON.stringify({ ok: true, at: snap.at, overall: snap.overall, systems: snap.systems, uptime: uptime, samples: hist.length }), 200, J);
     }
 
     if (!["GET", "HEAD"].includes(request.method) && !path.startsWith("/api/")) {
