@@ -683,6 +683,7 @@
     feed:'Live company wins, everyone sees their own feed.',map:'Branches and properties plotted on a map.',settings:'People and access, plus integrations.'
   };
   var SRC={
+    deposits:'Imported from your TDS Custodial deposit export. Re-import any time to refresh.',
     home:'Live from Street (listings, team, branches), Google reviews and the website.',
     connections:'Live status and timestamps from each connected system.',
     ask:'Answers from your live Street, reviews and website data.',
@@ -709,11 +710,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.65', BUILD='22 Jun 2026';
+  var HUB_VERSION='0.66', BUILD='22 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0'};
   var CHANGELOG=[
+    {v:'0.66',d:'22 Jun 2026',items:['Fixed the real cause of the TDS import and read failing (an internal coding slip that made both calls error out). They work now.','Made the Deposit protection screen foolproof when it is empty: it explains what the screen does and walks you, step by step, through exactly how to get the export out of TDS and import it here.']},
     {v:'0.65',d:'22 Jun 2026',items:['Fixed the TDS deposit import failing on first use. The importer is now robust to how the database returns the new import id, and if anything ever does go wrong it reports a clear message instead of a generic error.']},
     {v:'0.64',d:'22 Jun 2026',items:['New Deposit protection screen (under Money). Import your TDS Custodial "deposit export" CSV straight into the hub and it stores the whole thing in the database — every column plus the full raw row, nothing dropped — with a log of each import (date and record count). It shows how many deposits are currently protected and the total held, and flags the compliance that matters: any protected outside the 30-day legal window, any where the tenancy has ended but the deposit is still held, and any protection expiring within 60 days. TDS Custodial now appears as a live connection on Connections']},
     {v:'0.63',d:'22 Jun 2026',items:['Found and fixed the real cause of the banner text running off the right edge: its "all good" state was sharing a style class with a status label used elsewhere, which forced the description onto a single line that never wrapped. That same root cause was behind the earlier button-wrapping too. The description now wraps neatly inside the card and the actions stay put beside the title']},
@@ -973,6 +975,23 @@
   function ensureTds(){ if(D.tds!==undefined) return; D.tds=null; fetch('/api/tds',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.tds=d||{ok:false}; if(ROUTE==='deposits'||ROUTE==='connections') renderView(false); }).catch(function(){ D.tds={ok:false}; if(ROUTE==='deposits') renderView(false); }); }
   window.tdsUpload=function(inp){ var file=inp&&inp.files&&inp.files[0]; if(!file) return; var b=document.getElementById('tdsupst'); if(b)b.textContent='Importing '+file.name+'…'; var fr=new FileReader(); fr.onload=function(){ fetch('/api/tds-upload?file='+encodeURIComponent(file.name),{method:'POST',headers:{'x-admin-key':key(),'content-type':'text/csv'},body:fr.result}).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ D.tds=undefined; ensureTds(); } else { if(b)b.textContent='Import failed: '+((d&&d.error)||'try again'); } }).catch(function(){ if(b)b.textContent='Import failed, try again'; }); }; fr.readAsText(file); };
   function tdsUpBtn(label){ return '<label class="btn" style="cursor:pointer;display:inline-flex;align-items:center"><input type="file" accept=".csv,text/csv" style="display:none" onchange="tdsUpload(this)"><span id="tdsupst">'+(label||'Import TDS export')+'</span></label>'; }
+  function tdsIntro(note){
+    return (note?'<div class="card" style="border-color:var(--orange);background:rgba(224,153,42,.07);margin-bottom:14px;color:var(--orange-deep)">'+note+'</div>':'')
+    +'<div class="card">'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:5px">What this screen does</p>'
+    +'<p style="color:#54585f;margin-bottom:18px">It turns your TDS Custodial deposit export into a live compliance view: how many deposits are protected and the total held, whether each one was protected inside the legal 30-day window, and a searchable list of every deposit with its TDS reference, amounts and dates.</p>'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:8px">Step 1 &middot; get the file from TDS</p>'
+    +'<ol style="margin:0 0 18px 20px;color:#54585f;line-height:1.9">'
+    +'<li>Sign in to TDS Custodial at <b>custodial.tenancydepositscheme.com</b></li>'
+    +'<li>From <b>My options</b>, click <b>Reporting</b> (the "Export your deposits" box)</li>'
+    +'<li>Next to <b>"All deposits including deposit amount protected and lead tenant details"</b>, click <b>Get report</b></li>'
+    +'<li>Wait a few seconds and refresh the page. The button changes to <b>Download report</b> &mdash; click it, and the file saves to your Downloads</li>'
+    +'</ol>'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:8px">Step 2 &middot; import it here</p>'
+    +'<p style="color:#54585f;margin-bottom:14px">Click the button below and choose the file you just downloaded. That is all &mdash; the screen fills in straight away, and you can re-import any time to refresh it.</p>'
+    +tdsUpBtn('Import TDS export (CSV)')
+    +'</div>';
+  }
   function tdsTable(list){
     if(!list.length) return '<div class="card" style="color:var(--muted)">None right now.</div>';
     var body=list.slice(0,600).map(function(r){ var amt=parseFloat(r.current_protected_amount_value); if(isNaN(amt))amt=0;
@@ -984,8 +1003,8 @@
     var head='<h2 class="vt">Deposit protection</h2><div class="vsub">Custodial deposits protected with TDS, imported from your TDS deposit export.</div>';
     var d=D.tds;
     if(d===null||d===undefined) return head+'<div class="card">Loading…</div>';
-    if(!d.ok) return head+'<div class="card"><p style="margin-bottom:10px">Couldn\'t load deposit data.</p>'+tdsUpBtn('Import TDS export')+'</div>';
-    if(d.empty) return head+'<div class="card"><p style="margin-bottom:6px"><b>No deposit data imported yet.</b></p><p style="margin-bottom:12px;color:var(--muted)">In TDS Custodial, go to <b>Reporting → Export your deposits</b>, choose <b>"All deposits including deposit amount protected and lead tenant details"</b>, download the CSV, then import it here.</p>'+tdsUpBtn('Import TDS export (CSV)')+'</div>';
+    if(!d.ok) return head+tdsIntro('We couldn\'t reach the saved data just now, but you can still import a fresh file below.');
+    if(d.empty) return head+tdsIntro('');
     var rows=d.rows||[];
     var ACT={'Deposit Held':1,'Deposit Registered':1};
     var active=rows.filter(function(r){return ACT[r.status];});

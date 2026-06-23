@@ -1947,6 +1947,7 @@ export default {
     // dropped and new TDS columns survive), and logs every import (date + record count), like the Street feed.
     const TDS_COLS = [["deposit_account_number","Deposit Account Number"],["user_reference","User Reference"],["status","Status"],["case_status","Case Status"],["tenancy_address","Tenancy Address"],["lead_tenant_name","Lead Tenant Name"],["lead_tenant_email","Lead Tenant Email"],["tenancy_deposit_amount","Tenancy Deposit Amount"],["current_protected_amount","Current Protected Amount"],["rent_amount","Rent Amount"],["date_received_by_agent","Date received by agent/landlord"],["tenancy_start_date","Tenancy Start Date"],["date_received_by_scheme","Date Received by Scheme"],["protection_start_date","Protection Start Date"],["expected_tenancy_end_date","Expected Tenancy End Date"],["protection_end_date","Protection End Date"],["branch_member_name","Branch/Member name"],["tenancy_deposit_amount_value","Tenancy Deposit Amount Amount"],["tenancy_deposit_amount_ccy","Tenancy Deposit Amount Currency"],["current_protected_amount_value","Current Protected Amount Amount"],["current_protected_amount_ccy","Current Protected Amount Currency"],["rent_amount_value","Rent Amount Amount"],["rent_amount_ccy","Rent Amount Currency"]];
     if (path === "/api/tds-upload" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
@@ -2002,6 +2003,7 @@ export default {
 
     // Read the latest TDS deposit import + the import history, for the hub's Deposit Protection screen.
     if (path === "/api/tds" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8" };
       if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
