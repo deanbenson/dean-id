@@ -717,11 +717,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.69', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.70', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0'};
   var CHANGELOG=[
+    {v:'0.70',d:'23 Jun 2026',items:['Connections: Rightmove now shows as "Requested" and in onboarding, since the read-only datafeed access request is in with Rightmove. It moves to live once they verify the account and we build the feed.']},
     {v:'0.69',d:'23 Jun 2026',items:['Small fix: the deposits count read "1 shown shown" after a search. Now reads correctly.']},
     {v:'0.68',d:'23 Jun 2026',items:['Tidied the Deposit protection table itself. It had no cell spacing and oversized text, so columns ran into each other and figures did not line up. It now has proper padding, a cleaner data size, aligned (tabular) numbers, and the long property addresses are kept in their own column so the amounts, references and dates have room to breathe.']},
     {v:'0.67',d:'23 Jun 2026',items:['Polished the Deposit protection screen: dates now read "26 Jul 2024" instead of raw 2024-07-26, statuses are tidy ("Held", "Closed"), and there is a new "To protect" column showing the days between you receiving each deposit and the scheme receiving it (turned red over the 30-day legal limit).','Added search and filtering to the deposits list: search by address, tenant or reference, and filter by Active, Held, Registered, Late, Closed or All. The compliance tiles are clickable too — tap "Protected late" to jump straight to those.']},
@@ -1077,7 +1078,7 @@
     var stack=[
       ['PayProp','Payments · rent & landlord payouts','Access requested, waiting on PayProp','Requested'],
       ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
-      ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · listings & leads'],
+      ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · views, leads & inventory','Read-only access requested, in onboarding','Requested'],
       ['OnTheMarket','Portal · listings & leads'],['Snaith Boards','Boards · for-sale / to-let'],
       ['Aztec / 3CX','Telephony · the phone system'],['Google Workspace','Email, calendar & drive'],
       ['SignRequest','E-signatures'],['Meta Business','Facebook & Instagram'],['iamsold / Pattinson','Auctions partner']
