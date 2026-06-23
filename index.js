@@ -1985,13 +1985,18 @@ export default {
         const imp = await db.prepare("INSERT INTO tds_imports (imported_at, row_count, active_count, filename) VALUES (?,?,?,?)").bind(new Date().toISOString(), rows.length, activeCount, fname).run();
         importId = imp.meta && imp.meta.last_row_id;
       } catch (e) { return respond(JSON.stringify({ ok: false, error: "import log: " + String((e && e.message) || e) }), 500, J); }
+      if (importId == null) { try { const m = await db.prepare("SELECT MAX(id) AS id FROM tds_imports").first(); importId = (m && m.id) != null ? m.id : null; } catch (e) {} }
+      if (importId == null) return respond(JSON.stringify({ ok: false, error: "could not determine import id" }), 500, J);
       const cols = ["import_id"].concat(TDS_COLS.map((c) => c[0]), ["raw_json"]);
       const ins = db.prepare("INSERT INTO tds_deposits (" + cols.join(",") + ") VALUES (" + cols.map(() => "?").join(",") + ")");
-      let stored = 0, failed = 0;
-      for (let s = 0; s < rows.length; s += 40) {
-        const chunk = rows.slice(s, s + 40).map((r) => ins.bind(...[importId].concat(TDS_COLS.map((c) => (r[c[1]] !== undefined && r[c[1]] !== "" ? String(r[c[1]]) : null)), [JSON.stringify(r)])));
-        try { await db.batch(chunk); stored += chunk.length; } catch (e) { failed += chunk.length; }
-      }
+      let stored = 0, failed = 0, lastErr = "";
+      try {
+        for (let s = 0; s < rows.length; s += 25) {
+          const chunk = rows.slice(s, s + 25).map((r) => ins.bind(...[importId].concat(TDS_COLS.map((c) => (r[c[1]] != null && r[c[1]] !== "" ? String(r[c[1]]) : null)), [JSON.stringify(r)])));
+          try { await db.batch(chunk); stored += chunk.length; } catch (e) { failed += chunk.length; lastErr = String((e && e.message) || e); }
+        }
+      } catch (e) { return respond(JSON.stringify({ ok: false, error: "insert: " + String((e && e.message) || e), import_id: importId }), 500, J); }
+      if (!stored) return respond(JSON.stringify({ ok: false, error: "stored 0 of " + rows.length + " rows" + (lastErr ? (" — " + lastErr) : "") }), 500, J);
       return respond(JSON.stringify({ ok: true, import_id: importId, stored: stored, failed: failed, rows: rows.length, active: activeCount, asOf: new Date().toISOString() }), 200, J);
     }
 
@@ -2001,20 +2006,22 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
-      const db = env.gr_estates;
-      let imports = [];
       try {
-        const il = await db.prepare("SELECT id, imported_at, row_count, active_count, filename FROM tds_imports ORDER BY id DESC LIMIT 24").all();
-        imports = (il && il.results) || [];
+        const db = env.gr_estates;
+        let imports = [];
+        try {
+          const il = await db.prepare("SELECT id, imported_at, row_count, active_count, filename FROM tds_imports ORDER BY id DESC LIMIT 24").all();
+          imports = (il && il.results) || [];
+        } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+        if (!imports.length) return respond(JSON.stringify({ ok: true, empty: true }), 200, J);
+        const latest = imports[0];
+        let rows = [];
+        try {
+          const dr = await db.prepare("SELECT " + TDS_COLS.map((c) => c[0]).join(",") + " FROM tds_deposits WHERE import_id = ?").bind(latest.id).all();
+          rows = (dr && dr.results) || [];
+        } catch (e) {}
+        return respond(JSON.stringify({ ok: true, asOf: latest.imported_at, count: latest.row_count, active: latest.active_count, imports: imports, rows: rows }), 200, J);
       } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
-      if (!imports.length) return respond(JSON.stringify({ ok: true, empty: true }), 200, J);
-      const latest = imports[0];
-      let rows = [];
-      try {
-        const dr = await db.prepare("SELECT " + TDS_COLS.map((c) => c[0]).join(",") + " FROM tds_deposits WHERE import_id = ?").bind(latest.id).all();
-        rows = (dr && dr.results) || [];
-      } catch (e) {}
-      return respond(JSON.stringify({ ok: true, asOf: latest.imported_at, count: latest.row_count, active: latest.active_count, imports: imports, rows: rows }), 200, J);
     }
 
     // Health of the AI assistant (records when Anthropic credits run out and we fall back).
