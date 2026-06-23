@@ -669,7 +669,7 @@
 
   var NAV=[
     {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'status',l:'System status',ic:'◉',rag:'g'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
-    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
+    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'rightmove',l:'Rightmove leads',ic:'➤',rag:'a'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
     {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'vendors',l:'Vendors',ic:'☺',rag:'g'},{id:'landlords',l:'Landlords',ic:'☺',rag:'g'},{id:'tenants',l:'Tenants',ic:'☺',rag:'g'},{id:'solicitors',l:'Solicitors',ic:'§',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
     {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'properties_all',l:'All properties',ic:'⌂',rag:'g'},{id:'property_keys',l:'Keys',ic:'⚿',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
     {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'inspections',l:'Inspections',ic:'✓',rag:'g'},{id:'maintenance_jobs',l:'Maintenance',ic:'✸',rag:'g'},{id:'move_outs',l:'Move outs',ic:'⊠',rag:'g'}]},
@@ -691,6 +691,7 @@
   };
   var SRC={
     deposits:'Imported from your TDS Custodial deposit export. Re-import any time to refresh.',
+    rightmove:'Live from Rightmove\'s Real Time Leads feed — each portal enquiry arrives the instant it is submitted.',
     home:'Live from Street (listings, team, branches), Google reviews and the website.',
     connections:'Live status and timestamps from each connected system.',
     ask:'Answers from your live Street, reviews and website data.',
@@ -717,11 +718,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.70', BUILD='23 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1};
+  var HUB_VERSION='0.71', BUILD='23 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0'};
+  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0'};
   var CHANGELOG=[
+    {v:'0.71',d:'23 Jun 2026',items:['New Rightmove leads screen (under Pipeline). Your Rightmove account is verified and the secure webhook endpoint that receives leads is built and live, so every Rightmove enquiry will land in the hub the instant it is submitted — the applicant, how to reach them, the property they enquired about, whether they want a viewing, and, on lettings, their pre-qualification details. It switches on the moment Rightmove verifies the endpoint and issues our signing secret.']},
     {v:'0.70',d:'23 Jun 2026',items:['Connections: Rightmove now shows as "Requested" and in onboarding, since the read-only datafeed access request is in with Rightmove. It moves to live once they verify the account and we build the feed.']},
     {v:'0.69',d:'23 Jun 2026',items:['Small fix: the deposits count read "1 shown shown" after a search. Now reads correctly.']},
     {v:'0.68',d:'23 Jun 2026',items:['Tidied the Deposit protection table itself. It had no cell spacing and oversized text, so columns ran into each other and figures did not line up. It now has proper padding, a cleaner data size, aligned (tabular) numbers, and the long property addresses are kept in their own column so the amounts, references and dates have room to breathe.']},
@@ -1051,6 +1053,73 @@
     var imp=(d.imports&&d.imports.length)?('<div class="secttl">Import history</div><div class="card" style="color:var(--muted);font-size:.85rem">'+d.imports.map(function(m){return esc(fmt(new Date(m.imported_at).getTime()))+' · '+m.row_count+' records, '+m.active_count+' active';}).join('<br>')+'</div>'):'';
     return head+hero+comp+list+imp;
   }
+  // ---- Rightmove leads (Real Time Leads webhook → /api/rightmove-leads) ----
+  var RMQ='', RMF='all';
+  function rmLabel(t){ var M={LETTING_RESIDENTIAL:'Lettings',LETTING_RESIDENTIAL_ENHANCED:'Lettings (enhanced)',BFR_ENHANCED_LEAD:'Lettings (enhanced)',RESALE_RESIDENTIAL:'Sales',RESALE_NEW_HOMES:'New homes',RESALE_NEW_HOMES_ENHANCED:'New homes (enhanced)',LETTING_COMMERCIAL:'Commercial lettings',RESALE_COMMERCIAL:'Commercial sales',OVERSEAS_SALES:'Overseas',VALUATION_REQUEST_DISCOVER:'Valuation request',VALUATION_REQUEST_LVA:'Valuation request',ONLINE_AGENT_VALUATION:'Online valuation',EMAIL_AGENT:'Email agent',MEDIA_CONTENT_REQUEST:'Brochure / media'}; if(M[t]) return M[t]; if(!t) return '—'; return String(t).toLowerCase().replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }
+  function rmFiltered(){ var d=D.rm; if(!d||!d.rows) return []; var list;
+    if(RMF==='lettings') list=d.rows.filter(function(r){return /LETTING|BFR/.test(r.lead_type||'');});
+    else if(RMF==='sales') list=d.rows.filter(function(r){return /RESALE|OVERSEAS/.test(r.lead_type||'');});
+    else if(RMF==='valuations') list=d.rows.filter(function(r){return /VALUATION/.test(r.lead_type||'');});
+    else if(RMF==='viewing') list=d.rows.filter(function(r){return r.request_viewing;});
+    else list=d.rows.slice();
+    if(RMQ){ var q=RMQ.toLowerCase(); list=list.filter(function(r){ return (((r.first_name||'')+' '+(r.last_name||'')+' '+(r.email||'')+' '+(r.telephone||'')+' '+(r.reference||'')).toLowerCase().indexOf(q)>=0); }); }
+    return list;
+  }
+  window.rmSearch=function(v){ RMQ=v; var f=rmFiltered(); var t=document.getElementById('rmtbl'); if(t)t.innerHTML=rmTable(f); var c=document.getElementById('rmcount'); if(c)c.textContent=f.length; };
+  window.rmFilter=function(f){ RMF=f; if(ROUTE==='rightmove')renderView(false); };
+  function ensureRm(){ if(D.rm!==undefined) return; D.rm=null; fetch('/api/rightmove-leads',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.rm=d||{ok:false}; if(ROUTE==='rightmove') renderView(false); }).catch(function(){ D.rm={ok:false}; if(ROUTE==='rightmove') renderView(false); }); }
+  function rmTable(list){
+    if(!list.length) return '<div class="card" style="color:var(--muted)">No leads match.</div>';
+    var body=list.slice(0,800).map(function(r){
+      var nm=((r.first_name||'')+' '+(r.last_name||'')).trim()||'—';
+      var contact=esc(r.email||r.telephone||'—');
+      var req=r.request_viewing?'<span style="color:#157a59;font-weight:600">Viewing</span>':(r.request_property_details?'<span style="color:#5b6470">Details</span>':'—');
+      return '<tr><td>'+esc(nm)+'</td><td>'+esc(rmLabel(r.lead_type))+'</td><td style="white-space:nowrap">'+esc(r.reference||'—')+'</td><td>'+contact+'</td><td style="white-space:nowrap">'+req+'</td><td style="white-space:nowrap">'+tdsDate(r.create_time||r.received_at)+'</td></tr>';
+    }).join('');
+    return '<div class="card" style="padding:0;overflow:auto"><table class="dtds"><thead><tr><th>Applicant</th><th>Type</th><th>Property ref</th><th>Contact</th><th>Requested</th><th>Received</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+  }
+  function rmIntro(note){
+    return (note?'<div class="card" style="border-color:var(--orange);background:rgba(224,153,42,.07);margin-bottom:14px;color:var(--orange-deep)">'+note+'</div>':'')
+    +'<div class="card">'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:5px">What this screen does</p>'
+    +'<p style="color:#54585f;margin-bottom:18px">It shows every enquiry from Rightmove the moment a home-mover submits it — who they are, how to reach them, the property they enquired about, whether they asked for a viewing, and, on lettings enquiries, their pre-qualification details (employment, income, guarantor and more). Leads arrive automatically; there is nothing to import.</p>'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:8px">Going live</p>'
+    +'<ol style="margin:0 0 18px 20px;color:#54585f;line-height:1.9">'
+    +'<li><b>Done</b> &mdash; your Rightmove account is verified and the secure webhook endpoint that receives leads is built and live.</li>'
+    +'<li><b>With Rightmove now</b> &mdash; they verify the endpoint and issue our private signing secret.</li>'
+    +'<li><b>Final step</b> &mdash; we add the secret and run a sandbox test, then real leads flow straight in here.</li>'
+    +'</ol>'
+    +'<p style="color:var(--muted);font-size:.85rem">Endpoint: <b>dean.id/api/rightmove/leads</b> &middot; every lead is signature-verified before it is stored.</p>'
+    +'</div>';
+  }
+  function viewRightmove(){
+    ensureRm();
+    var head='<h2 class="vt">Rightmove leads</h2><div class="vsub">Every enquiry from Rightmove, delivered the instant it is submitted via the Real Time Leads feed.</div>';
+    var d=D.rm;
+    if(d===null||d===undefined) return head+'<div class="card">Loading…</div>';
+    if(!d.ok) return head+rmIntro('We could not reach the saved leads just now. Once Rightmove verifies the endpoint, leads will appear here automatically.');
+    if(d.empty) return head+rmIntro('');
+    var rows=d.rows||[];
+    var now=Date.now();
+    var wk=rows.filter(function(r){var t=Date.parse(r.create_time||r.received_at||'');return t&&t>=now-7*864e5;}).length;
+    var vws=rows.filter(function(r){return r.request_viewing;}).length;
+    var lettings=rows.filter(function(r){return /LETTING|BFR/.test(r.lead_type||'');}).length;
+    var sales=rows.filter(function(r){return /RESALE|OVERSEAS/.test(r.lead_type||'');}).length;
+    var vals=rows.filter(function(r){return /VALUATION/.test(r.lead_type||'');}).length;
+    var hero='<div class="connhero cok"><div class="chl"><div class="chic">➤</div><div class="chtxt"><div class="chtop"><div class="cht">'+rows.length+' leads · '+wk+' this week</div><div class="cha"><span class="chmeta">live feed</span></div></div><div class="chs">Enquiries delivered straight from Rightmove\'s Real Time Leads feed for G.R. Estates.</div></div></div></div>';
+    function ct(label,n,sub,filt){ return '<div class="tile"'+(filt?' style="cursor:pointer" onclick="rmFilter(\''+filt+'\')"':'')+'><div class="ttl">'+label+'</div><div class="tnm">'+n+'</div><div class="tsb">'+sub+'</div></div>'; }
+    var tiles='<div class="secttl">Breakdown</div><div class="tiles">'
+      +ct('Lettings',lettings,'rental enquiries','lettings')
+      +ct('Sales',sales,'buyer enquiries','sales')
+      +ct('Valuations',vals,'valuation requests','valuations')
+      +ct('Viewing requests',vws,'asked to view','viewing')
+      +'</div>';
+    function rchip(f,lab){ return '<span class="fchip'+(RMF===f?' on':'')+'" onclick="rmFilter(\''+f+'\')">'+lab+'</span>'; }
+    var filtered=rmFiltered();
+    var bar='<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px"><div class="fgrp">'+rchip('all','All')+rchip('lettings','Lettings')+rchip('sales','Sales')+rchip('valuations','Valuations')+rchip('viewing','Viewing')+'</div><input id="rmq" placeholder="Search name, email or reference…" value="'+esc(RMQ)+'" oninput="rmSearch(this.value)" style="flex:1;min-width:220px;font:inherit;padding:.45rem .7rem;border:1px solid var(--line);border-radius:9px;background:#fff"></div>';
+    var list='<div class="secttl">Leads <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">· <span id="rmcount">'+filtered.length+'</span> shown</span></div>'+bar+'<div id="rmtbl">'+rmTable(filtered)+'</div>';
+    return head+hero+tiles+list;
+  }
   function viewConnections(){ ensureTds();
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[], sync=D.sync||[];
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
@@ -1242,6 +1311,7 @@
     else if(id==='home')body=roleHome();
     else if(id==='connections')body=viewConnections();
     else if(id==='deposits')body=viewDeposits();
+    else if(id==='rightmove')body=viewRightmove();
     else if(id==='status')body=viewStatus();
     else if(id==='ask')body=viewAsk();
     else if(id==='enquiries')body=viewEnquiries();

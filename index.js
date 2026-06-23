@@ -1932,7 +1932,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2023,6 +2023,85 @@ export default {
           rows = (dr && dr.results) || [];
         } catch (e) {}
         return respond(JSON.stringify({ ok: true, asOf: latest.imported_at, count: latest.row_count, active: latest.active_count, imports: imports, rows: rows }), 200, J);
+      } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+    }
+
+    // ---- Rightmove Real Time Leads: receive Svix-signed lead.created webhooks (PUBLIC endpoint) ----
+    // Rightmove POSTs { eventId, eventType:"lead.created", data:{...} }, signed via Svix headers, whenever a
+    // home-mover enquires. We verify against RIGHTMOVE_WEBHOOK_SECRET, store the full payload + key fields in
+    // D1 (idempotent on eventId), and reply 2xx fast. PUBLIC so Rightmove can reach it — security is the
+    // signature, not a login — so it is deliberately NOT in ADMIN_PATHS.
+    if (path === "/api/rightmove/leads" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      const verifySvix = async (secret, id, ts, sigHeader, payload) => {
+        if (!secret || !id || !ts || !sigHeader) return false;
+        const t = parseInt(ts, 10);
+        if (!t || Math.abs(Math.floor(Date.now() / 1000) - t) > 300) return false; // 5-min replay window
+        const raw = secret.indexOf("whsec_") === 0 ? secret.slice(6) : secret;
+        let keyBytes;
+        try { keyBytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)); } catch (e) { return false; }
+        const ck = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        const mac = await crypto.subtle.sign("HMAC", ck, new TextEncoder().encode(id + "." + ts + "." + payload));
+        const expected = btoa(String.fromCharCode.apply(null, new Uint8Array(mac)));
+        return sigHeader.split(" ").some((p) => { const i = p.indexOf(","); const s = i >= 0 ? p.slice(i + 1) : p; return s === expected; });
+      };
+      const body = await request.text();
+      const secret = env && env.RIGHTMOVE_WEBHOOK_SECRET;
+      let verified = 0;
+      if (secret) {
+        let okSig = false;
+        try { okSig = await verifySvix(secret, request.headers.get("svix-id"), request.headers.get("svix-timestamp"), request.headers.get("svix-signature"), body); } catch (e) { okSig = false; }
+        if (!okSig) return respond(JSON.stringify({ ok: false, error: "bad signature" }), 401, J);
+        verified = 1;
+      }
+      let evt;
+      try { evt = JSON.parse(body); } catch (e) { return respond(JSON.stringify({ ok: false, error: "bad json" }), 400, J); }
+      if (!evt || typeof evt !== "object") return respond(JSON.stringify({ ok: false, error: "empty body" }), 400, J);
+      const d = (evt.data && typeof evt.data === "object") ? evt.data : {};
+      const a = (d.applicant && typeof d.applicant === "object") ? d.applicant : {};
+      const str = (v) => (v != null && v !== "") ? String(v) : null;
+      const bool = (v) => v === true ? 1 : v === false ? 0 : null;
+      const eventId = String(evt.eventId || request.headers.get("svix-id") || crypto.randomUUID());
+      const agentId = (d.agentId != null && d.agentId !== "" && isFinite(Number(d.agentId))) ? Number(d.agentId) : null;
+      if (!env || !env.gr_estates) return respond(JSON.stringify({ ok: true, stored: false, note: "no database" }), 200, J);
+      const db = env.gr_estates;
+      try {
+        await db.prepare("CREATE TABLE IF NOT EXISTS rightmove_leads (event_id TEXT PRIMARY KEY, event_type TEXT, enquiry_id TEXT, lead_type TEXT, agent_id INTEGER, reference TEXT, first_name TEXT, last_name TEXT, email TEXT, telephone TEXT, address TEXT, comments TEXT, request_viewing INTEGER, request_property_details INTEGER, deep_link TEXT, submit_time TEXT, create_time TEXT, received_at TEXT, verified INTEGER, raw_json TEXT)").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_rm_leads_created ON rightmove_leads(create_time)").run();
+        await db.prepare("INSERT OR IGNORE INTO rightmove_leads (event_id,event_type,enquiry_id,lead_type,agent_id,reference,first_name,last_name,email,telephone,address,comments,request_viewing,request_property_details,deep_link,submit_time,create_time,received_at,verified,raw_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+          .bind(eventId, str(evt.eventType), str(d.enquiryId), str(d.leadType), agentId, str(d.reference), str(a.firstName), str(a.lastName), str(a.emailAddress), str(a.telephone), str(a.address), str(d.comments), bool(d.requestViewing), bool(d.requestPropertyDetails), str(d.deepLink), str(d.submitTime), str(d.createTime), new Date().toISOString(), verified, body)
+          .run();
+      } catch (e) {
+        // Let Rightmove retry (their schedule recovers transient failures); idempotent on eventId so no dupes.
+        return respond(JSON.stringify({ ok: false, error: "store: " + String((e && e.message) || e) }), 500, J);
+      }
+      return respond(JSON.stringify({ ok: true, stored: true, verified: !!verified }), 200, J);
+    }
+
+    // Read stored Rightmove leads + a light summary, for the hub's Rightmove leads screen (Access-gated).
+    if (path === "/api/rightmove-leads" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      try {
+        const db = env.gr_estates;
+        let rows = [];
+        try {
+          const dr = await db.prepare("SELECT event_id,event_type,enquiry_id,lead_type,agent_id,reference,first_name,last_name,email,telephone,address,comments,request_viewing,request_property_details,deep_link,submit_time,create_time,received_at,verified FROM rightmove_leads ORDER BY COALESCE(create_time, received_at) DESC LIMIT 1000").all();
+          rows = (dr && dr.results) || [];
+        } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+        if (!rows.length) return respond(JSON.stringify({ ok: true, empty: true }), 200, J);
+        const byType = {}; let viewings = 0, week = 0; const wk = Date.now() - 7 * 864e5;
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i]; const lt = r.lead_type || "UNKNOWN";
+          byType[lt] = (byType[lt] || 0) + 1;
+          if (r.request_viewing) viewings++;
+          const t = Date.parse(r.create_time || r.received_at || "");
+          if (t && t >= wk) week++;
+        }
+        return respond(JSON.stringify({ ok: true, count: rows.length, week: week, viewings: viewings, byType: byType, rows: rows }), 200, J);
       } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
     }
 
