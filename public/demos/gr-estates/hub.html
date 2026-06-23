@@ -284,6 +284,13 @@
 <div id="root"></div>
 <script>
 (function(){
+  // Cloudflare Access guards the data endpoints at /api/admin/* with a per-person login.
+  // Transparently send every admin call (those carrying the x-admin-key header) there, so the
+  // login gates the data too — without touching the individual fetch call sites below.
+  (function(){ var _f=window.fetch; window.fetch=function(u,o){
+    try{ if(typeof u==='string' && u.indexOf('/api/')===0 && u.indexOf('/api/admin/')!==0 && o && o.headers && o.headers['x-admin-key']!=null){ u='/api/admin'+u.slice(4); } }catch(e){}
+    return _f.apply(this,arguments);
+  };})();
   var root=document.getElementById('root');
   var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner', PROP_ID=null;
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
@@ -701,11 +708,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.59', BUILD='22 Jun 2026';
+  var HUB_VERSION='0.60', BUILD='22 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
   var CHANGELOG=[
+    {v:'0.60',d:'22 Jun 2026',items:['The hub now sits behind a proper per-person login. Opening it asks for your email and a one-time code (Cloudflare Access) instead of one shared key, so each person signs in as themselves, you can add or remove people in a click, and every sign-in is logged','The client-data endpoints sit behind that same login now, not just the shared key, so client data can only be pulled once you are signed in','The public website, property search and reviews are untouched and stay open for customers']},
     {v:'0.59',d:'22 Jun 2026',items:['New "What needs you today" board across the top of Home — the hub now opens on the day\'s actions, pulled live from your Street data: leads to answer, viewings today, valuations booked this week, tenancies ending within 60 days, inspections due or overdue, and open maintenance jobs. Each is a count you can click straight through to','Added a "Today\'s diary" line-up of the actual viewings and valuations happening today, with times and clickable addresses, so the first thing you see each morning is your real schedule','The overview tiles (properties, branches, reviews and so on) move below the action board']},
     {v:'0.58',d:'22 Jun 2026',items:['Connections now shows PayProp as "Access requested, waiting on PayProp" with a "Requested" tag, rather than a plain "to connect". The API access request is in; once their team issues credentials it moves to live and the Money screens (rent roll, arrears, landlord payouts) light up']},
     {v:'0.57',d:'22 Jun 2026',items:['UptimeRobot fully wired up. Your public status page now shows both checks together — the website and the hub backend — and the "System status" link in your website footer points to it. The hub-backend check had its alarm condition the wrong way round (it flagged "operational" as a problem); that\'s corrected, so it reads Up when healthy']},

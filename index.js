@@ -1923,7 +1923,19 @@ export default {
   async fetch(request, env, ctx) {
    try {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\/+$/, "") || "/";
+    let path = url.pathname.replace(/\/+$/, "") || "/";
+    // Cloudflare Access guards /api/admin/* with a per-person login: a request only reaches the
+    // Worker here once Access has authenticated an allowed user at the edge. Map the alias back to
+    // the real endpoint so existing handlers + the LEADS_KEY check still run (defence in depth).
+    const viaAccess = path.startsWith("/api/admin/");
+    if (viaAccess) path = "/api/" + path.slice(11);
+    // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
+    // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
+    // (search, reviews, property, /api/up, team, social, etc.) are untouched.
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches"]);
+    if (ADMIN_PATHS.has(path) && !viaAccess) {
+      return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
+    }
 
     // "Ask Georgina" AI assistant — accepts GET (?q=) and POST (JSON) + CORS preflight.
     if (path === "/api/ask") {
