@@ -89,6 +89,13 @@
  .gsempty{padding:16px;color:var(--muted);font-size:.85rem;text-align:center}
  .nextsync{font-variant-numeric:tabular-nums;font-weight:700;color:var(--orange-deep)}
  table.dt td.dtx,table.dt th.dtx{width:1%;white-space:nowrap;text-align:right}
+ table.dtds{border-collapse:collapse;width:100%;font-size:.85rem;font-variant-numeric:tabular-nums}
+ table.dtds th{text-align:left;padding:9px 14px;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;white-space:nowrap;vertical-align:bottom;border-bottom:1px solid var(--line)}
+ table.dtds td{padding:10px 14px;border-bottom:1px solid #f1eee8;color:var(--ink);vertical-align:middle;line-height:1.35}
+ table.dtds tbody tr:last-child td{border-bottom:none}
+ table.dtds tbody tr:hover{background:#faf8f4}
+ table.dtds td.dtx,table.dtds th.dtx{text-align:right;white-space:nowrap}
+ table.dtds td:first-child{max-width:300px;color:#3a3d43}
  .rowbtn{border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;color:var(--muted);font-size:.9rem;line-height:1;padding:.15rem .4rem}.rowbtn:hover{border-color:var(--orange);color:var(--orange-deep)}
  .rdov{position:fixed;inset:0;background:rgba(20,20,20,.42);z-index:100;display:flex;justify-content:flex-end}
  .rdpanel{background:#fff;width:min(560px,94vw);height:100%;overflow:auto;box-shadow:-14px 0 44px rgba(0,0,0,.22)}
@@ -710,11 +717,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.67', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.68', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0'};
   var CHANGELOG=[
+    {v:'0.68',d:'23 Jun 2026',items:['Tidied the Deposit protection table itself. It had no cell spacing and oversized text, so columns ran into each other and figures did not line up. It now has proper padding, a cleaner data size, aligned (tabular) numbers, and the long property addresses are kept in their own column so the amounts, references and dates have room to breathe.']},
     {v:'0.67',d:'23 Jun 2026',items:['Polished the Deposit protection screen: dates now read "26 Jul 2024" instead of raw 2024-07-26, statuses are tidy ("Held", "Closed"), and there is a new "To protect" column showing the days between you receiving each deposit and the scheme receiving it (turned red over the 30-day legal limit).','Added search and filtering to the deposits list: search by address, tenant or reference, and filter by Active, Held, Registered, Late, Closed or All. The compliance tiles are clickable too — tap "Protected late" to jump straight to those.']},
     {v:'0.66',d:'22 Jun 2026',items:['Fixed the real cause of the TDS import and read failing (an internal coding slip that made both calls error out). They work now.','Made the Deposit protection screen foolproof when it is empty: it explains what the screen does and walks you, step by step, through exactly how to get the export out of TDS and import it here.']},
     {v:'0.65',d:'22 Jun 2026',items:['Fixed the TDS deposit import failing on first use. The importer is now robust to how the database returns the new import id, and if anything ever does go wrong it reports a clear message instead of a generic error.']},
@@ -1007,7 +1015,7 @@
       var ddTxt=(dd==null)?'—':(dd+'d'); var ddSt=(dd!=null&&dd>30)?' style="color:var(--orange-deep);font-weight:600"':'';
       return '<tr><td>'+esc(r.tenancy_address||'—')+'</td><td>'+esc(r.lead_tenant_name||'—')+'</td><td class="dtx" style="font-variant-numeric:tabular-nums">'+money(amt)+'</td><td style="white-space:nowrap">'+esc(r.deposit_account_number||'—')+'</td><td style="white-space:nowrap">'+tdsDate(r.protection_start_date)+'</td><td class="dtx"'+ddSt+'>'+ddTxt+'</td><td style="white-space:nowrap">'+tdsStatus(r.status)+'</td></tr>';
     }).join('');
-    return '<div class="card" style="padding:0;overflow:auto"><table class="dt"><thead><tr><th>Property</th><th>Lead tenant</th><th class="dtx">Protected</th><th>Reference</th><th>Protected from</th><th class="dtx" title="Days from you receiving the deposit to the scheme receiving it — legal limit is 30">To protect</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+    return '<div class="card" style="padding:0;overflow:auto"><table class="dtds"><thead><tr><th>Property</th><th>Lead tenant</th><th class="dtx">Protected</th><th>Reference</th><th>Protected from</th><th class="dtx" title="Days from you receiving the deposit to the scheme receiving it — legal limit is 30">To protect</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div>';
   }
   function viewDeposits(){
     ensureTds();
