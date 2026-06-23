@@ -1932,7 +1932,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2102,6 +2102,94 @@ export default {
           if (t && t >= wk) week++;
         }
         return respond(JSON.stringify({ ok: true, count: rows.length, week: week, viewings: viewings, byType: byType, rows: rows }), 200, J);
+      } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+    }
+
+    // ---- Rightmove RTDF read feed: pull branch performance + inventory over mutual-TLS (Access-gated) ----
+    // Read-only consumer of Rightmove's Real Time Data Feed (JSON over HTTPS POST, secured by a client X509
+    // certificate). Completely inert until the mTLS keystore binding (env.RIGHTMOVE_RTDF) plus network/branch
+    // IDs are provisioned from Rightmove's test pack, so it is safe to ship ahead of go-live. Manual trigger
+    // for now; the daily cron gets wired once sandbox testing passes.
+    if (path === "/api/rightmove-sync" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const net = env.RIGHTMOVE_NETWORK_ID;
+      const branches = String(env.RIGHTMOVE_BRANCH_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+      if (!env.RIGHTMOVE_RTDF || !net || !branches.length) {
+        return respond(JSON.stringify({ ok: false, configured: false, error: "Rightmove RTDF not configured yet (awaiting the test keystore + network/branch IDs)" }), 200, J);
+      }
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      const base = env.RIGHTMOVE_RTDF_BASE || "https://adfapi.rightmove.co.uk";
+      const db = env.gr_estates;
+      const str = (v) => (v != null && v !== "") ? String(v) : null;
+      const num = (v) => (v == null || v === "") ? null : (isFinite(Number(v)) ? Number(v) : null);
+      const pad = (n) => String(n).padStart(2, "0");
+      const ddmmyyyy = (d) => pad(d.getUTCDate()) + "-" + pad(d.getUTCMonth() + 1) + "-" + d.getUTCFullYear();
+      const toIso = (s) => { if (!s) return null; const m = String(s).match(/^(\d{2})-(\d{2})-(\d{4})/); return m ? (m[3] + "-" + m[2] + "-" + m[1]) : String(s); };
+      const rtdf = async (pathname, body) => {
+        const r = await env.RIGHTMOVE_RTDF.fetch(base + pathname, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+        return { status: r.status, json: j };
+      };
+      try {
+        await db.prepare("CREATE TABLE IF NOT EXISTS rightmove_branch_perf (export_date TEXT, branch_id TEXT, agent_ref TEXT, rightmove_id TEXT, rightmove_url TEXT, display_address TEXT, price TEXT, channel TEXT, featured INTEGER, premium INTEGER, summary_total INTEGER, summary_desktop INTEGER, summary_mobile INTEGER, detail_total INTEGER, detail_desktop INTEGER, detail_mobile INTEGER, raw_json TEXT, synced_at TEXT, PRIMARY KEY (export_date, branch_id, agent_ref))").run();
+        await db.prepare("CREATE TABLE IF NOT EXISTS rightmove_branch_totals (export_date TEXT, branch_id TEXT, email_leads INTEGER, phone_leads INTEGER, replication_lag INTEGER, synced_at TEXT, PRIMARY KEY (export_date, branch_id))").run();
+        await db.prepare("CREATE TABLE IF NOT EXISTS rightmove_property_list (branch_id TEXT, channel TEXT, rightmove_id TEXT, agent_ref TEXT, update_date TEXT, snapshot_at TEXT, PRIMARY KEY (branch_id, agent_ref, channel))").run();
+      } catch (e) { return respond(JSON.stringify({ ok: false, error: "schema: " + String((e && e.message) || e) }), 500, J); }
+      const exportDate = url.searchParams.get("date") || ddmmyyyy(new Date(Date.now() - 24 * 3600 * 1000));
+      const nowIso = new Date().toISOString();
+      let perfStored = 0, listStored = 0; const errors = [];
+      for (const bid of branches) {
+        try {
+          const resp = await rtdf("/v1/property/getbranchperformance", { Network_ID: num(net), Branch_ID: num(bid), Export_Date: exportDate });
+          const d = resp.json || {};
+          if (d && d.Success) {
+            const ed = toIso(d.Export_Date) || toIso(exportDate);
+            await db.prepare("INSERT OR REPLACE INTO rightmove_branch_totals (export_date,branch_id,email_leads,phone_leads,replication_lag,synced_at) VALUES (?,?,?,?,?,?)").bind(ed, String(bid), num(d.Email_Leads), num(d.Phone_Leads), num(d.Replication_Lag), nowIso).run();
+            const props = d.Property_Data || d.Properties || [];
+            for (const p of (Array.isArray(props) ? props : [])) {
+              await db.prepare("INSERT OR REPLACE INTO rightmove_branch_perf (export_date,branch_id,agent_ref,rightmove_id,rightmove_url,display_address,price,channel,featured,premium,summary_total,summary_desktop,summary_mobile,detail_total,detail_desktop,detail_mobile,raw_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(ed, String(bid), str(p.Agent_Ref), str(p.Rightmove_Id || p.Rightmove_ID), str(p["Rightmove URL"] || p.Rightmove_URL), str(p.Display_Address), str(p.Price), str(p.Channel), (p.Featured_Property ? 1 : 0), (p.Premium_Listing ? 1 : 0), num(p.Total_Summary_Views), num(p.Desktop_Summary_Views), num(p.Mobile_Summary_Views), num(p.Total_Detail_Views), num(p.Desktop_Detail_Views), num(p.Mobile_Detail_Views), JSON.stringify(p), nowIso).run();
+              perfStored++;
+            }
+          } else { errors.push("perf " + bid + ": " + ((d && (d.Error_Description || d.Message)) || resp.status)); }
+        } catch (e) { errors.push("perf " + bid + ": " + String((e && e.message) || e)); }
+        try {
+          const resp = await rtdf("/v1/property/getbranchpropertylist", { Network_ID: num(net), Branch_ID: num(bid) });
+          const d = resp.json || {};
+          if (d && d.Success) {
+            const props = d.Property || d.Properties || d.Property_Data || [];
+            for (const p of (Array.isArray(props) ? props : [])) {
+              await db.prepare("INSERT OR REPLACE INTO rightmove_property_list (branch_id,channel,rightmove_id,agent_ref,update_date,snapshot_at) VALUES (?,?,?,?,?,?)").bind(String(bid), str(p.Channel), str(p.Rightmove_ID || p.Rightmove_Id), str(p.Agent_Ref), toIso(p.Update_Date), nowIso).run();
+              listStored++;
+            }
+          } else { errors.push("list " + bid + ": " + ((d && (d.Error_Description || d.Message)) || resp.status)); }
+        } catch (e) { errors.push("list " + bid + ": " + String((e && e.message) || e)); }
+      }
+      return respond(JSON.stringify({ ok: true, export_date: exportDate, perf_stored: perfStored, list_stored: listStored, errors: errors }), 200, J);
+    }
+
+    // Read stored Rightmove performance + inventory, for the hub's Rightmove performance screen (Access-gated).
+    if (path === "/api/rightmove-performance" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      try {
+        const db = env.gr_estates;
+        let totals = [];
+        try {
+          const tr = await db.prepare("SELECT export_date,branch_id,email_leads,phone_leads,replication_lag FROM rightmove_branch_totals ORDER BY export_date DESC LIMIT 200").all();
+          totals = (tr && tr.results) || [];
+        } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+        if (!totals.length) return respond(JSON.stringify({ ok: true, empty: true }), 200, J);
+        const asOf = totals[0].export_date;
+        let perf = [], inventory = 0;
+        try { const pr = await db.prepare("SELECT export_date,branch_id,agent_ref,rightmove_id,rightmove_url,display_address,price,channel,summary_total,detail_total FROM rightmove_branch_perf WHERE export_date=? ORDER BY detail_total DESC LIMIT 500").bind(asOf).all(); perf = (pr && pr.results) || []; } catch (e) {}
+        try { const ic = await db.prepare("SELECT COUNT(*) AS n FROM rightmove_property_list").first(); inventory = (ic && ic.n) || 0; } catch (e) {}
+        return respond(JSON.stringify({ ok: true, asOf: asOf, totals: totals, perf: perf, inventory: inventory }), 200, J);
       } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
     }
 

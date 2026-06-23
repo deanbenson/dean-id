@@ -675,7 +675,7 @@
     {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'inspections',l:'Inspections',ic:'✓',rag:'g'},{id:'maintenance_jobs',l:'Maintenance',ic:'✸',rag:'g'},{id:'move_outs',l:'Move outs',ic:'⊠',rag:'g'}]},
     {g:'Services',items:[{id:'removals',l:'Removals',ic:'⊟',rag:'g'},{id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}]},
     {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'deposits',l:'Deposit protection',ic:'⛉',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
-    {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'}]},
+    {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'},{id:'rmperf',l:'Rightmove performance',ic:'▦',rag:'a'}]},
     {g:'Team',items:[{id:'staff',l:'Staff',ic:'☺',rag:'g'},{id:'feed',l:'Company feed',ic:'❏',rag:'g'},{id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}]},
     {g:'',items:[{id:'changelog',l:'What\'s new',ic:'❖',rag:'g'},{id:'settings',l:'Settings',ic:'⚙',rag:'g'}]}
   ];
@@ -692,6 +692,7 @@
   var SRC={
     deposits:'Imported from your TDS Custodial deposit export. Re-import any time to refresh.',
     rightmove:'Live from Rightmove\'s Real Time Leads feed — each portal enquiry arrives the instant it is submitted.',
+    rmperf:'Live from Rightmove\'s Real Time Data Feed (views, leads and inventory), once the test keystore is in place.',
     home:'Live from Street (listings, team, branches), Google reviews and the website.',
     connections:'Live status and timestamps from each connected system.',
     ask:'Answers from your live Street, reviews and website data.',
@@ -718,11 +719,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.72', BUILD='23 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1};
+  var HUB_VERSION='0.73', BUILD='23 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0'};
+  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.73',d:'23 Jun 2026',items:['New Rightmove performance screen (under Insight). The read-only feed that pulls your Rightmove listing views, branch leads and live inventory (GetBranchPerformance + GetBranchPropertyList) is built and ready. It is secured by mutual-TLS and stays dormant until Rightmove issues the test keystore and our network/branch IDs, then the daily figures fill in here automatically.']},
     {v:'0.72',d:'23 Jun 2026',items:['Connections: Rightmove now shows as "Onboarding" — your account is verified and the lead webhook endpoint is live, now awaiting Rightmove\'s signing secret and a sandbox test. It sat under "Requested" before.']},
     {v:'0.71',d:'23 Jun 2026',items:['New Rightmove leads screen (under Pipeline). Your Rightmove account is verified and the secure webhook endpoint that receives leads is built and live, so every Rightmove enquiry will land in the hub the instant it is submitted — the applicant, how to reach them, the property they enquired about, whether they want a viewing, and, on lettings, their pre-qualification details. It switches on the moment Rightmove verifies the endpoint and issues our signing secret.']},
     {v:'0.70',d:'23 Jun 2026',items:['Connections: Rightmove now shows as "Requested" and in onboarding, since the read-only datafeed access request is in with Rightmove. It moves to live once they verify the account and we build the feed.']},
@@ -1121,6 +1123,50 @@
     var list='<div class="secttl">Leads <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">· <span id="rmcount">'+filtered.length+'</span> shown</span></div>'+bar+'<div id="rmtbl">'+rmTable(filtered)+'</div>';
     return head+hero+tiles+list;
   }
+  // ---- Rightmove performance + inventory (RTDF read feed → /api/rightmove-performance) ----
+  function ensureRmPerf(){ if(D.rmp!==undefined) return; D.rmp=null; fetch('/api/rightmove-performance',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.rmp=d||{ok:false}; if(ROUTE==='rmperf') renderView(false); }).catch(function(){ D.rmp={ok:false}; if(ROUTE==='rmperf') renderView(false); }); }
+  function rmPerfIntro(note){
+    return (note?'<div class="card" style="border-color:var(--orange);background:rgba(224,153,42,.07);margin-bottom:14px;color:var(--orange-deep)">'+note+'</div>':'')
+    +'<div class="card">'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:5px">What this screen does</p>'
+    +'<p style="color:#54585f;margin-bottom:18px">It brings your Rightmove performance into the hub: how many times each listing was seen (summary views in search results, and full detail views), the email and phone leads each branch received, and a live check of which of your properties are on Rightmove right now. It refreshes itself daily once connected.</p>'
+    +'<p style="font-weight:700;font-size:1.02rem;margin-bottom:8px">Going live</p>'
+    +'<ol style="margin:0 0 18px 20px;color:#54585f;line-height:1.9">'
+    +'<li><b>Done</b> &mdash; the read-only feed client for branch performance and inventory is built and waiting.</li>'
+    +'<li><b>With Rightmove</b> &mdash; they run our sandbox test, then issue the live keystore plus our network and branch IDs.</li>'
+    +'<li><b>Final step</b> &mdash; we load the keystore and IDs, and the daily figures start filling in here.</li>'
+    +'</ol>'
+    +'<p style="color:var(--muted);font-size:.85rem">Source: Rightmove Real Time Data Feed (GetBranchPerformance + GetBranchPropertyList) &middot; read-only, secured by mutual-TLS.</p>'
+    +'</div>';
+  }
+  function viewRmPerf(){
+    ensureRmPerf();
+    var head='<h2 class="vt">Rightmove performance</h2><div class="vsub">Listing views, leads and live inventory from Rightmove\'s Real Time Data Feed.</div>';
+    var d=D.rmp;
+    if(d===null||d===undefined) return head+'<div class="card">Loading…</div>';
+    if(!d.ok) return head+rmPerfIntro('We could not reach the saved performance data just now.');
+    if(d.empty) return head+rmPerfIntro('');
+    var totals=d.totals||[], perf=d.perf||[], asOf=d.asOf;
+    var latest=totals.filter(function(t){return t.export_date===asOf;});
+    var emailL=latest.reduce(function(a,t){return a+(t.email_leads||0);},0);
+    var phoneL=latest.reduce(function(a,t){return a+(t.phone_leads||0);},0);
+    var sumViews=perf.reduce(function(a,p){return a+(p.summary_total||0);},0);
+    var detViews=perf.reduce(function(a,p){return a+(p.detail_total||0);},0);
+    var hero='<div class="connhero cok"><div class="chl"><div class="chic">▦</div><div class="chtxt"><div class="chtop"><div class="cht">'+detViews.toLocaleString('en-GB')+' detail views · '+(emailL+phoneL)+' leads</div><div class="cha"><span class="chmeta">'+tdsDate(asOf)+'</span></div></div><div class="chs">Your Rightmove listing performance across '+latest.length+' branch'+(latest.length===1?'':'es')+', plus '+(d.inventory||0)+' live on the portal.</div></div></div></div>';
+    function ct(label,n,sub){ return '<div class="tile"><div class="ttl">'+label+'</div><div class="tnm">'+n+'</div><div class="tsb">'+sub+'</div></div>'; }
+    var tiles='<div class="secttl">On '+tdsDate(asOf)+'</div><div class="tiles">'
+      +ct('Summary views',sumViews.toLocaleString('en-GB'),'seen in search results')
+      +ct('Detail views',detViews.toLocaleString('en-GB'),'full listing opened')
+      +ct('Email leads',emailL,'enquiries that day')
+      +ct('Live on Rightmove',(d.inventory||0),'properties on the portal')
+      +'</div>';
+    var brows=latest.map(function(t){ return '<tr><td>'+esc(String(t.branch_id))+'</td><td class="dtx">'+(t.email_leads||0)+'</td><td class="dtx">'+(t.phone_leads||0)+'</td></tr>'; }).join('');
+    var branchTbl=latest.length?('<div class="secttl">By branch</div><div class="card" style="padding:0;overflow:auto"><table class="dtds"><thead><tr><th>Branch</th><th class="dtx">Email leads</th><th class="dtx">Phone leads</th></tr></thead><tbody>'+brows+'</tbody></table></div>'):'';
+    var top=perf.slice(0,25);
+    var prows=top.map(function(p){ return '<tr><td>'+esc(p.display_address||p.agent_ref||'—')+'</td><td style="white-space:nowrap">'+esc(p.price||'—')+'</td><td class="dtx">'+(p.summary_total||0)+'</td><td class="dtx">'+(p.detail_total||0)+'</td></tr>'; }).join('');
+    var propTbl=top.length?('<div class="secttl">Most-viewed listings</div><div class="card" style="padding:0;overflow:auto"><table class="dtds"><thead><tr><th>Property</th><th>Price</th><th class="dtx">Summary</th><th class="dtx">Detail</th></tr></thead><tbody>'+prows+'</tbody></table></div>'):'';
+    return head+hero+tiles+branchTbl+propTbl;
+  }
   function viewConnections(){ ensureTds();
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[], sync=D.sync||[];
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
@@ -1313,6 +1359,7 @@
     else if(id==='connections')body=viewConnections();
     else if(id==='deposits')body=viewDeposits();
     else if(id==='rightmove')body=viewRightmove();
+    else if(id==='rmperf')body=viewRmPerf();
     else if(id==='status')body=viewStatus();
     else if(id==='ask')body=viewAsk();
     else if(id==='enquiries')body=viewEnquiries();
