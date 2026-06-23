@@ -667,7 +667,7 @@
     {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'properties_all',l:'All properties',ic:'⌂',rag:'g'},{id:'property_keys',l:'Keys',ic:'⚿',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
     {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'inspections',l:'Inspections',ic:'✓',rag:'g'},{id:'maintenance_jobs',l:'Maintenance',ic:'✸',rag:'g'},{id:'move_outs',l:'Move outs',ic:'⊠',rag:'g'}]},
     {g:'Services',items:[{id:'removals',l:'Removals',ic:'⊟',rag:'g'},{id:'mortgages',l:'Mortgages',ic:'%',rag:'n'}]},
-    {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
+    {g:'Money',items:[{id:'accounts',l:'Accounts',ic:'$',rag:'g'},{id:'deposits',l:'Deposit protection',ic:'⛉',rag:'g'},{id:'compliance',l:'Compliance',ic:'✓',rag:'a'}]},
     {g:'Insight',items:[{id:'analytics',l:'Analytics',ic:'▤',rag:'g'},{id:'reviews',l:'Reviews',ic:'★',rag:'g'}]},
     {g:'Team',items:[{id:'staff',l:'Staff',ic:'☺',rag:'g'},{id:'feed',l:'Company feed',ic:'❏',rag:'g'},{id:'roadmap',l:'Roadmap',ic:'➔',rag:'g'}]},
     {g:'',items:[{id:'changelog',l:'What\'s new',ic:'❖',rag:'g'},{id:'settings',l:'Settings',ic:'⚙',rag:'g'}]}
@@ -709,11 +709,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.63', BUILD='22 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1};
+  var HUB_VERSION='0.64', BUILD='22 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2'};
+  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0'};
   var CHANGELOG=[
+    {v:'0.64',d:'22 Jun 2026',items:['New Deposit protection screen (under Money). Import your TDS Custodial "deposit export" CSV straight into the hub and it stores the whole thing in the database — every column plus the full raw row, nothing dropped — with a log of each import (date and record count). It shows how many deposits are currently protected and the total held, and flags the compliance that matters: any protected outside the 30-day legal window, any where the tenancy has ended but the deposit is still held, and any protection expiring within 60 days. TDS Custodial now appears as a live connection on Connections']},
     {v:'0.63',d:'22 Jun 2026',items:['Found and fixed the real cause of the banner text running off the right edge: its "all good" state was sharing a style class with a status label used elsewhere, which forced the description onto a single line that never wrapped. That same root cause was behind the earlier button-wrapping too. The description now wraps neatly inside the card and the actions stay put beside the title']},
     {v:'0.62',d:'22 Jun 2026',items:['Settled the Connections status banner for good: the actions (last sync, Sync now, Data health) now sit on the top line beside the title, with the description on its own line underneath. Because the buttons share a line only with the short title and never with the description, the live record count loading in a second after the page opens can no longer push them onto a new line']},
     {v:'0.60',d:'22 Jun 2026',items:['The hub now sits behind a proper per-person login. Opening it asks for your email and a one-time code (Cloudflare Access) instead of one shared key, so each person signs in as themselves, you can add or remove people in a click, and every sign-in is logged','The client-data endpoints sit behind that same login now, not just the shared key, so client data can only be pulled once you are signed in','The public website, property search and reviews are untouched and stay open for customers']},
@@ -967,7 +968,47 @@
     return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, portals and phone. Newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' total'):'')+syncTxt+pageSyncLine('15min')+'.</div>'+chips+body;
   }
 
-  function viewConnections(){
+  function tdsDays(a,b){ if(!a||!b) return null; var x=new Date(a), y=new Date(b); if(isNaN(x)||isNaN(y)) return null; return Math.round((y-x)/86400000); }
+  function ensureTds(){ if(D.tds!==undefined) return; D.tds=null; fetch('/api/tds',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.tds=d||{ok:false}; if(ROUTE==='deposits'||ROUTE==='connections') renderView(false); }).catch(function(){ D.tds={ok:false}; if(ROUTE==='deposits') renderView(false); }); }
+  window.tdsUpload=function(inp){ var file=inp&&inp.files&&inp.files[0]; if(!file) return; var b=document.getElementById('tdsupst'); if(b)b.textContent='Importing '+file.name+'…'; var fr=new FileReader(); fr.onload=function(){ fetch('/api/tds-upload?file='+encodeURIComponent(file.name),{method:'POST',headers:{'x-admin-key':key(),'content-type':'text/csv'},body:fr.result}).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ D.tds=undefined; ensureTds(); } else { if(b)b.textContent='Import failed: '+((d&&d.error)||'try again'); } }).catch(function(){ if(b)b.textContent='Import failed, try again'; }); }; fr.readAsText(file); };
+  function tdsUpBtn(label){ return '<label class="btn" style="cursor:pointer;display:inline-flex;align-items:center"><input type="file" accept=".csv,text/csv" style="display:none" onchange="tdsUpload(this)"><span id="tdsupst">'+(label||'Import TDS export')+'</span></label>'; }
+  function tdsTable(list){
+    if(!list.length) return '<div class="card" style="color:var(--muted)">None right now.</div>';
+    var body=list.slice(0,600).map(function(r){ var amt=parseFloat(r.current_protected_amount_value); if(isNaN(amt))amt=0;
+      return '<tr><td>'+esc(r.tenancy_address||'—')+'</td><td>'+esc(r.lead_tenant_name||'—')+'</td><td class="dtx">'+money(amt)+'</td><td>'+esc(r.deposit_account_number||'—')+'</td><td>'+esc(r.protection_start_date||'—')+'</td><td>'+esc(r.status||'—')+'</td></tr>'; }).join('');
+    return '<div class="card" style="padding:0;overflow:auto"><table class="dt"><thead><tr><th>Property</th><th>Lead tenant</th><th class="dtx">Protected</th><th>Reference (DAN)</th><th>Protected from</th><th>Status</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+  }
+  function viewDeposits(){
+    ensureTds();
+    var head='<h2 class="vt">Deposit protection</h2><div class="vsub">Custodial deposits protected with TDS, imported from your TDS deposit export.</div>';
+    var d=D.tds;
+    if(d===null||d===undefined) return head+'<div class="card">Loading…</div>';
+    if(!d.ok) return head+'<div class="card"><p style="margin-bottom:10px">Couldn\'t load deposit data.</p>'+tdsUpBtn('Import TDS export')+'</div>';
+    if(d.empty) return head+'<div class="card"><p style="margin-bottom:6px"><b>No deposit data imported yet.</b></p><p style="margin-bottom:12px;color:var(--muted)">In TDS Custodial, go to <b>Reporting → Export your deposits</b>, choose <b>"All deposits including deposit amount protected and lead tenant details"</b>, download the CSV, then import it here.</p>'+tdsUpBtn('Import TDS export (CSV)')+'</div>';
+    var rows=d.rows||[];
+    var ACT={'Deposit Held':1,'Deposit Registered':1};
+    var active=rows.filter(function(r){return ACT[r.status];});
+    var held=active.reduce(function(a,r){var v=parseFloat(r.current_protected_amount_value); return a+(isNaN(v)?0:v);},0);
+    var now=Date.now();
+    var withDates=rows.filter(function(r){return r.date_received_by_agent&&r.date_received_by_scheme;});
+    var late=withDates.filter(function(r){var dd=tdsDays(r.date_received_by_agent,r.date_received_by_scheme); return dd!=null&&dd>30;});
+    var ended=active.filter(function(r){ if(!r.expected_tenancy_end_date) return false; var t=new Date(r.expected_tenancy_end_date); return !isNaN(t)&&t.getTime()<now; });
+    var expiring=active.filter(function(r){ if(!r.protection_end_date) return false; var t=new Date(r.protection_end_date); if(isNaN(t)) return false; var dd=(t.getTime()-now)/86400000; return dd>=0&&dd<=60; });
+    var hero='<div class="connhero cok"><div class="chl"><div class="chic">⛉</div><div class="chtxt"><div class="chtop"><div class="cht">'+active.length+' deposits protected · '+money(held)+' held</div><div class="cha"><span class="chmeta">as of '+fmt(new Date(d.asOf).getTime())+'</span>'+tdsUpBtn('Re-import')+'</div></div><div class="chs">Custodial deposits currently protected with TDS for G.R. Estates. '+rows.length+' records in this import, '+(rows.length-active.length)+' closed or repaid.</div></div></div></div>';
+    function ct(label,n,sub,bad){ return '<div class="tile"><div class="ttl">'+label+'</div><div class="tnm"'+(bad&&n>0?' style="color:var(--orange-deep)"':'')+'>'+n+'</div><div class="tsb">'+sub+'</div></div>'; }
+    var onTime=withDates.length-late.length;
+    var comp='<div class="secttl">Compliance</div><div class="tiles">'
+      +ct('Protected within 30 days',onTime,'of '+withDates.length+' with both dates',false)
+      +ct('Protected late',late.length,'over 30 days to protect',true)
+      +ct('Past original end',ended.length,'usually periodic tenancies',false)
+      +ct('Expiring &lt; 60 days',expiring.length,'protection end approaching',true)
+      +'</div>';
+    var lateList=late.length?('<div class="secttl">Protected late ('+late.length+')</div><div class="vsub" style="margin-top:-8px">Scheme received these more than 30 days after you did. Worth checking they were handled correctly.</div>'+tdsTable(late)):'';
+    var list='<div class="secttl">All protected deposits ('+active.length+')</div>'+tdsTable(active);
+    var imp=(d.imports&&d.imports.length)?('<div class="secttl">Import history</div><div class="card" style="color:var(--muted);font-size:.85rem">'+d.imports.map(function(m){return esc(fmt(new Date(m.imported_at).getTime()))+' — '+m.row_count+' records, '+m.active_count+' active';}).join('<br>')+'</div>'):'';
+    return head+hero+comp+lateList+list+imp;
+  }
+  function viewConnections(){ ensureTds();
     var pf=D.portfolio, rv=D.reviews, st=D.stats||{}, leads=D.leads||[], sync=D.sync||[];
     function rel(ts){ return ts?('updated '+ago(ts)):'live'; }
     function ext(u){ return u?'<a class="syslink" href="'+esc(u)+'" target="_blank" rel="noopener">Open ↗</a>':''; }
@@ -981,7 +1022,8 @@
       {nm:'Be-first alerts',ic:'◔',dta:(st.alerts!=null?st.alerts:0)+' signups',fr:(st.lastAlertAt?('last '+ago(st.lastAlertAt)):'none yet'),url:'/demos/gr-estates/#alerts'},
       {nm:'Ask Georgina (AI)',ic:'✦',dta:'on the site and in this hub',fr:'answers on demand',url:'/demos/gr-estates/#ai'},
       {nm:'My G.R. Estates',ic:'♥',dta:(st.waitlist!=null?st.waitlist:0)+' early-access signups',fr:'live',url:'saved-homes.html'},
-      {nm:'UptimeRobot',ic:'◉',dta:'website + hub watched from outside',fr:'public status page',url:'https://stats.uptimerobot.com/BAEJu9uoBl'}
+      {nm:'UptimeRobot',ic:'◉',dta:'website + hub watched from outside',fr:'public status page',url:'https://stats.uptimerobot.com/BAEJu9uoBl'},
+      {nm:'TDS Custodial',ic:'⛉',dta:(D.tds&&D.tds.ok&&!D.tds.empty?(D.tds.active+' deposits protected'):'deposit protection'),fr:(D.tds&&D.tds.asOf?('imported '+ago(new Date(D.tds.asOf).getTime())):'compliance · import in Deposit protection'),url:'https://custodial.tenancydepositscheme.com'}
     ];
     if(D.socialOk) wired.push({nm:'Social feed (Meta)',ic:'⊞',dta:'showing on the site',fr:'connected',url:'https://business.facebook.com'});
     var wcards=wired.map(function(s){ return '<div class="sys live"><div class="top"><span class="sysic">'+s.ic+'</span><span class="nm">'+esc(s.nm)+'</span><span class="livedot" title="Live"></span></div><div class="dta">'+esc(s.dta)+'</div><div class="fr">'+esc(s.fr)+(s.url?' · '+ext(s.url):'')+'</div></div>'; }).join('');
@@ -991,7 +1033,7 @@
     if(rv&&rv.total){ tiles+='<div class="tile"><div class="ttl"><span class="sysic" style="width:24px;height:24px;font-size:.82rem">★</span>Reviews</div><div class="tnm">'+rv.total.toLocaleString('en-GB')+'</div><div class="tsb"><span class="dotg"></span>'+(rv.average?rv.average.toFixed(1)+' average':'live')+'</div></div>'; }
     // ---- wider stack, still to connect ----
     var stack=[
-      ['PayProp','Payments · rent & landlord payouts','Access requested, waiting on PayProp','Requested'],['TDS (Custodial)','Compliance · deposit protection'],
+      ['PayProp','Payments · rent & landlord payouts','Access requested, waiting on PayProp','Requested'],
       ['Goodlord','Compliance · referencing & contracts'],['Fixflo','Maintenance · repairs'],
       ['Reports2Go','Inventory · inspections'],['Rightmove','Portal · listings & leads'],
       ['OnTheMarket','Portal · listings & leads'],['Snaith Boards','Boards · for-sale / to-let'],
@@ -1156,6 +1198,7 @@
     if(id==='profile')body=viewProfile();
     else if(id==='home')body=roleHome();
     else if(id==='connections')body=viewConnections();
+    else if(id==='deposits')body=viewDeposits();
     else if(id==='status')body=viewStatus();
     else if(id==='ask')body=viewAsk();
     else if(id==='enquiries')body=viewEnquiries();

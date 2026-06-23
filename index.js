@@ -1932,7 +1932,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -1940,6 +1940,81 @@ export default {
     // "Ask Georgina" AI assistant — accepts GET (?q=) and POST (JSON) + CORS preflight.
     if (path === "/api/ask") {
       return await askGeorgina(request, env, url, ctx);
+    }
+
+    // ---- TDS Custodial: import the agent's "deposit export" CSV into D1 (Access-gated via /api/admin) ----
+    // Captures 100% of the export (a column for every field PLUS the full raw row as JSON, so nothing is ever
+    // dropped and new TDS columns survive), and logs every import (date + record count), like the Street feed.
+    const TDS_COLS = [["deposit_account_number","Deposit Account Number"],["user_reference","User Reference"],["status","Status"],["case_status","Case Status"],["tenancy_address","Tenancy Address"],["lead_tenant_name","Lead Tenant Name"],["lead_tenant_email","Lead Tenant Email"],["tenancy_deposit_amount","Tenancy Deposit Amount"],["current_protected_amount","Current Protected Amount"],["rent_amount","Rent Amount"],["date_received_by_agent","Date received by agent/landlord"],["tenancy_start_date","Tenancy Start Date"],["date_received_by_scheme","Date Received by Scheme"],["protection_start_date","Protection Start Date"],["expected_tenancy_end_date","Expected Tenancy End Date"],["protection_end_date","Protection End Date"],["branch_member_name","Branch/Member name"],["tenancy_deposit_amount_value","Tenancy Deposit Amount Amount"],["tenancy_deposit_amount_ccy","Tenancy Deposit Amount Currency"],["current_protected_amount_value","Current Protected Amount Amount"],["current_protected_amount_ccy","Current Protected Amount Currency"],["rent_amount_value","Rent Amount Amount"],["rent_amount_ccy","Rent Amount Currency"]];
+    if (path === "/api/tds-upload" && request.method === "POST") {
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      function parseCSV(text) {
+        text = String(text || "").replace(/^﻿/, "");
+        const out = []; let i = 0, f = "", row = [], inq = false;
+        while (i < text.length) { const c = text[i];
+          if (inq) { if (c === '"') { if (text[i+1] === '"') { f += '"'; i += 2; continue; } inq = false; i++; continue; } f += c; i++; continue; }
+          if (c === '"') { inq = true; i++; continue; }
+          if (c === ",") { row.push(f); f = ""; i++; continue; }
+          if (c === "\r") { i++; continue; }
+          if (c === "\n") { row.push(f); out.push(row); row = []; f = ""; i++; continue; }
+          f += c; i++;
+        }
+        if (f.length || row.length) { row.push(f); out.push(row); }
+        if (!out.length) return [];
+        const hdr = out.shift().map((h) => String(h || "").replace(/^﻿/, "").trim());
+        return out.filter((r) => r.length > 1).map((r) => { const o = {}; hdr.forEach((h, idx) => o[h] = (r[idx] !== undefined ? r[idx] : "")); return o; });
+      }
+      let rows;
+      try { rows = parseCSV(await request.text()); } catch (e) { return respond(JSON.stringify({ ok: false, error: "could not read CSV" }), 400, J); }
+      if (!rows.length) return respond(JSON.stringify({ ok: false, error: "no rows found in the file" }), 400, J);
+      const db = env.gr_estates;
+      const colDefs = TDS_COLS.map((c) => c[0] + " TEXT").join(", ");
+      try {
+        await db.prepare("CREATE TABLE IF NOT EXISTS tds_imports (id INTEGER PRIMARY KEY AUTOINCREMENT, imported_at TEXT, row_count INTEGER, active_count INTEGER, filename TEXT)").run();
+        await db.prepare("CREATE TABLE IF NOT EXISTS tds_deposits (import_id INTEGER, " + colDefs + ", raw_json TEXT)").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_tds_deposits_import ON tds_deposits(import_id)").run();
+      } catch (e) { return respond(JSON.stringify({ ok: false, error: "schema: " + String((e && e.message) || e) }), 500, J); }
+      const ACTIVE = { "Deposit Held": 1, "Deposit Registered": 1 };
+      const activeCount = rows.filter((r) => ACTIVE[r["Status"]]).length;
+      const fname = (url.searchParams.get("file") || "TDS deposit export").slice(0, 120);
+      let importId;
+      try {
+        const imp = await db.prepare("INSERT INTO tds_imports (imported_at, row_count, active_count, filename) VALUES (?,?,?,?)").bind(new Date().toISOString(), rows.length, activeCount, fname).run();
+        importId = imp.meta && imp.meta.last_row_id;
+      } catch (e) { return respond(JSON.stringify({ ok: false, error: "import log: " + String((e && e.message) || e) }), 500, J); }
+      const cols = ["import_id"].concat(TDS_COLS.map((c) => c[0]), ["raw_json"]);
+      const ins = db.prepare("INSERT INTO tds_deposits (" + cols.join(",") + ") VALUES (" + cols.map(() => "?").join(",") + ")");
+      let stored = 0, failed = 0;
+      for (let s = 0; s < rows.length; s += 40) {
+        const chunk = rows.slice(s, s + 40).map((r) => ins.bind(...[importId].concat(TDS_COLS.map((c) => (r[c[1]] !== undefined && r[c[1]] !== "" ? String(r[c[1]]) : null)), [JSON.stringify(r)])));
+        try { await db.batch(chunk); stored += chunk.length; } catch (e) { failed += chunk.length; }
+      }
+      return respond(JSON.stringify({ ok: true, import_id: importId, stored: stored, failed: failed, rows: rows.length, active: activeCount, asOf: new Date().toISOString() }), 200, J);
+    }
+
+    // Read the latest TDS deposit import + the import history, for the hub's Deposit Protection screen.
+    if (path === "/api/tds" && request.method === "GET") {
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      const db = env.gr_estates;
+      let imports = [];
+      try {
+        const il = await db.prepare("SELECT id, imported_at, row_count, active_count, filename FROM tds_imports ORDER BY id DESC LIMIT 24").all();
+        imports = (il && il.results) || [];
+      } catch (e) { return respond(JSON.stringify({ ok: true, empty: true }), 200, J); }
+      if (!imports.length) return respond(JSON.stringify({ ok: true, empty: true }), 200, J);
+      const latest = imports[0];
+      let rows = [];
+      try {
+        const dr = await db.prepare("SELECT " + TDS_COLS.map((c) => c[0]).join(",") + " FROM tds_deposits WHERE import_id = ?").bind(latest.id).all();
+        rows = (dr && dr.results) || [];
+      } catch (e) {}
+      return respond(JSON.stringify({ ok: true, asOf: latest.imported_at, count: latest.row_count, active: latest.active_count, imports: imports, rows: rows }), 200, J);
     }
 
     // Health of the AI assistant (records when Anthropic credits run out and we fall back).
