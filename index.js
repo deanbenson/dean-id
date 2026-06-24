@@ -2675,10 +2675,22 @@ export default {
       let mk = null; const M = attr.marketing_consent;
       if (M != null) { if (typeof M === "boolean") mk = M ? "Yes" : "No"; else if (typeof M === "object") { const yes = Object.keys(M).filter(function (k) { return M[k] === true || M[k] === "granted" || M[k] === "yes"; }); mk = yes.length ? yes.join(", ") : "No"; } else mk = String(M); }
       let enq = [];
+      const lemails = emails.map(function (e) { return String(e).toLowerCase(); });
       try {
-        if (email) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE email = ? ORDER BY created_at DESC LIMIT 300").bind(email).all(); enq = (r && r.results) || []; }
+        if (lemails.length) { const eph = lemails.map(function () { return "?"; }).join(","); const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE LOWER(email) IN (" + eph + ") ORDER BY created_at DESC LIMIT 300").bind(...lemails).all(); enq = (r && r.results) || []; }
         if (!enq.length && name) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE name = ? ORDER BY created_at DESC LIMIT 300").bind(name).all(); enq = (r && r.results) || []; }
       } catch (_) {}
+      // Roles: the same person often appears as a vendor / landlord / tenant (those records carry email_addresses),
+      // which is how someone like a friend selling through you shows up even with no website enquiries.
+      let roles = [];
+      if (emails.length) {
+        const rconds = emails.map(function () { return '"email_addresses" LIKE ?'; }).join(" OR ");
+        const rbinds = emails.map(function (e) { return "%" + e + "%"; });
+        const RDS = [["vendors", "Vendor"], ["landlords", "Landlord"], ["tenants", "Tenant"]];
+        for (let ri = 0; ri < RDS.length; ri++) {
+          try { const r = await db.prepare("SELECT id,created_at FROM street_" + RDS[ri][0] + " WHERE " + rconds + " ORDER BY created_at DESC LIMIT 10").bind(...rbinds).all(); ((r && r.results) || []).forEach(function (row) { roles.push({ role: RDS[ri][1], dataset: RDS[ri][0], id: row.id, created_at: row.created_at }); }); } catch (_) {}
+        }
+      }
       let apps = [];
       try {
         if (name) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE name = ? ORDER BY created_at DESC LIMIT 50").bind(name).all(); apps = (r && r.results) || []; }
@@ -2686,7 +2698,7 @@ export default {
       } catch (_) {}
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
-      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, enquiries: enq, applicants: apps }), 200, J);
+      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, enquiries: enq, applicants: apps }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).

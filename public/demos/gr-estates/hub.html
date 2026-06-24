@@ -667,6 +667,8 @@
     (ct.phones||[]).forEach(function(p){ chips.push('<a href="tel:'+esc(String(p).replace(/\s+/g,''))+'" style="display:inline-flex;align-items:center;gap:6px;padding:.4rem .7rem;border:1px solid var(--line);border-radius:9px;background:#fff;color:#3a3d43;text-decoration:none;font-size:.85rem">☎ '+esc(p)+'</a>'); });
     var sub=[]; if(ct.created_at)sub.push('Client since '+tdsDate(ct.created_at)); if(ct.address)sub.push(esc(ct.address));
     var hero='<div class="card"><div style="display:flex;align-items:center;gap:14px">'+av+'<div><div style="font-family:var(--serif);font-weight:700;font-size:1.45rem">'+esc((ct.title?ct.title+' ':'')+nm)+'</div><div style="color:var(--muted);font-size:.85rem;margin-top:2px">'+sub.join(' · ')+'</div></div></div>'+(chips.length?('<div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div>'):'')+(ct.marketing?('<div style="margin-top:10px;font-size:.8rem;color:var(--muted)">Marketing consent: '+esc(ct.marketing)+'</div>'):'')+'</div>';
+    var roleHtml='';
+    if((d.roles||[]).length){ roleHtml='<div class="secttl">Relationship with G.R. Estates</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+d.roles.map(function(r){ return '<span style="display:inline-flex;gap:6px;align-items:center;padding:.45rem .75rem;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:.88rem"><b>'+esc(r.role)+'</b>'+(r.created_at?(' <span style="color:var(--muted)">since '+tdsDate(r.created_at)+'</span>'):'')+'</span>'; }).join('')+'</div>'; }
     function st(n,l){ return '<div class="tile"><div class="ttl">'+esc(l)+'</div><div class="tnm">'+n+'</div></div>'; }
     var lastAt=enq.length?enq[0].created_at:null;
     var tiles='<div class="tiles">'+st(enq.length,'Enquiries')+st(bk.viewing||0,'Viewing requests')+st(bk.valuation||0,'Valuation requests')+st(lastAt?tdsDate(lastAt):'—','Last contact')+'</div>';
@@ -679,7 +681,7 @@
       {key:'source',label:'Source',get:function(r){return r.source||'—';}},
       {key:'message',label:'Message',html:function(r){return r.message?esc(String(r.message).slice(0,90)):'—';},get:function(r){return r.message;},sort:false}
     ],'Search this person\'s activity…')) : '<div class="card" style="color:var(--muted)">No enquiries recorded for this person in the local copy yet.</div>';
-    return back+'<h2 class="vt">'+esc(nm)+'</h2><div class="vsub">Everything we hold on this person, from your live Street data.</div>'+hero+tiles+req+act;
+    return back+'<h2 class="vt">'+esc(nm)+'</h2><div class="vsub">Everything we hold on this person, from your live Street data.</div>'+hero+roleHtml+tiles+req+act;
   }
 
   var GSQ='', GST=null, GSRES=null, GSSEL=-1;
@@ -769,11 +771,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.78', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.79', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.79',d:'23 Jun 2026',items:['Contact profile now links a person to their role with you, not just their enquiries. It surfaces whether they are a vendor, landlord or tenant (matched on email), alongside any enquiries and requirements. The first version only matched enquiries, so a contact whose activity is a sale or a tenancy came up empty.']},
     {v:'0.78',d:'23 Jun 2026',items:['New contact profile: click any name on the Contacts screen to open everything we hold on that person in one place. Their details and the best ways to reach them at the top, then how many enquiries, viewing and valuation requests they have made, what they are looking for (budget and beds), and a searchable timeline of every enquiry. The first of bringing the data to life as a proper single view of each customer.']},
     {v:'0.77',d:'23 Jun 2026',items:['Enquiries now search and filter the whole list, not just what is on screen. There are 25,576 enquiries; the screen loads the most recent 2,000 for speed, so searching or filtering by type used to miss older ones and the chip counts only counted what was loaded. The chip counts are now the true totals, and the search box and the type filters query the full list on the server.']},
     {v:'0.76',d:'23 Jun 2026',items:['Search now covers the whole dataset, not just the rows on screen. The big lists (Contacts holds 15,875 records, Viewings 7,117) only load the latest 2,000 for quick browsing, so searching them used to miss older records. Typing in the search box on those now queries the full table on the server, so you will find any record however old. Smaller lists still search instantly in the browser.']},
