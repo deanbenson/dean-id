@@ -509,8 +509,17 @@
     if(!tiles.length) return '';
     return '<div class="dsum">'+tiles.map(function(t){return '<div class="dstile"><b>'+t[1].toLocaleString('en-GB')+'</b><span>'+esc(t[0])+'</span></div>';}).join('')+'</div>';
   }
+  function colHasData(c, rows){
+    for(var i=0;i<rows.length;i++){ var r=rows[i], v;
+      if(c.get) v=c.get(r); else if(c.text) v=c.text(r); else if(c.html) v=String(c.html(r)).replace(/<[^>]*>/g,''); else v=r[c.key];
+      if(v==null) continue; var s=String(v).replace(/—/g,'').trim(); if(s!=='') return true;
+    }
+    return false;
+  }
   function dataTable(vid, rows, cols, placeholder, detail){
+    if(rows&&rows.length){ var fc=cols.filter(function(c){return colHasData(c,rows);}); if(fc.length)cols=fc; }
     if(!TBL[vid]) TBL[vid]={q:'',sort:cols[0].key,dir:-1};
+    if(!cols.some(function(c){return c.key===TBL[vid].sort;})) TBL[vid].sort=cols[0].key;
     TBLDATA[vid]={rows:rows,cols:cols,detail:detail||null};
     return dataSummary(rows)+'<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dts_'+vid+'" placeholder="'+esc(placeholder||'Search…')+'" value="'+esc(TBL[vid].q)+'" oninput="grTblFilter(\''+vid+'\')"></div><div id="dtw_'+vid+'">'+dtRender(vid)+'</div>';
   }
@@ -525,6 +534,7 @@
     else { var cols=[
       {key:'when',label:'When',html:function(v){return smartDate(v.start||v.created_at);},sortVal:function(v){var t=v.start||v.created_at;return t?new Date(t).getTime():0;},text:function(v){return (v.start||v.created_at||'');}},
       {key:'status',label:'Status',html:function(v){return statusPill(v.status);},get:function(v){return v.status;}},
+      {key:'viewing_type',label:'Type',html:function(v){return v.viewing_type?esc(String(v.viewing_type).replace(/_/g,' ')):'—';},get:function(v){return v.viewing_type;}},
       {key:'address',label:'Property',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
     ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…','viewings'); }
@@ -537,6 +547,7 @@
     else { var cols=[
       {key:'when',label:'When',html:function(v){return smartDate(v.start||v.created_at);},sortVal:function(v){var t=v.start||v.created_at;return t?new Date(t).getTime():0;},text:function(v){return (v.start||v.created_at||'');}},
       {key:'status',label:'Status',html:function(v){return statusPill(v.status);},get:function(v){return v.status;}},
+      {key:'valuation_type',label:'Type',html:function(v){return v.valuation_type?esc(String(v.valuation_type).replace(/_/g,' ')):'—';},get:function(v){return v.valuation_type;}},
       {key:'address',label:'Address',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'lead_source',label:'Source',get:function(v){return v.lead_source||'—';}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
@@ -719,11 +730,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.74', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.75', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.75',d:'23 Jun 2026',items:['Tidied every data table so the columns make sense. Columns that are empty for every record now hide automatically, so Viewings and Valuations drop the always-blank Branch column and Contacts drops the unused Contact and Status columns. The generic people and property tables no longer repeat the name or show empty Title or Deleted columns. Viewings and Valuations now show the appointment Type instead.']},
     {v:'0.74',d:'23 Jun 2026',items:['Connections: Rightmove now shows both halves built. The lead feed is live and the performance and inventory feed is built, with both awaiting Rightmove\'s signing secret and test keystore.']},
     {v:'0.73',d:'23 Jun 2026',items:['New Rightmove performance screen (under Insight). The read-only feed that pulls your Rightmove listing views, branch leads and live inventory (GetBranchPerformance + GetBranchPropertyList) is built and ready. It is secured by mutual-TLS and stays dormant until Rightmove issues the test keystore and our network/branch IDs, then the daily figures fill in here automatically.']},
     {v:'0.72',d:'23 Jun 2026',items:['Connections: Rightmove now shows as "Onboarding" — your account is verified and the lead webhook endpoint is live, now awaiting Rightmove\'s signing secret and a sandbox test. It sat under "Requested" before.']},
@@ -1383,6 +1395,8 @@
     var sub='<h2 class="vt">'+esc(title)+'</h2><div class="vsub">From your local copy, synced from Street. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+pageSyncLine('15min')+'.</div>';
     if(!L.rows.length) return sub+localEmpty(name,'15min');
     var allKeys=Object.keys(L.rows[0]).filter(function(k){return k!=='id'&&k!=='raw';});
+    allKeys=allKeys.filter(function(k){return L.rows.some(function(r){var v=r[k];return v!=null&&v!==''&&v!=='{}'&&v!=='[]';});});
+    if(allKeys.indexOf('full_name')>=0||allKeys.indexOf('name')>=0){ allKeys=allKeys.filter(function(k){return ['first_name','last_name','forename','surname','middle_name'].indexOf(k)<0;}); }
     var pref=allKeys.filter(function(k){return /full_name|^name$|address|title|^status$|amount|price|rent|^start$|start_date|due_date|inspection_date|move_out_date|created_at/.test(k);});
     var disp=pref.concat(allKeys.filter(function(k){return pref.indexOf(k)<0;})).slice(0,6);
     var cols=disp.map(function(k){ return {key:k,label:k.replace(/_/g,' '),
