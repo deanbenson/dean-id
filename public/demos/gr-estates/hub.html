@@ -350,7 +350,7 @@
     else if(ROUTE==='viewings'||ROUTE==='valuations'||ROUTE==='contacts') reloadLocal(ROUTE);
   }
   function refreshSyncStatus(){ fetch('/api/sync-status',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.datasets){ D.sync=d.datasets; if(ROUTE==='connections') renderView(false); } }).catch(function(){}); }
-  function refreshEnquiries(){ fetch('/api/enquiries',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.enquiries){ D.enquiries=d.enquiries; if(d.total!=null)D.enqTotal=d.total; if(d.synced_at)D.enqSyncedAt=d.synced_at; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); } }).catch(function(){}); }
+  function refreshEnquiries(){ fetch('/api/enquiries',{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.enquiries){ D.enquiries=d.enquiries; if(d.byKind)D.enqByKind=d.byKind; if(d.total!=null)D.enqTotal=d.total; if(d.synced_at)D.enqSyncedAt=d.synced_at; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); } }).catch(function(){}); }
   function reloadLocal(name){ delete D['L_'+name]; ensureLocal(name); if(ROUTE===name) renderView(false); }
   window.grSyncNow=function(){
     var b=document.getElementById('syncnowbtn'); if(b){ b.disabled=true; b.textContent='Syncing…'; }
@@ -526,10 +526,11 @@
   }
   var _srvTimer={};
   window.grTblFilter=function(vid){ var inp=document.getElementById('dts_'+vid); var q=inp?inp.value:''; if(TBL[vid])TBL[vid].q=q; var sd=TBLDATA[vid]; if(sd&&sd.srv&&sd.srv.total>sd.base.length){ grSrvFilter(vid,q); return; } var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
-  function grSrvFilter(vid,q){ var sd=TBLDATA[vid]; if(!sd)return; clearTimeout(_srvTimer[vid]);
-    if(!q){ sd.rows=sd.base; sd.sa=false; var w0=document.getElementById('dtw_'+vid); if(w0)w0.innerHTML=dtRender(vid); return; }
+  function grSrvFilter(vid,q){ var sd=TBLDATA[vid]; if(!sd||!sd.srv)return; clearTimeout(_srvTimer[vid]);
+    if(!q && !sd.srv.always){ sd.rows=sd.base; sd.sa=false; var w0=document.getElementById('dtw_'+vid); if(w0)w0.innerHTML=dtRender(vid); return; }
+    var url=sd.srv.build?sd.srv.build(q):('/api/local?name='+encodeURIComponent(sd.srv.name)+'&q='+encodeURIComponent(q));
     var w=document.getElementById('dtw_'+vid); var cc=w&&w.querySelector('.dtcount'); if(cc)cc.textContent='searching all '+(sd.srv.total||0).toLocaleString('en-GB')+'…';
-    _srvTimer[vid]=setTimeout(function(){ fetch('/api/local?name='+encodeURIComponent(sd.srv.name)+'&q='+encodeURIComponent(q),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!TBL[vid]||TBL[vid].q!==q)return; sd.rows=(d&&d.rows)||[]; sd.sa=true; var w2=document.getElementById('dtw_'+vid); if(w2)w2.innerHTML=dtRender(vid); }).catch(function(){}); },320);
+    _srvTimer[vid]=setTimeout(function(){ fetch(url,{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!TBL[vid]||TBL[vid].q!==q)return; sd.rows=(d&&(d.rows||d.enquiries))||[]; sd.sa=true; var w2=document.getElementById('dtw_'+vid); if(w2)w2.innerHTML=dtRender(vid); }).catch(function(){}); },320);
   }
   window.grTblSort=function(vid,key){ var st=TBL[vid]; if(!st)return; if(st.sort===key)st.dir=-st.dir; else{st.sort=key;st.dir=-1;} var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
   function statusPill(s){ if(s==null||s==='') return '—'; var t=String(s).replace(/_/g,' '); var low=t.toLowerCase(); var c='n'; if(/cancel|declin|withdraw|lost|fell|no show|void/.test(low))c='r'; else if(/complet|carried|confirm|success|won|sold|let agreed|exchang|move/.test(low))c='g'; else if(/pending|await|propos|booked|new|active|request|offer/.test(low))c='a'; return '<span class="pill pill-'+c+'">'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span>'; }
@@ -737,11 +738,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.76', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.77', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.77',d:'23 Jun 2026',items:['Enquiries now search and filter the whole list, not just what is on screen. There are 25,576 enquiries; the screen loads the most recent 2,000 for speed, so searching or filtering by type used to miss older ones and the chip counts only counted what was loaded. The chip counts are now the true totals, and the search box and the type filters query the full list on the server.']},
     {v:'0.76',d:'23 Jun 2026',items:['Search now covers the whole dataset, not just the rows on screen. The big lists (Contacts holds 15,875 records, Viewings 7,117) only load the latest 2,000 for quick browsing, so searching them used to miss older records. Typing in the search box on those now queries the full table on the server, so you will find any record however old. Smaller lists still search instantly in the browser.']},
     {v:'0.75',d:'23 Jun 2026',items:['Tidied every data table so the columns make sense. Columns that are empty for every record now hide automatically, so Viewings and Valuations drop the always-blank Branch column and Contacts drops the unused Contact and Status columns. The generic people and property tables no longer repeat the name or show empty Title or Deleted columns. Viewings and Valuations now show the appointment Type instead.']},
     {v:'0.74',d:'23 Jun 2026',items:['Connections: Rightmove now shows both halves built. The lead feed is live and the performance and inventory feed is built, with both awaiting Rightmove\'s signing secret and test keystore.']},
@@ -862,7 +864,8 @@
   window.grGo=function(id){ if(!roleAllows(id)) id='home'; if(('#'+id)===location.hash){ onHash(); } else { location.hash=id; } };
   window.grToggleNav=function(){ NAVOPEN=!NAVOPEN; var s=document.getElementById('side'); var o=document.getElementById('ovl'); if(s)s.classList.toggle('open',NAVOPEN); if(o)o.classList.toggle('show',NAVOPEN); };
   window.grRole=function(v){ if(!ROLES[v]) return; ROLE=v; if(!roleAllows(ROUTE)) ROUTE='home'; ENQFILTER='all'; renderShell(); if(('#'+ROUTE)!==location.hash){ location.hash=ROUTE; } };
-  window.grEnqFilter=function(f){ ENQFILTER=f; renderView(false); };
+  window.grEnqFilter=function(f){ ENQFILTER=f; if(TBL.enq)TBL.enq.q=''; grLoadEnq(''); };
+  function grLoadEnq(q){ fetch('/api/enquiries?kind='+encodeURIComponent(ENQFILTER)+'&q='+encodeURIComponent(q||''),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(d){ D.enquiries=(d.enquiries||d.rows)||[]; if(d.byKind)D.enqByKind=d.byKind; if(d.total!=null)D.enqTotal=d.total; if(ROUTE==='enquiries')renderView(false); } }).catch(function(){}); }
 
   function onHash(){
     var raw=(location.hash||'').replace(/^#/,'')||'home';
@@ -990,12 +993,12 @@
   function viewEnquiries(){
     var enq=D.enquiries;
     if(enq==null) return '<h2 class="vt">Enquiries</h2><div class="vsub">Loading from Street…</div><div class="card" style="color:var(--muted)">Fetching every enquiry in Street…</div>';
-    var byKind={valuation:0,viewing:0,contact:0}; enq.forEach(function(L){ var k=L.kind||'contact'; byKind[k]=(byKind[k]||0)+1; });
+    var byKind=D.enqByKind||{}; var enqTot=(D.enqTotal!=null?D.enqTotal:enq.length);
     function chip(f,lab){ return '<span class="chip'+(ENQFILTER===f?' on':'')+'" onclick="grEnqFilter(\''+f+'\')">'+lab+'</span>'; }
-    var chips='<div class="efilt">'+chip('all','All ('+enq.length+')')+chip('valuation','Valuations ('+(byKind.valuation||0)+')')+chip('viewing','Viewings ('+(byKind.viewing||0)+')')+chip('contact','Contact ('+(byKind.contact||0)+')')+'</div>';
-    var shown=enq.filter(function(L){ return ENQFILTER==='all'||(L.kind||'contact')===ENQFILTER; });
+    var chips='<div class="efilt">'+chip('all','All ('+enqTot.toLocaleString('en-GB')+')')+chip('valuation','Valuations ('+(byKind.valuation||0).toLocaleString('en-GB')+')')+chip('viewing','Viewings ('+(byKind.viewing||0).toLocaleString('en-GB')+')')+chip('contact','Contact ('+(byKind.contact||0).toLocaleString('en-GB')+')')+'</div>';
+    var shown=enq;
     var body;
-    if(!enq.length) body='<div class="card" style="color:var(--muted)">No enquiries in Street in the last 30 days.</div>';
+    if(!enq.length) body='<div class="card" style="color:var(--muted)">No '+(ENQFILTER!=='all'?(esc(ENQFILTER)+' '):'')+'enquiries.</div>';
     else if(!shown.length) body='<div class="card" style="color:var(--muted)">No '+esc(ENQFILTER)+' enquiries.</div>';
     else { var cols=[
       {key:'at',label:'When',html:function(L){return smartDate(L.at);},sortVal:function(L){return L.at?new Date(L.at).getTime():0;},text:function(L){return L.at;}},
@@ -1003,7 +1006,7 @@
       {key:'name',label:'Name',get:function(L){return L.name||'—';}},
       {key:'contact',label:'Contact',html:function(L){return [L.email,L.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(L){return (L.email||'')+' '+(L.phone||'');},sort:false},
       {key:'property',label:'Property / branch',html:function(L){ var propTxt=L.property?propLink(L.propertyId,L.property):''; var meta=[propTxt,(L.branch?esc(L.branch):'')].filter(Boolean).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return (meta||'<span style="color:var(--muted)">—</span>')+src; },text:function(L){return (L.property||'')+' '+(L.branch||'')+' '+(L.source||'');}}
-    ]; body=dataTable('enq',shown,cols,'Search name, email, property, source…','enquiries'); }
+    ]; body=dataTable('enq',shown,cols,'Search all '+enqTot.toLocaleString('en-GB')+' enquiries…','enquiries',{total:enqTot,always:true,build:function(q){return '/api/enquiries?kind='+encodeURIComponent(ENQFILTER)+'&q='+encodeURIComponent(q);}}); }
     var syncTxt=D.enqSyncedAt?(' · synced '+smartDate(D.enqSyncedAt)):'';
     return '<h2 class="vt">Enquiries</h2><div class="vsub">Every enquiry in Street, from the website, portals and phone. Newest first'+(D.enqTotal!=null?(' · '+D.enqTotal+' total'):'')+syncTxt+pageSyncLine('15min')+'.</div>'+chips+body;
   }
@@ -1499,7 +1502,7 @@
       else if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
       if(propDeep) loadProperty(PROP_ID);
-      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
+      fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; if(d&&d.byKind)D.enqByKind=d.byKind; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
       fetch('/api/sync-status',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.sync=(d&&d.datasets)||null; if(ROUTE==='connections') renderView(false); }).catch(function(){});
     }).catch(function(e){
       if(e==='auth'){ try{ localStorage.removeItem('grAdminKey'); }catch(_){} gate('That key didn\'t work, try again.'); }

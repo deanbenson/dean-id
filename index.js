@@ -2533,14 +2533,24 @@ export default {
       // Fast path: read the synced local copy (D1). The cron keeps it fresh, so this is instant.
       try {
         if (env.gr_estates) {
-          const lr = await env.gr_estates.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries ORDER BY created_at DESC LIMIT 2000").all();
+          // Optional server-side search (?q=) + kind filter (?kind=) over the WHOLE table, so the screen's
+          // search box and chips cover all 25k+ enquiries, not just the latest 2,000 loaded for browsing.
+          const enqQ = (url.searchParams.get("q") || "").trim();
+          const enqKind = (url.searchParams.get("kind") || "").trim();
+          const conds = [], binds = [];
+          if (enqKind && enqKind !== "all") { conds.push("kind = ?"); binds.push(enqKind); }
+          if (enqQ) { conds.push("(name LIKE ? OR email LIKE ? OR phone LIKE ? OR message LIKE ? OR property LIKE ? OR source LIKE ? OR branch LIKE ?)"); const lk = "%" + enqQ + "%"; for (let i = 0; i < 7; i++) binds.push(lk); }
+          const where = conds.length ? (" WHERE " + conds.join(" AND ")) : "";
+          const lr = await env.gr_estates.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries" + where + " ORDER BY created_at DESC LIMIT 2000").bind(...binds).all();
           const rows = (lr && lr.results) || [];
-          if (rows.length) {
-            let ltotal = rows.length, syncedAt = null;
-            try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM enquiries").first(); if (c && c.n != null) ltotal = c.n; } catch (_) {}
+          // True per-kind counts over the whole table, for accurate chips + total (not just the latest 2,000).
+          let byKind = {}, ltotal = 0;
+          try { const kc = await env.gr_estates.prepare("SELECT COALESCE(kind,'contact') AS k, COUNT(*) AS n FROM enquiries GROUP BY COALESCE(kind,'contact')").all(); ((kc && kc.results) || []).forEach(function (r) { byKind[r.k] = r.n; ltotal += r.n; }); } catch (_) {}
+          if (ltotal > 0) {
+            let syncedAt = null;
             try { if (env.LISTINGS) syncedAt = await env.LISTINGS.get("sync:enquiries:at"); } catch (_) {}
             const out = rows.map(function (x) { return { id: x.id, at: x.created_at, name: x.name, email: x.email, phone: x.phone, message: x.message || "", source: x.source, kind: x.kind, propertyId: x.property_id, property: x.property, branch: x.branch }; });
-            return respond(JSON.stringify({ ok: true, source: "local", count: out.length, total: ltotal, synced_at: syncedAt, enquiries: out }), 200, J);
+            return respond(JSON.stringify({ ok: true, source: "local", count: out.length, total: ltotal, byKind: byKind, q: enqQ || null, kind: enqKind || null, synced_at: syncedAt, enquiries: out, rows: out }), 200, J);
           }
         }
       } catch (_) {}
