@@ -2589,9 +2589,24 @@ export default {
       const name = String(url.searchParams.get("name") || "");
       const allow = { viewings: 1, valuations: 1, contacts: 1, applicants: 1, offers: 1, enquiries: 1, tenancies: 1, landlords: 1, vendors: 1, tenants: 1, inspections: 1, sales: 1, properties_all: 1, interested_applicants: 1, property_keys: 1, maintenance_jobs: 1, move_outs: 1, solicitors: 1, todos: 1, todo_types: 1, follow_ups: 1, invoices: 1, photo_and_measures: 1, sales_instructions: 1, lettings_instructions: 1, areas: 1, brands: 1, companies: 1, branches_all: 1, users_all: 1 };
       if (!allow[name] || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "unknown dataset" }), 400, J);
-      let rows = [], total = 0, at = null;
-      try { const r = await env.gr_estates.prepare("SELECT * FROM " + phys(name) + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
-      try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + phys(name)).first(); total = (c && c.n) || 0; } catch (_) {}
+      const q = (url.searchParams.get("q") || "").trim();
+      const _tbl = phys(name);
+      let rows = [], total = 0, at = null, matched = null;
+      try { const c = await env.gr_estates.prepare("SELECT COUNT(*) AS n FROM " + _tbl).first(); total = (c && c.n) || 0; } catch (_) {}
+      if (q) {
+        // Server-side search across every stored column, so the search box covers the WHOLE table (e.g. all
+        // 15,875 contacts), not just the latest 2,000 the screen loads for browsing.
+        let scols = [];
+        try { const ti = await env.gr_estates.prepare("PRAGMA table_info(" + _tbl + ")").all(); scols = (((ti && ti.results) || []).map(function (c) { return c.name; })).filter(function (n) { return n !== "raw"; }); } catch (_) {}
+        if (scols.length) {
+          const where = scols.map(function (c) { return '"' + c + '" LIKE ?'; }).join(" OR ");
+          const binds = scols.map(function () { return "%" + q + "%"; });
+          try { const r = await env.gr_estates.prepare("SELECT * FROM " + _tbl + " WHERE " + where + " ORDER BY created_at DESC LIMIT 2000").bind(...binds).all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
+          matched = rows.length;
+        }
+      } else {
+        try { const r = await env.gr_estates.prepare("SELECT * FROM " + _tbl + " ORDER BY created_at DESC LIMIT 2000").all(); rows = (r && r.results) || []; rows.forEach(function (x) { delete x.raw; }); } catch (_) {}
+      }
       const km = { viewings: "sync:viewings:at", valuations: "sync:valuations:at", contacts: "sync:contacts:at", applicants: "sync:sales_applicants:at", offers: "sync:sales_offers:at", enquiries: "sync:enquiries:at" };
       try { if (km[name] && env.LISTINGS) at = await env.LISTINGS.get(km[name]); } catch (_) {}
       let syncing = false;
@@ -2608,7 +2623,7 @@ export default {
           syncing = true;
         } catch (_) {}
       }
-      return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows, syncing: syncing }), 200, J);
+      return respond(JSON.stringify({ ok: true, name: name, total: total, synced_at: at, rows: rows, syncing: syncing, q: q || null, matched: matched }), 200, J);
     }
 
     // One full record incl. the complete raw Street payload (every field). Admin-gated (PII).

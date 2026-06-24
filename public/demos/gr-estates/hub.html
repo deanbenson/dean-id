@@ -489,13 +489,14 @@
   var TBL={}, TBLDATA={};
   function dtRender(vid){
     var d=TBLDATA[vid], st=TBL[vid], cols=d.cols, q=(st.q||'').toLowerCase();
-    var rows=d.rows.filter(function(r){ if(!q)return true; for(var i=0;i<cols.length;i++){ var c=cols[i]; if(c.search===false)continue; var v=c.text?c.text(r):(c.get?c.get(r):''); if(String(v==null?'':v).toLowerCase().indexOf(q)>=0)return true; } return false; });
+    var rows=d.sa?d.rows.slice():d.rows.filter(function(r){ if(!q)return true; for(var i=0;i<cols.length;i++){ var c=cols[i]; if(c.search===false)continue; var v=c.text?c.text(r):(c.get?c.get(r):''); if(String(v==null?'':v).toLowerCase().indexOf(q)>=0)return true; } return false; });
     var sc=null; for(var i=0;i<cols.length;i++){ if(cols[i].key===st.sort){sc=cols[i];break;} } if(!sc)sc=cols[0];
     rows.sort(function(a,b){ var va=sc.sortVal?sc.sortVal(a):(sc.get?sc.get(a):''); var vb=sc.sortVal?sc.sortVal(b):(sc.get?sc.get(b):''); if(va==null)va=''; if(vb==null)vb=''; if(typeof va==='number'&&typeof vb==='number')return (va-vb)*st.dir; return String(va).localeCompare(String(vb))*st.dir; });
     var det=d.detail;
     var head=cols.map(function(c){ var on=st.sort===c.key, s=(c.sort!==false); return '<th'+(s?' class="dtsort" onclick="grTblSort(\''+vid+'\',\''+c.key+'\')"':'')+'>'+esc(c.label)+(on?'<span class="dtar">'+(st.dir<0?'↓':'↑')+'</span>':'')+'</th>'; }).join('')+(det?'<th class="dtx"></th>':'');
     var body=rows.length?rows.map(function(r){ return '<tr>'+cols.map(function(c){ return '<td>'+(c.html?c.html(r):esc((c.get?c.get(r):'')==null?'':c.get(r)))+'</td>'; }).join('')+(det&&r.id?'<td class="dtx"><button class="rowbtn" title="View all fields" onclick="grRow(\''+det+'\',\''+r.id+'\')">⤢</button></td>':(det?'<td class="dtx"></td>':''))+'</tr>'; }).join(''):'<tr><td colspan="'+(cols.length+(det?1:0))+'" style="color:var(--muted);padding:18px;text-align:center">No matches.</td></tr>';
-    return '<div class="dtcount">'+rows.length+(d.rows.length!==rows.length?(' of '+d.rows.length):'')+'</div><table class="enq dt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+    var cnt=d.sa?(rows.length+' of '+(((d.srv&&d.srv.total)||rows.length)).toLocaleString('en-GB')+' searched'):(rows.length+(d.rows.length!==rows.length?(' of '+d.rows.length):''));
+    return '<div class="dtcount">'+cnt+'</div><table class="enq dt"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
   }
   function statusOf(r){ if(r.status!=null&&r.status!=='') return r.status; if(Array.isArray(r.statuses)&&r.statuses.length) return r.statuses[0]; for(var k in r){ if(/(^|_)status$/.test(k)&&r[k]!=null&&r[k]!=='') return r[k]; } return null; }
   function dataSummary(rows){
@@ -516,14 +517,20 @@
     }
     return false;
   }
-  function dataTable(vid, rows, cols, placeholder, detail){
+  function dataTable(vid, rows, cols, placeholder, detail, srv){
     if(rows&&rows.length){ var fc=cols.filter(function(c){return colHasData(c,rows);}); if(fc.length)cols=fc; }
     if(!TBL[vid]) TBL[vid]={q:'',sort:cols[0].key,dir:-1};
     if(!cols.some(function(c){return c.key===TBL[vid].sort;})) TBL[vid].sort=cols[0].key;
-    TBLDATA[vid]={rows:rows,cols:cols,detail:detail||null};
+    TBLDATA[vid]={rows:rows,cols:cols,detail:detail||null,base:rows,srv:srv||null,sa:false};
     return dataSummary(rows)+'<div class="dtbar"><span class="dtmag" aria-hidden="true">⌕</span><input class="dtsearch" id="dts_'+vid+'" placeholder="'+esc(placeholder||'Search…')+'" value="'+esc(TBL[vid].q)+'" oninput="grTblFilter(\''+vid+'\')"></div><div id="dtw_'+vid+'">'+dtRender(vid)+'</div>';
   }
-  window.grTblFilter=function(vid){ var inp=document.getElementById('dts_'+vid); if(TBL[vid])TBL[vid].q=inp?inp.value:''; var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
+  var _srvTimer={};
+  window.grTblFilter=function(vid){ var inp=document.getElementById('dts_'+vid); var q=inp?inp.value:''; if(TBL[vid])TBL[vid].q=q; var sd=TBLDATA[vid]; if(sd&&sd.srv&&sd.srv.total>sd.base.length){ grSrvFilter(vid,q); return; } var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
+  function grSrvFilter(vid,q){ var sd=TBLDATA[vid]; if(!sd)return; clearTimeout(_srvTimer[vid]);
+    if(!q){ sd.rows=sd.base; sd.sa=false; var w0=document.getElementById('dtw_'+vid); if(w0)w0.innerHTML=dtRender(vid); return; }
+    var w=document.getElementById('dtw_'+vid); var cc=w&&w.querySelector('.dtcount'); if(cc)cc.textContent='searching all '+(sd.srv.total||0).toLocaleString('en-GB')+'…';
+    _srvTimer[vid]=setTimeout(function(){ fetch('/api/local?name='+encodeURIComponent(sd.srv.name)+'&q='+encodeURIComponent(q),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!TBL[vid]||TBL[vid].q!==q)return; sd.rows=(d&&d.rows)||[]; sd.sa=true; var w2=document.getElementById('dtw_'+vid); if(w2)w2.innerHTML=dtRender(vid); }).catch(function(){}); },320);
+  }
   window.grTblSort=function(vid,key){ var st=TBL[vid]; if(!st)return; if(st.sort===key)st.dir=-st.dir; else{st.sort=key;st.dir=-1;} var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
   function statusPill(s){ if(s==null||s==='') return '—'; var t=String(s).replace(/_/g,' '); var low=t.toLowerCase(); var c='n'; if(/cancel|declin|withdraw|lost|fell|no show|void/.test(low))c='r'; else if(/complet|carried|confirm|success|won|sold|let agreed|exchang|move/.test(low))c='g'; else if(/pending|await|propos|booked|new|active|request|offer/.test(low))c='a'; return '<span class="pill pill-'+c+'">'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span>'; }
   function propLink(id,label){ return id?'<a class="syslink" href="#property='+encodeURIComponent(id)+'">'+esc(label||'View property')+'</a>':esc(label||'—'); }
@@ -537,7 +544,7 @@
       {key:'viewing_type',label:'Type',html:function(v){return v.viewing_type?esc(String(v.viewing_type).replace(/_/g,' ')):'—';},get:function(v){return v.viewing_type;}},
       {key:'address',label:'Property',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
-    ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…','viewings'); }
+    ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…','viewings',{name:'viewings',total:L.total||0}); }
     return '<h2 class="vt">Viewings</h2><div class="vsub">Every viewing in Street, from the local copy. '+L.total+' total'+localSync(L)+pageSyncLine('15min')+'.</div>'+body;
   }
   function viewValuations(){
@@ -551,7 +558,7 @@
       {key:'address',label:'Address',html:function(v){return propLink(v.property_id,v.address);},text:function(v){return v.address;},get:function(v){return v.address;}},
       {key:'lead_source',label:'Source',get:function(v){return v.lead_source||'—';}},
       {key:'branch',label:'Branch',get:function(v){return v.branch||'—';}}
-    ]; body=dataTable('valuations',L.rows,cols,'Search valuations, address, source…','valuations'); }
+    ]; body=dataTable('valuations',L.rows,cols,'Search valuations, address, source…','valuations',{name:'valuations',total:L.total||0}); }
     return '<h2 class="vt">Valuations</h2><div class="vsub">Valuations booked in Street, from the local copy. '+L.total+' total'+localSync(L)+pageSyncLine('15min')+'.</div>'+body;
   }
   function viewContacts(){
@@ -563,7 +570,7 @@
       {key:'name',label:'Name',get:function(c){return c.name||'—';}},
       {key:'contact',label:'Contact',html:function(c){return [c.email,c.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(c){return (c.email||'')+' '+(c.phone||'');},sort:false},
       {key:'status',label:'Status',html:function(c){return statusPill(c.status);},get:function(c){return c.status;}}
-    ]; body=dataTable('contacts',L.rows,cols,'Search by name, email or phone…','contacts'); }
+    ]; body=dataTable('contacts',L.rows,cols,'Search by name, email or phone…','contacts',{name:'contacts',total:L.total||0}); }
     return '<h2 class="vt">Contacts</h2><div class="vsub">Buyers, sellers, landlords and tenants from Street, newest first. '+(L.total||0).toLocaleString('en-GB')+' total'+localSync(L)+pageSyncLine('hourly')+'.</div>'+body;
   }
 
@@ -730,11 +737,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.75', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.76', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.76',d:'23 Jun 2026',items:['Search now covers the whole dataset, not just the rows on screen. The big lists (Contacts holds 15,875 records, Viewings 7,117) only load the latest 2,000 for quick browsing, so searching them used to miss older records. Typing in the search box on those now queries the full table on the server, so you will find any record however old. Smaller lists still search instantly in the browser.']},
     {v:'0.75',d:'23 Jun 2026',items:['Tidied every data table so the columns make sense. Columns that are empty for every record now hide automatically, so Viewings and Valuations drop the always-blank Branch column and Contacts drops the unused Contact and Status columns. The generic people and property tables no longer repeat the name or show empty Title or Deleted columns. Viewings and Valuations now show the appointment Type instead.']},
     {v:'0.74',d:'23 Jun 2026',items:['Connections: Rightmove now shows both halves built. The lead feed is live and the performance and inventory feed is built, with both awaiting Rightmove\'s signing secret and test keystore.']},
     {v:'0.73',d:'23 Jun 2026',items:['New Rightmove performance screen (under Insight). The read-only feed that pulls your Rightmove listing views, branch leads and live inventory (GetBranchPerformance + GetBranchPropertyList) is built and ready. It is secured by mutual-TLS and stays dormant until Rightmove issues the test keystore and our network/branch IDs, then the daily figures fill in here automatically.']},
@@ -1403,7 +1411,7 @@
       html:function(r){ var v=r[k]; if(v==null||v==='')return '—'; var s=String(v); if(s.charAt(0)==='{'||s.charAt(0)==='[')return '<span style="color:var(--muted)" title="structured field — open the row to see it">…</span>'; if((/_at$|_date$|^start$|^end$/.test(k))&&/^\d{4}-\d\d-\d\d/.test(s))return smartDate(s); if(/price|amount|fee|rent|deposit/.test(k)&&/^-?\d+(\.\d+)?$/.test(s))return '£'+Number(s).toLocaleString('en-GB'); if(s.length>60)return esc(s.slice(0,60))+'…'; return esc(s); },
       sortVal:function(r){ var v=r[k]; if(/_at$|_date$|^start$|^end$/.test(k))return v?new Date(v).getTime():0; if(/price|amount|fee|rent|deposit/.test(k))return Number(v)||0; return v==null?'':String(v); },
       text:function(r){return r[k];} }; });
-    return sub+dataTable('gen_'+name,L.rows,cols,'Search '+esc(title)+'…',name);
+    return sub+dataTable('gen_'+name,L.rows,cols,'Search '+esc(title)+'…',name,{name:name,total:L.total||0});
   }
 
   // ---- Live system health ---------------------------------------------------------------------
