@@ -1943,7 +1943,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2650,6 +2650,43 @@ export default {
       try { row = await env.gr_estates.prepare("SELECT * FROM " + phys(name) + " WHERE id = ?").bind(id).first(); } catch (_) {}
       if (row && row.raw) { try { raw = JSON.parse(row.raw); } catch (_) {} delete row.raw; }
       return respond(JSON.stringify({ ok: true, name: name, row: row, raw: raw }), 200, J);
+    }
+
+    // Everything we hold about one person — their details + every enquiry and requirement tied to them. Admin-gated (PII).
+    if (path === "/api/contact-hub" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      await ensureStreetTables(env);
+      const id = String(url.searchParams.get("id") || "");
+      if (!id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
+      const db = env.gr_estates;
+      let contact = null; try { contact = await db.prepare("SELECT * FROM street_contacts WHERE id = ?").bind(id).first(); } catch (_) {}
+      if (!contact) return respond(JSON.stringify({ ok: true, found: false }), 200, J);
+      let raw = null; try { raw = JSON.parse(contact.raw); } catch (_) {}
+      const attr = (raw && raw.attributes) || {};
+      const emails = ((attr.email_addresses || []).map(function (x) { return (x && x.value) || null; })).filter(Boolean);
+      const phones = ((attr.telephone_numbers || []).map(function (x) { return (x && x.value) || null; })).filter(Boolean);
+      const email = contact.email || emails[0] || null;
+      const name = contact.name || attr.full_name || null;
+      let addr = null; const A = attr.address;
+      if (A) { if (typeof A === "string") addr = A; else if (typeof A === "object") addr = [A.line_1 || A.line1 || A.address_line_1, A.line_2 || A.line2, A.town || A.city || A.post_town, A.postcode || A.post_code].filter(Boolean).join(", ") || null; }
+      let mk = null; const M = attr.marketing_consent;
+      if (M != null) { if (typeof M === "boolean") mk = M ? "Yes" : "No"; else if (typeof M === "object") { const yes = Object.keys(M).filter(function (k) { return M[k] === true || M[k] === "granted" || M[k] === "yes"; }); mk = yes.length ? yes.join(", ") : "No"; } else mk = String(M); }
+      let enq = [];
+      try {
+        if (email) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE email = ? ORDER BY created_at DESC LIMIT 300").bind(email).all(); enq = (r && r.results) || []; }
+        if (!enq.length && name) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE name = ? ORDER BY created_at DESC LIMIT 300").bind(name).all(); enq = (r && r.results) || []; }
+      } catch (_) {}
+      let apps = [];
+      try {
+        if (name) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE name = ? ORDER BY created_at DESC LIMIT 50").bind(name).all(); apps = (r && r.results) || []; }
+        if (!apps.length && email) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE raw LIKE ? ORDER BY created_at DESC LIMIT 50").bind("%" + email + "%").all(); apps = (r && r.results) || []; }
+      } catch (_) {}
+      const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
+      const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
+      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, enquiries: enq, applicants: apps }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).

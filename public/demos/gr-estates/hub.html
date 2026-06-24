@@ -300,7 +300,7 @@
     return _f.apply(this,arguments);
   };})();
   var root=document.getElementById('root');
-  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner', PROP_ID=null;
+  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner', PROP_ID=null, CONTACT_ID=null;
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
@@ -535,6 +535,7 @@
   window.grTblSort=function(vid,key){ var st=TBL[vid]; if(!st)return; if(st.sort===key)st.dir=-st.dir; else{st.sort=key;st.dir=-1;} var w=document.getElementById('dtw_'+vid); if(w)w.innerHTML=dtRender(vid); };
   function statusPill(s){ if(s==null||s==='') return '—'; var t=String(s).replace(/_/g,' '); var low=t.toLowerCase(); var c='n'; if(/cancel|declin|withdraw|lost|fell|no show|void/.test(low))c='r'; else if(/complet|carried|confirm|success|won|sold|let agreed|exchang|move/.test(low))c='g'; else if(/pending|await|propos|booked|new|active|request|offer/.test(low))c='a'; return '<span class="pill pill-'+c+'">'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span>'; }
   function propLink(id,label){ return id?'<a class="syslink" href="#property='+encodeURIComponent(id)+'">'+esc(label||'View property')+'</a>':esc(label||'—'); }
+  function contactLink(id,label){ return id?'<a class="syslink" href="#contact='+encodeURIComponent(id)+'">'+esc(label||'View')+'</a>':esc(label||'—'); }
   function viewViewings(){
     ensureLocal('viewings'); var L=D.L_viewings; if(!L) return localLoading('Viewings');
     var body;
@@ -568,7 +569,7 @@
     if(!L.rows.length) body=localEmpty('contacts','hourly');
     else { var cols=[
       {key:'created_at',label:'Added',html:function(c){return smartDate(c.created_at);},sortVal:function(c){return c.created_at?new Date(c.created_at).getTime():0;},text:function(c){return c.created_at;}},
-      {key:'name',label:'Name',get:function(c){return c.name||'—';}},
+      {key:'name',label:'Name',html:function(c){return contactLink(c.id,c.name||'—');},text:function(c){return c.name;},get:function(c){return c.name;}},
       {key:'contact',label:'Contact',html:function(c){return [c.email,c.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(c){return (c.email||'')+' '+(c.phone||'');},sort:false},
       {key:'status',label:'Status',html:function(c){return statusPill(c.status);},get:function(c){return c.status;}}
     ]; body=dataTable('contacts',L.rows,cols,'Search by name, email or phone…','contacts',{name:'contacts',total:L.total||0}); }
@@ -596,6 +597,7 @@
     fetch('/api/property-hub?id='+encodeURIComponent(id),{headers:hk}).then(function(r){return r.json();}).then(function(d){ if(!D.prop||D.prop.id!==id)return; D.prop.hub=d; D.prop.gotHub=true; if(ROUTE==='property')renderView(false); }).catch(function(){ if(D.prop&&D.prop.id===id){D.prop.gotHub=true; if(ROUTE==='property')renderView(false);} });
     fetch('/api/property?id='+encodeURIComponent(id),{headers:hk}).then(function(r){return r.json();}).then(function(d){ if(!D.prop||D.prop.id!==id)return; D.prop.info=d; D.prop.gotInfo=true; if(ROUTE==='property')renderView(false); }).catch(function(){ if(D.prop&&D.prop.id===id){D.prop.gotInfo=true; if(ROUTE==='property')renderView(false);} });
   }
+  function loadContact(id){ if(!id)return; if(D.contact&&D.contact.id===id&&D.contact.got)return; D.contact={id:id,data:null,got:false}; delete TBL['cenq_'+id]; fetch('/api/contact-hub?id='+encodeURIComponent(id),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!D.contact||D.contact.id!==id)return; D.contact.data=d; D.contact.got=true; if(ROUTE==='contact')renderView(false); }).catch(function(){ if(D.contact&&D.contact.id===id){D.contact.got=true; if(ROUTE==='contact')renderView(false);} }); }
   function enqChart(enq){
     if(!enq||!enq.length) return '';
     var now=Date.now(), wk=7*864e5, N=12, b=[]; for(var i=0;i<N;i++)b.push(0);
@@ -649,6 +651,35 @@
       +'<div class="secttl">Who has enquired ('+enq.length+')</div>'+enqBody
       +'<div class="secttl">Viewings ('+vws.length+')</div>'+vwBody
       +'<div class="secttl">Everything else</div>'+gaps;
+  }
+
+  function viewContact(){
+    var back='<a class="backlink" href="#contacts" onclick="if(history.length>1){history.back();return false;}">‹ Back</a>';
+    var C=D.contact;
+    if(!C||C.id!==CONTACT_ID||!C.got) return back+'<h2 class="vt">Contact</h2><div class="vsub">Loading everything we hold on this person…</div><div class="card" style="color:var(--muted)">One moment…</div>';
+    var d=C.data;
+    if(!d||!d.ok||!d.found) return back+'<h2 class="vt">Contact</h2><div class="card" style="color:var(--muted)">We could not find this contact in the local copy.</div>';
+    var ct=d.contact||{}, enq=d.enquiries||[], apps=d.applicants||[], bk=d.byKind||{};
+    var nm=ct.name||'This contact';
+    var av='<div style="width:52px;height:52px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;flex:none">'+esc((nm.charAt(0)||'?').toUpperCase())+'</div>';
+    var chips=[];
+    (ct.emails||[]).forEach(function(e){ chips.push('<a href="mailto:'+esc(e)+'" style="display:inline-flex;align-items:center;gap:6px;padding:.4rem .7rem;border:1px solid var(--line);border-radius:9px;background:#fff;color:#3a3d43;text-decoration:none;font-size:.85rem">✉ '+esc(e)+'</a>'); });
+    (ct.phones||[]).forEach(function(p){ chips.push('<a href="tel:'+esc(String(p).replace(/\s+/g,''))+'" style="display:inline-flex;align-items:center;gap:6px;padding:.4rem .7rem;border:1px solid var(--line);border-radius:9px;background:#fff;color:#3a3d43;text-decoration:none;font-size:.85rem">☎ '+esc(p)+'</a>'); });
+    var sub=[]; if(ct.created_at)sub.push('Client since '+tdsDate(ct.created_at)); if(ct.address)sub.push(esc(ct.address));
+    var hero='<div class="card"><div style="display:flex;align-items:center;gap:14px">'+av+'<div><div style="font-family:var(--serif);font-weight:700;font-size:1.45rem">'+esc((ct.title?ct.title+' ':'')+nm)+'</div><div style="color:var(--muted);font-size:.85rem;margin-top:2px">'+sub.join(' · ')+'</div></div></div>'+(chips.length?('<div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap">'+chips.join('')+'</div>'):'')+(ct.marketing?('<div style="margin-top:10px;font-size:.8rem;color:var(--muted)">Marketing consent: '+esc(ct.marketing)+'</div>'):'')+'</div>';
+    function st(n,l){ return '<div class="tile"><div class="ttl">'+esc(l)+'</div><div class="tnm">'+n+'</div></div>'; }
+    var lastAt=enq.length?enq[0].created_at:null;
+    var tiles='<div class="tiles">'+st(enq.length,'Enquiries')+st(bk.viewing||0,'Viewing requests')+st(bk.valuation||0,'Valuation requests')+st(lastAt?tdsDate(lastAt):'—','Last contact')+'</div>';
+    var req='';
+    if(apps.length){ req='<div class="secttl">What they are looking for</div>'+apps.map(function(a){ var bits=[(a.max_price?('up to £'+Number(a.max_price).toLocaleString('en-GB')):''),(a.min_beds!=null?(a.min_beds+'+ beds'):''),(a.lead_rating?('rated '+esc(a.lead_rating)):''),(a.branch?esc(a.branch):'')].filter(Boolean).join(' · '); return '<div class="card" style="margin-bottom:8px"><b>'+esc(a.kind||'Requirement')+'</b>'+(bits?('<div style="color:var(--muted);font-size:.85rem;margin-top:3px">'+bits+'</div>'):'')+'</div>'; }).join(''); }
+    var act = enq.length ? ('<div class="secttl">Activity ('+enq.length+')</div>'+dataTable('cenq_'+CONTACT_ID,enq,[
+      {key:'at',label:'When',html:function(r){return smartDate(r.created_at);},sortVal:function(r){return r.created_at?new Date(r.created_at).getTime():0;},text:function(r){return r.created_at;}},
+      {key:'kind',label:'Type',html:function(r){return '<span class="kind">'+esc(r.kind||'enquiry')+'</span>';},get:function(r){return r.kind||'enquiry';}},
+      {key:'property',label:'Property',html:function(r){return r.property?esc(r.property):'—';},get:function(r){return r.property;}},
+      {key:'source',label:'Source',get:function(r){return r.source||'—';}},
+      {key:'message',label:'Message',html:function(r){return r.message?esc(String(r.message).slice(0,90)):'—';},get:function(r){return r.message;},sort:false}
+    ],'Search this person\'s activity…')) : '<div class="card" style="color:var(--muted)">No enquiries recorded for this person in the local copy yet.</div>';
+    return back+'<h2 class="vt">'+esc(nm)+'</h2><div class="vsub">Everything we hold on this person, from your live Street data.</div>'+hero+tiles+req+act;
   }
 
   var GSQ='', GST=null, GSRES=null, GSSEL=-1;
@@ -738,11 +769,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.77', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.78', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.78',d:'23 Jun 2026',items:['New contact profile: click any name on the Contacts screen to open everything we hold on that person in one place. Their details and the best ways to reach them at the top, then how many enquiries, viewing and valuation requests they have made, what they are looking for (budget and beds), and a searchable timeline of every enquiry. The first of bringing the data to life as a proper single view of each customer.']},
     {v:'0.77',d:'23 Jun 2026',items:['Enquiries now search and filter the whole list, not just what is on screen. There are 25,576 enquiries; the screen loads the most recent 2,000 for speed, so searching or filtering by type used to miss older ones and the chip counts only counted what was loaded. The chip counts are now the true totals, and the search box and the type filters query the full list on the server.']},
     {v:'0.76',d:'23 Jun 2026',items:['Search now covers the whole dataset, not just the rows on screen. The big lists (Contacts holds 15,875 records, Viewings 7,117) only load the latest 2,000 for quick browsing, so searching them used to miss older records. Typing in the search box on those now queries the full table on the server, so you will find any record however old. Smaller lists still search instantly in the browser.']},
     {v:'0.75',d:'23 Jun 2026',items:['Tidied every data table so the columns make sense. Columns that are empty for every record now hide automatically, so Viewings and Valuations drop the always-blank Branch column and Contacts drops the unused Contact and Status columns. The generic people and property tables no longer repeat the name or show empty Title or Deleted columns. Viewings and Valuations now show the appointment Type instead.']},
@@ -874,6 +906,10 @@
     if(raw.indexOf('property=')===0){
       PROP_ID=decodeURIComponent(raw.slice(9)); ROUTE='property'; NAVOPEN=false;
       loadProperty(PROP_ID); updateActive(); renderView(true); stopFeed(); return;
+    }
+    if(raw.indexOf('contact=')===0){
+      CONTACT_ID=decodeURIComponent(raw.slice(8)); ROUTE='contact'; NAVOPEN=false;
+      loadContact(CONTACT_ID); updateActive(); renderView(true); stopFeed(); return;
     }
     var id=raw;
     if(id!=='profile' && !findItem(id)) id='home';
@@ -1397,6 +1433,7 @@
     else if(id==='valuations')body=viewValuations();
     else if(id==='contacts')body=viewContacts();
     else if(id==='property')return viewProperty();
+    else if(id==='contact')return viewContact();
     else if(GENVIEWS[id])body=viewGeneric(id,GENVIEWS[id]);
     else body=viewSoon(id);
     return body+srcLine(id);
@@ -1497,11 +1534,13 @@
       var d=res[0]||{}; D.leads=(d&&d.leads)||[]; D.stats=(d&&d.stats)||{};
       D.portfolio=(res[1]&&res[1].portfolio)||null; D.listingsAt=(res[1]&&res[1].listings_at)||null; D.pipeline=(res[1]&&res[1].pipeline)||null; D.reviews=res[2]||null; D.socialOk=!!(res[3]&&res[3].posts&&res[3].posts.length);
       D.team=(res[4]&&res[4].members)||null; D.branches=(res[5]&&res[5].branches)||null;
-      var id=(location.hash||'').replace(/^#/,''); var propDeep=(id.indexOf('property=')===0);
+      var id=(location.hash||'').replace(/^#/,''); var propDeep=(id.indexOf('property=')===0); var contactDeep=(id.indexOf('contact=')===0);
       if(propDeep){ PROP_ID=decodeURIComponent(id.slice(9)); ROUTE='property'; }
+      else if(contactDeep){ CONTACT_ID=decodeURIComponent(id.slice(8)); ROUTE='contact'; }
       else if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
       if(propDeep) loadProperty(PROP_ID);
+      if(contactDeep) loadContact(CONTACT_ID);
       fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; if(d&&d.byKind)D.enqByKind=d.byKind; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
       fetch('/api/sync-status',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.sync=(d&&d.datasets)||null; if(ROUTE==='connections') renderView(false); }).catch(function(){});
     }).catch(function(e){
