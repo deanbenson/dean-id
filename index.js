@@ -1649,7 +1649,7 @@ function _t(v) {
   const t = typeof v;
   if (t === "string" || t === "number" || t === "boolean") return v;
   if (t === "object") {
-    const s = v.display_address || v.full_address || v.public_address || v.inline_address || v.formatted_address || v.formatted || v.summary || v.name || v.label || v.value
+    const s = v.single_line || v.display_address || v.full_address || v.public_address || v.inline_address || v.formatted_address || v.formatted || v.summary || v.name || v.label || v.value
       || [v.line_1 || v.line1, v.line_2 || v.line2, v.line_3 || v.line3, v.town || v.city, v.county, v.postcode || v.post_code].filter(Boolean).join(", ");
     return s || null;
   }
@@ -2709,7 +2709,7 @@ export default {
         if (!ref || !related[bucket]) return;
         if (related[bucket].some(function (x) { return x.id === ref.id; })) return;
         const r = incl[ref.id] || {}; const a = r.attributes || {};
-        related[bucket].push({ id: ref.id, label: a.display_address || a.address || a.public_address || null, date: a.created_at || a.start || a.offer_made_at || null, status: a.status || a.custom_status || null, amount: (a.offer_amount != null ? a.offer_amount : (a.price != null ? a.price : (a.rent_amount != null ? a.rent_amount : null))), sub: a.valuation_type || a.viewing_type || null });
+        related[bucket].push({ id: ref.id, label: _t(a.display_address || a.address || a.public_address || a.property) || null, date: a.created_at || a.start || a.offer_made_at || a.valuation_date || null, status: _t(a.status || a.custom_status) || null, amount: (a.offer_amount != null ? a.offer_amount : (a.price != null ? a.price : (a.rent_amount != null ? a.rent_amount : (a.valuation_amount != null ? a.valuation_amount : null)))), sub: _t(a.valuation_type || a.viewing_type) || null });
       };
       const pullRel = async function (streetPath, map) {
         try {

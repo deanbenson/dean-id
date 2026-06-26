@@ -776,11 +776,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.85', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.86', BUILD='26 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.86',d:'26 Jun 2026',items:['Profile polish: a valuation, viewing or offer now shows its address as clean text (e.g. "18 Runswick Road, Middlesbrough, TS6 8HG") instead of a raw data blob, with its date, status and amount alongside. So opening a vendor like Mike Hind now clearly shows the market appraisal we did for them.']},
     {v:'0.85',d:'23 Jun 2026',items:['Fix for the profile (v0.84): the live lookup was asking Street for relationships a record type does not have (like tenancies on a vendor), which made Street reject the whole call and return nothing. Each record is now asked only for its real relationships, so a vendor\'s valuations, a landlord\'s properties and a tenant\'s tenancy come through.']},
     {v:'0.84',d:'23 Jun 2026',items:['Contact profile now surfaces everything we hold on a person, pulled live from Street the moment you open it: the property they own or sell, plus their valuations (market appraisals), viewings, offers and tenancies, each with its date and status. Click a name anywhere and you see their whole history with you, so an early vendor like a recent market appraisal shows their valuation even before they are on the market.']},
     {v:'0.83',d:'23 Jun 2026',items:['Fix: a person\'s property now also reads from their vendor or landlord record, where the link actually lives, so a vendor reliably shows the home they are selling (not just the people who happen to own their listing under their person record).']},
