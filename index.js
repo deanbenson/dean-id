@@ -2859,7 +2859,7 @@ export default {
         expected_exchange: _t(dt.expected_exchange_date), exchanged: _t(dt.exchanged_date), expected_completion: _t(dt.expected_completion_date), completed: _t(dt.completed_date) };
       const property = prop ? { id: prop.id, label: _t((prop.attributes || {}).display_address || (prop.attributes || {}).public_address || (prop.attributes || {}).address) } : null;
       const buyerO = buyer ? { id: buyer.id, name: _t((buyer.attributes || {}).name), lead_rating: _t((buyer.attributes || {}).lead_rating), buying_position: _t((buyer.attributes || {}).buying_position), financial_position: _t((buyer.attributes || {}).financial_position) } : null;
-      const vendorO = vend ? { name: _t((vend.attributes || {}).full_name || (((vend.attributes || {}).first_name || "") + " " + ((vend.attributes || {}).last_name || "")).trim()) } : null;
+      const vendorO = vend ? { name: _t((vend.attributes || {}).contact_name || (vend.attributes || {}).full_name || (((vend.attributes || {}).first_name || "") + " " + ((vend.attributes || {}).last_name || "")).trim()) } : null;
       const notes = relArr("notes").map(function (n) { const na = n.attributes || {}; return { date: _t(na.created_at), author: _t(na.author), body: _t(na.body), pinned: !!na.pinned_at }; }).sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
       return respond(JSON.stringify({ ok: true, found: true, id: id, sale: sale, property: property, buyer: buyerO, vendor: vendorO, sellerSolicitor: solName(ss), buyerSolicitor: solName(bs), notes: notes }), 200, J);
     }
