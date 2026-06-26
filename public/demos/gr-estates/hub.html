@@ -583,23 +583,33 @@
     function up(i){ if(i>=files.length){ if(msg)msg.textContent='Done — '+total+' uploaded and transcribed.'; D.recs=null; loadRecordings(); return; } var f=files[i]; if(msg)msg.textContent='Uploading + transcribing '+(i+1)+' of '+total+'… (a few seconds each)'; var id=f.name.replace(/\.[^.]+$/,''); var rd=new FileReader(); rd.onload=function(){ fetch('/api/recording-upload?id='+encodeURIComponent(id),{method:'POST',headers:{'x-admin-key':key(),'content-type':'audio/wav'},body:rd.result}).then(function(r){return r.json();}).then(function(){ up(i+1); }).catch(function(){ up(i+1); }); }; rd.readAsArrayBuffer(f); }
     up(0);
   };
+  function recSentPill(s){ if(!s)return ''; var l=String(s).toLowerCase(); var c=l.indexOf('pos')>=0?'g':(l.indexOf('neg')>=0?'r':'n'); return '<span class="pill pill-'+c+'">'+esc(s)+'</span>'; }
+  function recUrgPill(u){ if(!u)return ''; var l=String(u).toLowerCase(); if(l.indexOf('low')>=0)return ''; var c=l.indexOf('high')>=0?'r':'a'; return '<span class="pill pill-'+c+'">'+esc(u)+' priority</span>'; }
   function viewRecordings(){
     if(D.recs===undefined){ D.recs=null; loadRecordings(); }
-    var head='<h2 class="vt">Call recordings</h2><div class="vsub">Recordings stored in Cloudflare R2, transcribed and summarised automatically by AI. In Zeus: Call Records → Call Recordings → download the ones you want, then drop them here.</div>';
-    var up='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:3px">Add recordings (.wav)</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:8px">Drop one or several. Each is saved to R2, transcribed (Whisper) and given a short AI summary.</div><input type="file" accept=".wav,audio/wav" multiple id="reccsv" onchange="grUploadRec(this)"><span id="recupmsg" style="margin-left:10px;color:var(--muted);font-size:.85rem"></span></div>';
+    var head='<h2 class="vt">Call recordings</h2><div class="vsub">Each recording is saved to Cloudflare R2, transcribed by AI, then read for what matters — what the call was about, how it went, the property and people, and what to do next.</div>';
+    var up='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:3px">Add recordings (.wav)</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:8px">Drop one or several. Each is saved to R2, transcribed (Whisper) and analysed for category, sentiment, the property, who, and follow-up actions.</div><input type="file" accept=".wav,audio/wav" multiple id="reccsv" onchange="grUploadRec(this)"><span id="recupmsg" style="margin-left:10px;color:var(--muted);font-size:.85rem"></span></div>';
     var d=D.recs;
     if(!d) return head+up+'<div class="card" style="color:var(--muted)">Loading…</div>';
     if(d.r2===false) up+='<div class="card" style="background:#fff7ed;border-color:#f0d8b8;color:#a9651b">R2 storage isn\'t connected yet, so recordings can\'t be saved. It\'s a one-off setup — once the R2 bucket is bound, uploads will work here.</div>';
     var rows=d.rows||[];
+    var acts=d.actions||[];
+    var hdr='';
+    if(acts.length){ hdr+='<div class="secttl">Follow-ups picked out of calls ('+acts.length+')</div><div class="card" style="margin-bottom:12px">'+acts.slice(0,25).map(function(a){ return '<div class="row" style="align-items:flex-start;gap:8px"><span class="ic" style="color:var(--orange)">▢</span><span>'+esc(a.text)+(a.property_id?(' <span style="color:var(--muted)">· </span>'+propLink(a.property_id,'property')):'')+'</span></div>'; }).join('')+'</div>'; }
     var list=rows.length?rows.map(function(r){
       var when=r.created_at?tdsDate(r.created_at):''; var secs=r.bytes?Math.round(r.bytes/16000):0; var dur=secs?(secs<60?secs+'s':(Math.floor(secs/60)+'m '+(secs%60)+'s')):'';
+      var people=[]; try{ people=JSON.parse(r.people||'[]')||[]; }catch(e){}
+      var acts2=[]; try{ acts2=JSON.parse(r.action_items||'[]')||[]; }catch(e){}
+      var chips=[(r.category?'<span class="kind">'+esc(r.category)+'</span>':''),recSentPill(r.sentiment),recUrgPill(r.urgency)].filter(Boolean).join(' ');
       var player='<audio controls preload="none" style="width:100%;margin:8px 0" src="/api/admin/recording?id='+encodeURIComponent(r.id)+'"></audio>';
-      var sm=r.summary?('<div style="background:#f6f8f7;border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin:6px 0"><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px">AI summary</div>'+esc(r.summary)+'</div>'):(r.error?('<div style="color:#a9651b;font-size:.85rem;margin:6px 0">Couldn\'t transcribe: '+esc(r.error)+'</div>'):'');
-      var tx=r.transcript?('<details style="margin-top:2px"><summary style="cursor:pointer;color:var(--muted);font-size:.85rem">Full transcript</summary><div style="white-space:pre-wrap;font-size:.88rem;margin-top:6px;line-height:1.5">'+esc(r.transcript)+'</div></details>'):'';
-      var who=r.customer_number?esc(r.customer_number):('Recording '+esc(r.id));
-      return '<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><b>'+who+'</b><span style="color:var(--muted);font-size:.8rem">'+esc(when)+(dur?(' · '+dur):'')+'</span></div>'+player+sm+tx+'</div>';
+      var sm=r.summary?('<div style="background:#f6f8f7;border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin:6px 0">'+esc(r.summary)+'</div>'):(r.error?('<div style="color:#a9651b;font-size:.85rem;margin:6px 0">Couldn\'t transcribe: '+esc(r.error)+'</div>'):'');
+      var meta=[(r.caller_type?esc(r.caller_type):''),(r.property_id?propLink(r.property_id,r.property_label||r.property_address||'the property'):(r.property_address?esc(r.property_address):'')),(people.length?('with '+people.map(esc).join(', ')):'')].filter(Boolean).join(' · ');
+      var actsHtml=acts2.length?('<div style="margin-top:8px"><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:3px">Follow-ups</div>'+acts2.map(function(a){return '<div class="row" style="align-items:flex-start;gap:8px"><span class="ic" style="color:var(--orange)">▢</span><span>'+esc(a)+'</span></div>';}).join('')+'</div>'):'';
+      var tx=r.transcript?('<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:.85rem">Full transcript</summary><div style="white-space:pre-wrap;font-size:.88rem;margin-top:6px;line-height:1.5">'+esc(r.transcript)+'</div></details>'):'';
+      var title=r.title||r.customer_number||('Recording '+r.id);
+      return '<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><b style="font-size:1.02rem">'+esc(title)+'</b><span style="color:var(--muted);font-size:.8rem;white-space:nowrap">'+esc(when)+(dur?(' · '+dur):'')+'</span></div>'+(chips?('<div style="margin:6px 0;display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>'):'')+(meta?('<div style="color:var(--muted);font-size:.85rem;margin-bottom:2px">'+meta+'</div>'):'')+sm+actsHtml+player+tx+'</div>';
     }).join(''):'<div class="card" style="color:var(--muted)">No recordings stored yet — add one above.</div>';
-    return head+up+(rows.length?('<div class="secttl">Stored recordings ('+rows.length+')</div>'):'')+list;
+    return head+up+hdr+(rows.length?('<div class="secttl">Recordings ('+rows.length+')</div>'):'')+list;
   }
   function viewValuations(){
     ensureLocal('valuations'); var L=D.L_valuations; if(!L) return localLoading('Valuations');
@@ -709,12 +719,15 @@
     var saleBanner=lsale?('<div class="secttl">Sale</div><div class="card" style="margin-bottom:8px"><b>'+esc(String(lsale.status||'Sale').replace(/_/g,' '))+'</b>'+(lsale.price!=null?(' <span style="color:var(--muted)">· £'+Number(lsale.price).toLocaleString('en-GB')+'</span>'):'')+(lsale.date?(' <span style="color:var(--muted);font-size:.82rem">· '+tdsDate(lsale.date)+'</span>'):'')+'</div>'):'';
     var notesBody=lnotes.length?('<div class="secttl">Notes ('+lnotes.length+')</div>'+lnotes.slice(0,20).map(function(n){return '<div class="card" style="margin-bottom:8px">'+(n.date?'<div style="color:var(--muted);font-size:.78rem;margin-bottom:3px">'+tdsDate(n.date)+'</div>':'')+esc(String(n.body||'').slice(0,400))+'</div>';}).join('')):'';
     var gaps='<div class="card soonbox"><h3>Not tracked yet</h3><ul class="gaplist"><li><b>Page views</b> — how many times this property\'s page was opened. We can add lightweight view tracking on the site and pull portal stats.</li><li><b>Named staff</b> — we show the handling office above; the individual negotiator and valuer sit on Street\'s records and can be wired into the sync next.</li></ul></div>';
+    var recs=(hub&&hub.recordings)||[];
+    var recHtml=recs.length?('<div class="secttl">Calls about this property ('+recs.length+')</div>'+recs.map(function(r){ var sm=r.summary?esc(r.summary):''; return '<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:10px"><b>'+esc(r.title||'Call recording')+'</b><span style="color:var(--muted);font-size:.8rem;white-space:nowrap">'+(r.created_at?tdsDate(r.created_at):'')+'</span></div>'+((r.category||r.sentiment)?('<div style="margin:4px 0;display:flex;gap:6px;flex-wrap:wrap">'+(r.category?'<span class="kind">'+esc(r.category)+'</span>':'')+(r.sentiment?recSentPill(r.sentiment):'')+'</div>'):'')+(sm?('<div style="color:var(--muted);font-size:.88rem">'+sm+'</div>'):'')+'<audio controls preload="none" style="width:100%;margin-top:6px" src="/api/admin/recording?id='+encodeURIComponent(r.id)+'"></audio></div>'; }).join('')):'';
     return back+hero+tiles
       +saleBanner
       +(enq.length?('<div class="secttl">Enquiry activity</div>'+enqChart(enq)):'')
       +'<div class="secttl">Who has enquired ('+enq.length+')</div>'+enqBody
       +'<div class="secttl">Viewings ('+vwSrc.length+')</div>'+vwBody
       +(loff.length?('<div class="secttl">Offers ('+loff.length+')</div>'+offBody):'')
+      +recHtml
       +notesBody
       +'<div class="secttl">Everything else</div>'+gaps;
   }
@@ -912,11 +925,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.94', BUILD='26 Jun 2026';
+  var HUB_VERSION='0.95', BUILD='26 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1,calls:1,recordings:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0',calls:'1.0',recordings:'1.0'}; VER.profile='1.2';
   var CHANGELOG=[
+    {v:'0.95',d:'26 Jun 2026',items:['Recordings now become real intelligence. Every uploaded call is read by AI and turned into structured facts: a title, what it was about (category), how it went (sentiment), who was on it, the property discussed, a plain summary, and the follow-up actions to take. The Recordings screen rolls every follow-up into one to-do list, and a call that names a property now also appears on that property\'s page under "Calls about this property". The groundwork for call insight flowing to the right contact, property and task across the whole hub.']},
     {v:'0.94',d:'26 Jun 2026',items:['Call recordings, with AI. New Recordings screen (under Comms): drop a recording downloaded from Zeus and the hub saves the audio to Cloudflare R2, transcribes it automatically with AI (Whisper), and writes a short plain-English summary of the call — who it was between, the purpose and any outcome. You can play the audio and read the full transcript in the hub. The foundation for "what was said on this call" against every contact.']},
     {v:'0.93',d:'26 Jun 2026',items:['Call history now shows on a contact\'s profile. Open anyone and you see every call we have with them, matched by number — when it was, in or out, how long, whether it was missed, and who took it — plus a Calls count in their tiles. So a person\'s profile now brings their calls together with their enquiries, viewings and sale in one place.']},
     {v:'0.92',d:'26 Jun 2026',items:['Navigation tidied after a full review: Calls now lives in its own Comms group (room for email and the AI front desk later) instead of Pipeline; Calendar moved out of People (it is a diary, not a person) into Overview with the daily views; managers and negotiators can now see Calls; and the Connections page shows the phone correctly as Zeus (Plustel) with call records now flowing in.']},

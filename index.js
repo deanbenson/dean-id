@@ -2814,8 +2814,11 @@ export default {
       // Live activity from Street — the real viewings, offers, sale and notes on this property, which the synced
       // copy can't link (its viewings predate the property include). This is what makes the page show the truth.
       const live = await streetPropertyActivity(env, id);
+      // Call recordings that the AI matched to this property (e.g. a conveyancing call that named this address).
+      let recordings = [];
+      try { const rr = await db.prepare("SELECT id, title, summary, sentiment, category, action_items, created_at FROM phone_recordings WHERE property_id = ? ORDER BY created_at DESC LIMIT 50").bind(id).all(); recordings = (rr && rr.results) || []; } catch (_) {}
       const counts = { enquiries: enquiries.length, viewings: Math.max(viewings.length, live.counts.viewings), offers: live.counts.offers, notes: live.counts.notes, people: Object.keys(uniq).length };
-      return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, live: live, byKind: byKind, counts: counts }), 200, J);
+      return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, live: live, recordings: recordings, byKind: byKind, counts: counts }), 200, J);
     }
 
     // Everything about ONE viewing, pulled live from Street: the appointment detail plus who viewed (the applicant
@@ -2959,19 +2962,33 @@ export default {
       if (!buf || buf.byteLength < 200) return respond(JSON.stringify({ ok: false, error: "empty audio" }), 200, J);
       const r2key = "rec/" + id + ".wav";
       try { await env.RECORDINGS.put(r2key, buf, { httpMetadata: { contentType: "audio/wav" } }); } catch (e) { return respond(JSON.stringify({ ok: false, error: "r2: " + String((e && e.message) || e) }), 200, J); }
-      let transcript = "", summary = "", aerr = null;
+      let transcript = "", summary = "", aerr = null, meta = {};
       try { const tr = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)], language: "en" }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper: " + String((e && e.message) || e); }
-      if (transcript) { try { const sm = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "system", content: "You summarise estate-agency phone calls for staff. In 2-3 short sentences: who it was likely between, the purpose, and any action or outcome. If the transcript is unclear or too short, say so briefly." }, { role: "user", content: transcript.slice(0, 6000) }], max_tokens: 200, temperature: 0.3 }); summary = (sm && sm.response) || ""; } catch (e) { aerr = (aerr ? aerr + "; " : "") + "summary: " + String((e && e.message) || e); } }
+      // Structured AI extraction — pull the useful facts out of the call so the whole hub can use them.
+      if (transcript) {
+        try {
+          const ex = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [
+            { role: "system", content: "You are an assistant for a UK estate agency. From a phone-call transcript, extract structured facts. Respond with ONLY a JSON object (no prose, no markdown fences) using these keys: title (a 4-6 word label for the call), category (one of: Sale progression, Viewing, Valuation, Offer, Maintenance, Tenancy, Complaint, General), sentiment (Positive, Neutral or Negative), caller_type (Vendor, Buyer, Landlord, Tenant, Solicitor, Contractor or Other), summary (2-3 sentence plain-English summary), people (array of person names mentioned), property_address (the single property/address discussed, or null), action_items (array of short follow-up actions for staff; [] if none), outcome (one short sentence), urgency (High, Medium or Low). If the call is unclear or too short, still return the JSON with best-effort values or nulls." },
+            { role: "user", content: transcript.slice(0, 6000) }
+          ], max_tokens: 600, temperature: 0.2 });
+          const raw = (ex && ex.response) || ""; summary = raw;
+          try { let j = raw.trim(); const a = j.indexOf("{"), b = j.lastIndexOf("}"); if (a >= 0 && b > a) j = j.slice(a, b + 1); meta = JSON.parse(j) || {}; if (meta.summary) summary = meta.summary; } catch (_) {}
+        } catch (e) { aerr = (aerr ? aerr + "; " : "") + "extract: " + String((e && e.message) || e); }
+      }
       const num = url.searchParams.get("number") || null;
       const normP = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
-      let callId = null;
+      const arr = function (v) { try { return JSON.stringify(Array.isArray(v) ? v : (v ? [v] : [])); } catch (_) { return "[]"; } };
+      const propAddr = (meta.property_address && typeof meta.property_address === "string") ? meta.property_address : null;
+      let callId = null, propId = null;
       try {
-        await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, error TEXT, created_at TEXT)").run();
+        await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, title TEXT, category TEXT, sentiment TEXT, caller_type TEXT, people TEXT, property_address TEXT, property_id TEXT, action_items TEXT, outcome TEXT, urgency TEXT, error TEXT, created_at TEXT)").run();
+        for (const col of ["title TEXT", "category TEXT", "sentiment TEXT", "caller_type TEXT", "people TEXT", "property_address TEXT", "property_id TEXT", "action_items TEXT", "outcome TEXT", "urgency TEXT"]) { try { await db.prepare("ALTER TABLE phone_recordings ADD COLUMN " + col).run(); } catch (_) {} }
         if (num) { const nn = normP(num); const c = await db.prepare("SELECT id FROM phone_calls WHERE customer_norm = ? ORDER BY started_at DESC LIMIT 1").bind(nn).first(); if (c) callId = c.id; }
-        await db.prepare("INSERT INTO phone_recordings (id,r2_key,bytes,call_id,customer_number,transcript,summary,error,created_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET r2_key=excluded.r2_key,bytes=excluded.bytes,transcript=excluded.transcript,summary=excluded.summary,error=excluded.error")
-          .bind(id, r2key, buf.byteLength, callId, num, transcript, summary, aerr, new Date().toISOString()).run();
+        if (propAddr) { try { const frag = propAddr.replace(/,.*$/, "").trim().slice(0, 22); if (frag.length >= 4) { const p = await db.prepare("SELECT id FROM listings WHERE address LIKE ? LIMIT 1").bind("%" + frag + "%").first(); if (p) propId = p.id; } } catch (_) {} }
+        await db.prepare("INSERT INTO phone_recordings (id,r2_key,bytes,call_id,customer_number,transcript,summary,title,category,sentiment,caller_type,people,property_address,property_id,action_items,outcome,urgency,error,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET r2_key=excluded.r2_key,bytes=excluded.bytes,transcript=excluded.transcript,summary=excluded.summary,title=excluded.title,category=excluded.category,sentiment=excluded.sentiment,caller_type=excluded.caller_type,people=excluded.people,property_address=excluded.property_address,property_id=excluded.property_id,action_items=excluded.action_items,outcome=excluded.outcome,urgency=excluded.urgency,error=excluded.error")
+          .bind(id, r2key, buf.byteLength, callId, num, transcript, summary, _t(meta.title), _t(meta.category), _t(meta.sentiment), _t(meta.caller_type), arr(meta.people), propAddr, propId, arr(meta.action_items), _t(meta.outcome), _t(meta.urgency), aerr, new Date().toISOString()).run();
       } catch (e) { return respond(JSON.stringify({ ok: false, error: "store: " + String((e && e.message) || e) }), 200, J); }
-      return respond(JSON.stringify({ ok: true, id: id, bytes: buf.byteLength, transcript_len: transcript.length, summary: summary, error: aerr }), 200, J);
+      return respond(JSON.stringify({ ok: true, id: id, bytes: buf.byteLength, transcript_len: transcript.length, title: meta.title || null, category: meta.category || null, sentiment: meta.sentiment || null, summary: summary, action_items: meta.action_items || [], property_id: propId, error: aerr }), 200, J);
     }
 
     // List stored recordings (admin) with transcript + summary.
@@ -2982,9 +2999,12 @@ export default {
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       if (!env.gr_estates) return respond(JSON.stringify({ ok: true, rows: [] }), 200, J);
       const db = env.gr_estates;
-      try { await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, error TEXT, created_at TEXT)").run(); } catch (_) {}
-      let rows = []; try { const r = await db.prepare("SELECT id, bytes, call_id, customer_number, transcript, summary, error, created_at FROM phone_recordings ORDER BY created_at DESC LIMIT 200").all(); rows = (r && r.results) || []; } catch (_) {}
-      return respond(JSON.stringify({ ok: true, rows: rows, r2: !!env.RECORDINGS }), 200, J);
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, title TEXT, category TEXT, sentiment TEXT, caller_type TEXT, people TEXT, property_address TEXT, property_id TEXT, action_items TEXT, outcome TEXT, urgency TEXT, error TEXT, created_at TEXT)").run(); } catch (_) {}
+      for (const col of ["title TEXT", "category TEXT", "sentiment TEXT", "caller_type TEXT", "people TEXT", "property_address TEXT", "property_id TEXT", "action_items TEXT", "outcome TEXT", "urgency TEXT"]) { try { await db.prepare("ALTER TABLE phone_recordings ADD COLUMN " + col).run(); } catch (_) {} }
+      let rows = []; try { const r = await db.prepare("SELECT pr.id, pr.bytes, pr.call_id, pr.customer_number, pr.transcript, pr.summary, pr.title, pr.category, pr.sentiment, pr.caller_type, pr.people, pr.property_address, pr.property_id, pr.action_items, pr.outcome, pr.urgency, pr.error, pr.created_at, l.address AS property_label FROM phone_recordings pr LEFT JOIN listings l ON l.id = pr.property_id ORDER BY pr.created_at DESC LIMIT 200").all(); rows = (r && r.results) || []; } catch (_) {}
+      const cats = {}, sents = {}; const actions = [];
+      rows.forEach(function (r) { if (r.category) cats[r.category] = (cats[r.category] || 0) + 1; if (r.sentiment) sents[r.sentiment] = (sents[r.sentiment] || 0) + 1; try { (JSON.parse(r.action_items || "[]") || []).forEach(function (a) { actions.push({ text: a, id: r.id, title: r.title || null, property_id: r.property_id || null }); }); } catch (_) {} });
+      return respond(JSON.stringify({ ok: true, rows: rows, r2: !!env.RECORDINGS, cats: cats, sents: sents, actions: actions }), 200, J);
     }
 
     // Stream a recording's audio from R2. Reached via /api/admin/recording (Access cookie) so an <audio> tag can
