@@ -2720,15 +2720,12 @@ export default {
           return pd;
         } catch (_) { return null; }
       };
-      let applicantIds = [];
-      if (contact && contact.id) {
-        const pd = await pullRel("/people/" + encodeURIComponent(contact.id) + "?include=ownedProperties,applicants", { ownedProperties: "properties" });
-        const ap = pd && pd.relationships && pd.relationships.applicants && pd.relationships.applicants.data;
-        applicantIds = (Array.isArray(ap) ? ap : []).map(function (x) { return x.id; }).slice(0, 6);
-      }
+      if (contact && contact.id) await pullRel("/people/" + encodeURIComponent(contact.id) + "?include=ownedProperties", { ownedProperties: "properties" });
+      // Ask each record only for the relationships it actually has — requesting a missing one (e.g. tenancies
+      // on a vendor) makes Street reject the whole call, which is what dropped the vendor's valuations before.
+      const roleInc = { vendors: { inc: "properties,valuations", map: { properties: "properties", valuations: "valuations" } }, landlords: { inc: "properties", map: { properties: "properties" } }, tenants: { inc: "tenancies", map: { tenancies: "tenancies" } } };
       const jobs = [];
-      for (let ri = 0; ri < roles.length; ri++) { const ds = roles[ri].dataset; if (ds === "vendors" || ds === "landlords" || ds === "tenants") jobs.push(pullRel("/" + ds + "/" + encodeURIComponent(roles[ri].id) + "?include=properties,valuations,tenancies", { properties: "properties", valuations: "valuations", tenancies: "tenancies" })); }
-      for (let ai = 0; ai < applicantIds.length; ai++) { jobs.push(pullRel("/applicants/" + encodeURIComponent(applicantIds[ai]) + "?include=viewings,offers,property", { property: "properties", viewings: "viewings", offers: "offers" })); }
+      for (let ri = 0; ri < roles.length; ri++) { const ds = roles[ri].dataset; const ric = roleInc[ds]; if (ric) jobs.push(pullRel("/" + ds + "/" + encodeURIComponent(roles[ri].id) + "?include=" + ric.inc, ric.map)); }
       try { await Promise.all(jobs); } catch (_) {}
       const properties = related.properties;
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
