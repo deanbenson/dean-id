@@ -701,7 +701,7 @@
     if(!C||C.id!==CONTACT_ID||!C.got) return back+'<h2 class="vt">Contact</h2><div class="vsub">Loading everything we hold on this person…</div><div class="card" style="color:var(--muted)">One moment…</div>';
     var d=C.data;
     if(!d||!d.ok||!d.found) return back+'<h2 class="vt">Contact</h2><div class="card" style="color:var(--muted)">We could not find this contact in the local copy.</div>';
-    var ct=d.contact||{}, enq=d.enquiries||[], apps=d.applicants||[], bk=d.byKind||{};
+    var ct=d.contact||{}, enq=d.enquiries||[], apps=d.applicants||[], bk=d.byKind||{}, calls=d.calls||[];
     var nm=ct.name||'This contact';
     var av='<div style="width:52px;height:52px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;flex:none">'+esc((nm.charAt(0)||'?').toUpperCase())+'</div>';
     var chips=[];
@@ -716,7 +716,14 @@
     var propHtml=relSec('Property',rel.properties,true)+relSec('Valuations',rel.valuations,false)+relSec('Viewings',rel.viewings,false)+relSec('Offers',rel.offers,false)+relSec('Tenancies',rel.tenancies,false);
     function st(n,l){ return '<div class="tile"><div class="ttl">'+esc(l)+'</div><div class="tnm">'+n+'</div></div>'; }
     var lastAt=enq.length?enq[0].created_at:null;
-    var tiles='<div class="tiles">'+st(enq.length,'Enquiries')+st(bk.viewing||0,'Viewing requests')+st(bk.valuation||0,'Valuation requests')+st(lastAt?tdsDate(lastAt):'—','Last contact')+'</div>';
+    var tiles='<div class="tiles">'+st(enq.length,'Enquiries')+st(calls.length,'Calls')+st(bk.viewing||0,'Viewing requests')+st(bk.valuation||0,'Valuation requests')+st(lastAt?tdsDate(lastAt):'—','Last contact')+'</div>';
+    var callsHtml=calls.length?('<div class="secttl">Calls ('+calls.length+')</div>'+dataTable('ccalls_'+CONTACT_ID,calls,[
+      {key:'when',label:'When',html:function(r){return smartDate(r.started_at);},sortVal:function(r){return r.started_at?new Date(r.started_at).getTime():0;},text:function(r){return r.started_at;}},
+      {key:'direction',label:'Direction',html:function(r){var c=r.direction==='inbound'?'g':(r.direction==='outbound'?'a':'n');return '<span class="pill pill-'+c+'">'+esc(r.direction||'—')+'</span>';},get:function(r){return r.direction;}},
+      {key:'dur',label:'Length',html:function(r){var s=r.duration_sec||0;return s<60?(s+'s'):(Math.floor(s/60)+'m '+(s%60)+'s');},sortVal:function(r){return r.duration_sec||0;},get:function(r){return r.duration_sec;}},
+      {key:'handler',label:'Handled by',get:function(r){return r.handler||'—';}},
+      {key:'status',label:'Status',html:function(r){return statusPill(r.status);},get:function(r){return r.status;}}
+    ],'Search calls…')):'';
     var req='';
     if(apps.length){ req='<div class="secttl">What they are looking for</div>'+apps.map(function(a){ var bits=[(a.max_price?('up to £'+Number(a.max_price).toLocaleString('en-GB')):''),(a.min_beds!=null?(a.min_beds+'+ beds'):''),(a.lead_rating?('rated '+esc(a.lead_rating)):''),(a.branch?esc(a.branch):'')].filter(Boolean).join(' · '); return '<div class="card" style="margin-bottom:8px"><b>'+esc(a.kind||'Requirement')+'</b>'+(bits?('<div style="color:var(--muted);font-size:.85rem;margin-top:3px">'+bits+'</div>'):'')+'</div>'; }).join(''); }
     var act = enq.length ? ('<div class="secttl">Activity ('+enq.length+')</div>'+dataTable('cenq_'+CONTACT_ID,enq,[
@@ -726,7 +733,7 @@
       {key:'source',label:'Source',get:function(r){return r.source||'—';}},
       {key:'message',label:'Message',html:function(r){return r.message?esc(String(r.message).slice(0,90)):'—';},get:function(r){return r.message;},sort:false}
     ],'Search this person\'s activity…')) : '<div class="card" style="color:var(--muted)">No enquiries recorded for this person in the local copy yet.</div>';
-    return back+'<h2 class="vt">'+esc(nm)+'</h2><div class="vsub">Everything we hold on this person, from your live Street data.</div>'+hero+roleHtml+propHtml+tiles+req+act;
+    return back+'<h2 class="vt">'+esc(nm)+'</h2><div class="vsub">Everything we hold on this person, from your live Street data.</div>'+hero+roleHtml+propHtml+callsHtml+tiles+req+act;
   }
 
   function viewVw(){
@@ -881,11 +888,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.92', BUILD='26 Jun 2026';
+  var HUB_VERSION='0.93', BUILD='26 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1,calls:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0',calls:'1.0'}; VER.profile='1.2';
   var CHANGELOG=[
+    {v:'0.93',d:'26 Jun 2026',items:['Call history now shows on a contact\'s profile. Open anyone and you see every call we have with them, matched by number — when it was, in or out, how long, whether it was missed, and who took it — plus a Calls count in their tiles. So a person\'s profile now brings their calls together with their enquiries, viewings and sale in one place.']},
     {v:'0.92',d:'26 Jun 2026',items:['Navigation tidied after a full review: Calls now lives in its own Comms group (room for email and the AI front desk later) instead of Pipeline; Calendar moved out of People (it is a diary, not a person) into Overview with the daily views; managers and negotiators can now see Calls; and the Connections page shows the phone correctly as Zeus (Plustel) with call records now flowing in.']},
     {v:'0.91',d:'26 Jun 2026',items:['Phone calls are in the hub. New Calls screen ingests the call records exported from the phone system (Zeus · Plustel) and matches every call to a contact by number, so you see who rang, which way (in/out), how long, whether it was missed, and which line or person took it. Upload the CSV from Zeus and it lands instantly — inbound/outbound/missed totals up top, every call searchable below. First step to call history showing on each contact, and the route to automating the pull once Plustel grant API access.']},
     {v:'0.90',d:'26 Jun 2026',items:['Sales now open as a full deal, not a one-line row. Click any sale to see both sides pulled live from Street: the price and status, the exchange and completion timeline, the buyer (with their position), the vendor, both solicitors, and the notes on the file. First result of a full data audit across every screen — tenancies, maintenance and more get the same treatment next.']},

@@ -2780,7 +2780,17 @@ export default {
       const properties = related.properties;
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
-      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, properties: properties, related: related, enquiries: enq, applicants: apps }), 200, J);
+      // Call history: phone records (from the Zeus/Plustel CSV) matched to this person by id or by their number.
+      let calls = [];
+      try {
+        const normP = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
+        const phs = (det.phones || []).map(normP).filter(function (p) { return p.length >= 10; });
+        const conds = ["contact_id = ?"]; const binds = [contact.id];
+        if (phs.length) { conds.push("customer_norm IN (" + phs.map(function () { return "?"; }).join(",") + ")"); phs.forEach(function (p) { binds.push(p); }); }
+        const rc = await db.prepare("SELECT id, started_at, direction, customer_number, handler, duration_sec, status FROM phone_calls WHERE " + conds.join(" OR ") + " ORDER BY started_at DESC LIMIT 100").bind(...binds).all();
+        calls = (rc && rc.results) || [];
+      } catch (_) {}
+      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, properties: properties, related: related, enquiries: enq, applicants: apps, calls: calls }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).
