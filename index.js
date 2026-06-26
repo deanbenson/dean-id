@@ -2681,8 +2681,8 @@ export default {
       let enq = [];
       const lemails = emails.map(function (e) { return String(e).toLowerCase(); });
       try {
-        if (lemails.length) { const eph = lemails.map(function () { return "?"; }).join(","); const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE LOWER(email) IN (" + eph + ") ORDER BY created_at DESC LIMIT 300").bind(...lemails).all(); enq = (r && r.results) || []; }
-        if (!enq.length && name) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE name = ? ORDER BY created_at DESC LIMIT 300").bind(name).all(); enq = (r && r.results) || []; }
+        if (lemails.length) { const eph = lemails.map(function () { return "?"; }).join(","); const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries WHERE LOWER(email) IN (" + eph + ") ORDER BY created_at DESC LIMIT 300").bind(...lemails).all(); enq = (r && r.results) || []; }
+        if (!enq.length && name) { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries WHERE name = ? ORDER BY created_at DESC LIMIT 300").bind(name).all(); enq = (r && r.results) || []; }
       } catch (_) {}
       // Roles: the same person often appears as a vendor / landlord / tenant (those records carry email_addresses),
       // which is how someone like a friend selling through you shows up even with no website enquiries.
@@ -2717,7 +2717,7 @@ export default {
       const db = env.gr_estates;
       let property = null, enquiries = [], viewings = [];
       try { property = await db.prepare("SELECT id,kind,status,price,address,town,postcode,beds,baths,type,style,updated_at FROM listings WHERE id = ?").bind(id).first(); } catch (_) {}
-      try { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property,branch FROM enquiries WHERE property_id = ? ORDER BY created_at DESC LIMIT 300").bind(id).all(); enquiries = (r && r.results) || []; } catch (_) {}
+      try { const r = await db.prepare("SELECT id,created_at,name,email,phone,message,source,kind,property_id,property,branch FROM enquiries WHERE property_id = ? ORDER BY created_at DESC LIMIT 300").bind(id).all(); enquiries = (r && r.results) || []; } catch (_) {}
       try { const r = await db.prepare("SELECT id,created_at,start,status,address,branch FROM street_viewings WHERE property_id = ? ORDER BY COALESCE(start,created_at) DESC LIMIT 300").bind(id).all(); viewings = (r && r.results) || []; } catch (_) {}
       const label = property ? property.address : ((enquiries[0] && enquiries[0].property) || (viewings[0] && viewings[0].address) || null);
       const branch = property ? null : ((enquiries[0] && enquiries[0].branch) || (viewings[0] && viewings[0].branch) || null);

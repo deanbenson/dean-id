@@ -637,7 +637,7 @@
     var enqBody=enq.length?dataTable('penq_'+PROP_ID,enq,[
       {key:'at',label:'When',html:function(r){return smartDate(r.created_at);},sortVal:function(r){return r.created_at?new Date(r.created_at).getTime():0;},text:function(r){return r.created_at;}},
       {key:'kind',label:'Type',html:function(r){return '<span class="kind">'+esc(r.kind||'enquiry')+'</span>';},get:function(r){return r.kind||'enquiry';}},
-      {key:'name',label:'Name',get:function(r){return r.name||'—';}},
+      {key:'name',label:'Name',html:function(r){return personLink(r.email,r.name||'—');},text:function(r){return r.name;},get:function(r){return r.name;}},
       {key:'contact',label:'Contact',html:function(r){return [r.email,r.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(r){return (r.email||'')+' '+(r.phone||'');},sort:false},
       {key:'source',label:'Source',get:function(r){return r.source||'—';}}
     ],'Search enquiries on this property…'):'<div class="card" style="color:var(--muted)">No enquiries recorded against this property in the local copy yet.</div>';
@@ -678,7 +678,7 @@
     var act = enq.length ? ('<div class="secttl">Activity ('+enq.length+')</div>'+dataTable('cenq_'+CONTACT_ID,enq,[
       {key:'at',label:'When',html:function(r){return smartDate(r.created_at);},sortVal:function(r){return r.created_at?new Date(r.created_at).getTime():0;},text:function(r){return r.created_at;}},
       {key:'kind',label:'Type',html:function(r){return '<span class="kind">'+esc(r.kind||'enquiry')+'</span>';},get:function(r){return r.kind||'enquiry';}},
-      {key:'property',label:'Property',html:function(r){return r.property?esc(r.property):'—';},get:function(r){return r.property;}},
+      {key:'property',label:'Property',html:function(r){return r.property?propLink(r.property_id,r.property):'—';},get:function(r){return r.property;}},
       {key:'source',label:'Source',get:function(r){return r.source||'—';}},
       {key:'message',label:'Message',html:function(r){return r.message?esc(String(r.message).slice(0,90)):'—';},get:function(r){return r.message;},sort:false}
     ],'Search this person\'s activity…')) : '<div class="card" style="color:var(--muted)">No enquiries recorded for this person in the local copy yet.</div>';
@@ -707,6 +707,7 @@
     var d=document.getElementById('gsdrop'); if(d){ d.classList.remove('show'); d.innerHTML=''; }
     var pid=it.pid||(it.type==='property'?it.id:null);
     if(pid){ location.hash='property='+encodeURIComponent(pid); return; }
+    if(it.type==='contact'&&it.id){ location.hash='contact='+encodeURIComponent(it.id); return; }
     var routeMap={enquiry:'enquiries',contact:'contacts',viewing:'viewings',valuation:'valuations'};
     var r=routeMap[it.type]; if(!r) return;
     var vid=(r==='enquiries')?'enq':r; TBL[vid]={q:it.term||'',sort:'_',dir:-1};
@@ -772,11 +773,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.80', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.81', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.81',d:'23 Jun 2026',items:['More of the web joined up: searching a person in the top search bar now jumps straight to their profile, and on a property\'s page the people who enquired are now links through to their own profiles. You can move from a property to the people around it, and from anyone back to everything you hold on them. On a profile, each enquiry now links through to the property it was about.']},
     {v:'0.80',d:'23 Jun 2026',items:['Joining the data up: names on the Enquiries screen now link straight to that person\'s full profile (matched by email), so you can jump from any enquiry to everything you hold on them. The profile also opens by email now, the universal join key. First step toward every record linking to the people and properties around it.']},
     {v:'0.79',d:'23 Jun 2026',items:['Contact profile now links a person to their role with you, not just their enquiries. It surfaces whether they are a vendor, landlord or tenant (matched on email), alongside any enquiries and requirements. The first version only matched enquiries, so a contact whose activity is a sale or a tenancy came up empty.']},
     {v:'0.78',d:'23 Jun 2026',items:['New contact profile: click any name on the Contacts screen to open everything we hold on that person in one place. Their details and the best ways to reach them at the top, then how many enquiries, viewing and valuation requests they have made, what they are looking for (budget and beds), and a searchable timeline of every enquiry. The first of bringing the data to life as a proper single view of each customer.']},
