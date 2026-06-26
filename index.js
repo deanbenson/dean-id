@@ -2700,18 +2700,23 @@ export default {
         if (name) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE name = ? ORDER BY created_at DESC LIMIT 50").bind(name).all(); apps = (r && r.results) || []; }
         if (!apps.length && email) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE raw LIKE ? ORDER BY created_at DESC LIMIT 50").bind("%" + email + "%").all(); apps = (r && r.results) || []; }
       } catch (_) {}
-      // Live relationship lookup (on-demand, no mass re-sync): the properties this person owns / is selling
-      // through us. Street only returns the linkage when asked with ?include, so we ask per profile view.
+      // Live relationship lookup (on-demand, no mass re-sync): the properties this person owns / is selling /
+      // letting through us. Street only returns the linkage when asked with ?include, and a vendor's property
+      // hangs off the vendor record, so we ask the person AND each of their role records, per profile view.
       let properties = [];
-      if (contact && contact.id) {
+      const addProps = async function (streetPath) {
         try {
-          const sr = await streetGet(env, "/people/" + encodeURIComponent(contact.id) + "?include=ownedProperties");
+          const sr = await streetGet(env, streetPath);
           const pd = sr && sr.body && sr.body.data;
-          const rel = pd && pd.relationships && pd.relationships.ownedProperties && pd.relationships.ownedProperties.data;
+          const r1 = pd && pd.relationships && pd.relationships.properties && pd.relationships.properties.data;
+          const r2 = pd && pd.relationships && pd.relationships.ownedProperties && pd.relationships.ownedProperties.data;
+          const refs = (Array.isArray(r1) ? r1 : []).concat(Array.isArray(r2) ? r2 : []);
           const incl = {}; (((sr && sr.body && sr.body.included) || [])).forEach(function (x) { incl[x.id] = x; });
-          (Array.isArray(rel) ? rel : []).forEach(function (ref) { const p = incl[ref.id] || {}; const a = p.attributes || {}; properties.push({ id: ref.id, address: a.display_address || a.address || a.public_address || null, status: a.status || a.custom_status || null }); });
+          refs.forEach(function (ref) { if (!ref || properties.some(function (p) { return p.id === ref.id; })) return; const p = incl[ref.id] || {}; const a = p.attributes || {}; properties.push({ id: ref.id, address: a.display_address || a.address || a.public_address || null, status: a.status || a.custom_status || null }); });
         } catch (_) {}
-      }
+      };
+      if (contact && contact.id) await addProps("/people/" + encodeURIComponent(contact.id) + "?include=ownedProperties");
+      for (let ri = 0; ri < roles.length; ri++) { if (roles[ri].dataset === "vendors" || roles[ri].dataset === "landlords") await addProps("/" + roles[ri].dataset + "/" + encodeURIComponent(roles[ri].id) + "?include=properties"); }
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
       return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, properties: properties, enquiries: enq, applicants: apps }), 200, J);
