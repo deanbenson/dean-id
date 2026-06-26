@@ -1689,6 +1689,26 @@ function mVal(db, d, inc) { const a = d.attributes || {}; return db.prepare("INS
 function mApp(kind) { return function (db, d, inc) { const a = d.attributes || {}; const req = a.requirements || {}; const beds = (req.bedrooms != null) ? req.bedrooms : ((req.min_bedrooms != null) ? req.min_bedrooms : null); return db.prepare("INSERT INTO street_applicants (id,kind,created_at,name,max_price,min_beds,lead_rating,branch,raw) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,max_price=excluded.max_price,min_beds=excluded.min_beds,lead_rating=excluded.lead_rating,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at), _t(a.name), (req.max_price != null ? Math.round(req.max_price) : null), beds, _t(a.lead_rating), _t(_branch(d, inc)), JSON.stringify(d)); }; }
 function mOff(kind) { return function (db, d, inc) { const a = d.attributes || {}; return db.prepare("INSERT INTO street_offers (id,kind,created_at,address,amount,status,branch,raw) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET address=excluded.address,amount=excluded.amount,status=excluded.status,branch=excluded.branch,raw=excluded.raw").bind(d.id, kind, _t(a.created_at || a.offer_made_at), _t(a.address), (a.offer_amount != null ? Math.round(a.offer_amount) : (a.rent_amount != null ? Math.round(a.rent_amount) : null)), _t(a.status), _t(_branch(d, inc)), JSON.stringify(d)); }; }
 function mCon(db, d) { const a = d.attributes || {}; let em = (a.email_addresses && a.email_addresses[0]) || a.email_address || a.email || null; if (em && typeof em === "object") em = em.value || em.email || em.address || null; let ph = (a.telephone_numbers && a.telephone_numbers[0]) || a.telephone_number || null; if (ph && typeof ph === "object") ph = ph.value || ph.number || ph.telephone_number || null; const nm = a.full_name || (((a.first_name || "") + " " + (a.last_name || "")).trim()) || null; const st = (a.statuses && a.statuses.join) ? a.statuses.join(", ") : (a.status || null); return db.prepare("INSERT INTO street_contacts (id,created_at,name,email,phone,status,raw) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,email=excluded.email,phone=excluded.phone,status=excluded.status,raw=excluded.raw").bind(d.id, _t(a.created_at), _t(nm), _t(em), _t(ph), _t(st), JSON.stringify(d)); }
+// Live property activity, pulled straight from Street. Street only returns a property's viewings / offers / sale
+// / notes when asked with ?include, and our synced viewings predate the property link, so we read it live here.
+// Used by the property view and the contact profile so a home shows the real activity around it. Returns clean
+// arrays + counts; never throws (returns empties on any failure).
+async function streetPropertyActivity(env, propId) {
+  const out = { viewings: [], offers: [], sale: null, notes: [], counts: { viewings: 0, offers: 0, notes: 0 } };
+  if (!propId || !env) return out;
+  let sr; try { sr = await streetGet(env, "/properties/" + encodeURIComponent(propId) + "?include=viewings,salesOffers,sales,notes"); } catch (_) { return out; }
+  const pd = sr && sr.body && sr.body.data; if (!pd || !pd.relationships) return out;
+  const inc = {}; (((sr.body && sr.body.included) || [])).forEach(function (x) { inc[x.type + ":" + x.id] = x; });
+  const list = function (relName) { const dd = pd.relationships[relName] && pd.relationships[relName].data; return (Array.isArray(dd) ? dd : (dd ? [dd] : [])).map(function (ref) { return inc[ref.type + ":" + ref.id] || { id: ref.id, attributes: {} }; }); };
+  list("viewings").forEach(function (v) { const a = v.attributes || {}; out.viewings.push({ id: v.id, date: _t(a.start || a.created_at), status: _t(a.status), type: _t(a.viewing_type), label: _t(a.address || a.public_address) }); });
+  list("salesOffers").forEach(function (o) { const a = o.attributes || {}; out.offers.push({ id: o.id, amount: (a.offer_amount != null ? a.offer_amount : null), status: _t(a.status), date: _t(a.offer_made_at || a.created_at) }); });
+  const sales = list("sales"); if (sales.length) { const a = sales[0].attributes || {}; out.sale = { id: sales[0].id, status: _t(a.status), price: (a.sale_price != null ? a.sale_price : (a.agreed_price != null ? a.agreed_price : null)), date: _t((a.dates && (a.dates.sale_agreed || a.dates.completion)) || a.created_at) }; }
+  list("notes").forEach(function (n) { const a = n.attributes || {}; out.notes.push({ id: n.id, date: _t(a.created_at), body: _t(a.body || a.note || a.content || a.text || a.description) }); });
+  out.viewings.sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
+  out.notes.sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
+  out.counts = { viewings: out.viewings.length, offers: out.offers.length, notes: out.notes.length };
+  return out;
+}
 // Generic capture: any Street resource we don't have a bespoke table for is mirrored as id + dates + the
 // COMPLETE raw record, so every field is held even without dedicated columns. Lets us add any endpoint in one line.
 function genDDL(name) { return "CREATE TABLE IF NOT EXISTS " + name + " (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, raw TEXT)"; }
@@ -2749,11 +2769,12 @@ export default {
           }
         }));
       } catch (_) {}
-      // For each linked property, attach its local downstream activity (viewings + website enquiries) so the
-      // profile shows the sale happening around the person, not just the bare listing.
+      // For each linked property, attach the live downstream activity (viewings + offers from Street, plus local
+      // website enquiries) so the profile shows the sale happening around the person, not just the bare listing.
+      // Counts come live from Street because the synced viewings can't be linked to the property by id.
       for (let pi = 0; pi < related.properties.length; pi++) {
         const p = related.properties[pi];
-        try { const vc = await db.prepare("SELECT COUNT(*) AS n FROM street_viewings WHERE property_id = ?").bind(p.id).first(); p.viewings = (vc && vc.n) || 0; } catch (_) {}
+        try { const act = await streetPropertyActivity(env, p.id); p.viewings = act.counts.viewings; p.offers = act.counts.offers; } catch (_) {}
         try { const ec = await db.prepare("SELECT COUNT(*) AS n FROM enquiries WHERE property_id = ?").bind(p.id).first(); p.enquiries = (ec && ec.n) || 0; } catch (_) {}
       }
       const properties = related.properties;
@@ -2780,8 +2801,11 @@ export default {
       const branch = property ? null : ((enquiries[0] && enquiries[0].branch) || (viewings[0] && viewings[0].branch) || null);
       const byKind = {}; enquiries.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const uniq = {}; enquiries.forEach(function (e) { const kk = (e.email || e.phone || e.name || e.id); if (kk) uniq[kk] = 1; });
-      const counts = { enquiries: enquiries.length, viewings: viewings.length, people: Object.keys(uniq).length };
-      return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, byKind: byKind, counts: counts }), 200, J);
+      // Live activity from Street — the real viewings, offers, sale and notes on this property, which the synced
+      // copy can't link (its viewings predate the property include). This is what makes the page show the truth.
+      const live = await streetPropertyActivity(env, id);
+      const counts = { enquiries: enquiries.length, viewings: Math.max(viewings.length, live.counts.viewings), offers: live.counts.offers, notes: live.counts.notes, people: Object.keys(uniq).length };
+      return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, live: live, byKind: byKind, counts: counts }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.
