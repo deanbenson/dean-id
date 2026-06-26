@@ -2829,6 +2829,18 @@ export default {
       const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
       if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
       await ensureStreetTables(env);
+      // Ad-hoc single-path probe (used to design the relationship sync): ?path=<URL-encoded Street path>.
+      const probePath = url.searchParams.get("path");
+      if (probePath) {
+        try {
+          const r = await streetGet(env, probePath);
+          const b = r.body || {};
+          const first = (b.data && b.data.length ? b.data[0] : b.data) || null;
+          const rels = (first && first.relationships) ? Object.keys(first.relationships).map(function (k) { const rd = first.relationships[k] && first.relationships[k].data; return k + "=" + (Array.isArray(rd) ? ("arr[" + rd.length + "]" + (rd[0] ? (":" + rd[0].type) : "")) : (rd ? String(rd.type) : "none")); }) : [];
+          const incTypes = Array.from(new Set((b.included || []).map(function (x) { return x.type; })));
+          return respond(JSON.stringify({ ok: true, status: r.status, type: first && first.type, attr_keys: first ? Object.keys(first.attributes || {}) : null, rels: rels, included_types: incTypes, included_count: (b.included || []).length }, null, 2), 200, J);
+        } catch (e) { return respond(JSON.stringify({ ok: false, error: String((e && e.message) || e) }), 200, J); }
+      }
       // Exact paths from the official Street Open API spec. GET-listable ones return 200; POST-only
       // ones (activity, documents, notes, maintenance-requests) return 405 — included so the result is honest.
       const cands = [
