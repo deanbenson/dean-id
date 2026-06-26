@@ -2919,7 +2919,10 @@ export default {
           const first = (b.data && b.data.length ? b.data[0] : b.data) || null;
           const rels = (first && first.relationships) ? Object.keys(first.relationships).map(function (k) { const rd = first.relationships[k] && first.relationships[k].data; return k + "=" + (Array.isArray(rd) ? ("arr[" + rd.length + "]" + (rd[0] ? (":" + rd[0].type) : "")) : (rd ? String(rd.type) : "none")); }) : [];
           const incTypes = Array.from(new Set((b.included || []).map(function (x) { return x.type; })));
-          return respond(JSON.stringify({ ok: true, status: r.status, type: first && first.type, attr_keys: first ? Object.keys(first.attributes || {}) : null, rels: rels, included_types: incTypes, included_count: (b.included || []).length }, null, 2), 200, J);
+          // ?inc=1 also dumps each included object's scalar fields (strings capped, no nested objects) so the
+          // shape of related records (e.g. viewing feedback / notes) is visible without guessing field names.
+          const incDetail = url.searchParams.get("inc") ? (b.included || []).map(function (x) { const a = x.attributes || {}; const o = {}; Object.keys(a).forEach(function (k) { const v = a[k]; if (v == null) return; const t = typeof v; if (t === "string") o[k] = v.slice(0, 240); else if (t === "number" || t === "boolean") o[k] = v; }); return { type: x.type, id: x.id, scalars: o, all_keys: Object.keys(a) }; }) : undefined;
+          return respond(JSON.stringify({ ok: true, status: r.status, type: first && first.type, attr_keys: first ? Object.keys(first.attributes || {}) : null, rels: rels, included_types: incTypes, included_count: (b.included || []).length, included_detail: incDetail }, null, 2), 200, J);
         } catch (e) { return respond(JSON.stringify({ ok: false, error: String((e && e.message) || e) }), 200, J); }
       }
       // Exact paths from the official Street Open API spec. GET-listable ones return 200; POST-only
