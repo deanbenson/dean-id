@@ -2700,9 +2700,21 @@ export default {
         if (name) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE name = ? ORDER BY created_at DESC LIMIT 50").bind(name).all(); apps = (r && r.results) || []; }
         if (!apps.length && email) { const r = await db.prepare("SELECT id,kind,created_at,name,max_price,min_beds,lead_rating,branch FROM street_applicants WHERE raw LIKE ? ORDER BY created_at DESC LIMIT 50").bind("%" + email + "%").all(); apps = (r && r.results) || []; }
       } catch (_) {}
+      // Live relationship lookup (on-demand, no mass re-sync): the properties this person owns / is selling
+      // through us. Street only returns the linkage when asked with ?include, so we ask per profile view.
+      let properties = [];
+      if (contact && contact.id) {
+        try {
+          const sr = await streetGet(env, "/people/" + encodeURIComponent(contact.id) + "?include=ownedProperties");
+          const pd = sr && sr.body && sr.body.data;
+          const rel = pd && pd.relationships && pd.relationships.ownedProperties && pd.relationships.ownedProperties.data;
+          const incl = {}; (((sr && sr.body && sr.body.included) || [])).forEach(function (x) { incl[x.id] = x; });
+          (Array.isArray(rel) ? rel : []).forEach(function (ref) { const p = incl[ref.id] || {}; const a = p.attributes || {}; properties.push({ id: ref.id, address: a.display_address || a.address || a.public_address || null, status: a.status || a.custom_status || null }); });
+        } catch (_) {}
+      }
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
-      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, enquiries: enq, applicants: apps }), 200, J);
+      return respond(JSON.stringify({ ok: true, found: true, contact: det, byKind: byKind, roles: roles, properties: properties, enquiries: enq, applicants: apps }), 200, J);
     }
 
     // Everything we hold about one property — local copy: core info + who enquired + viewings + counts. Admin-gated (enquiry PII).
