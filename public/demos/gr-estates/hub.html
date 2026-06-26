@@ -300,7 +300,7 @@
     return _f.apply(this,arguments);
   };})();
   var root=document.getElementById('root');
-  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner', PROP_ID=null, CONTACT_ID=null, VW_ID=null;
+  var ROUTE='home', D={}, NAVOPEN=false, ASKLOG=[], ASKING=false, ENQFILTER='all', ROLE='owner', PROP_ID=null, CONTACT_ID=null, VW_ID=null, SALE_ID=null;
   function key(){ try{ return localStorage.getItem('grAdminKey')||''; }catch(e){ return ''; } }
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function money(n){ if(n==null||isNaN(n)) return '—'; return '£'+Math.round(n).toLocaleString('en-GB'); }
@@ -600,6 +600,7 @@
   }
   function loadContact(id){ if(!id)return; if(D.contact&&D.contact.id===id&&D.contact.got)return; D.contact={id:id,data:null,got:false}; delete TBL['cenq_'+id]; fetch('/api/contact-hub?id='+encodeURIComponent(id),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!D.contact||D.contact.id!==id)return; D.contact.data=d; D.contact.got=true; if(ROUTE==='contact')renderView(false); }).catch(function(){ if(D.contact&&D.contact.id===id){D.contact.got=true; if(ROUTE==='contact')renderView(false);} }); }
   function loadVw(id){ if(!id)return; if(D.vw&&D.vw.id===id&&D.vw.got)return; D.vw={id:id,data:null,got:false}; fetch('/api/viewing-hub?id='+encodeURIComponent(id),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!D.vw||D.vw.id!==id)return; D.vw.data=d; D.vw.got=true; if(ROUTE==='viewingdetail')renderView(false); }).catch(function(){ if(D.vw&&D.vw.id===id){D.vw.got=true; if(ROUTE==='viewingdetail')renderView(false);} }); }
+  function loadSale(id){ if(!id)return; if(D.sale&&D.sale.id===id&&D.sale.got)return; D.sale={id:id,data:null,got:false}; fetch('/api/sale-hub?id='+encodeURIComponent(id),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ if(!D.sale||D.sale.id!==id)return; D.sale.data=d; D.sale.got=true; if(ROUTE==='saledetail')renderView(false); }).catch(function(){ if(D.sale&&D.sale.id===id){D.sale.got=true; if(ROUTE==='saledetail')renderView(false);} }); }
   function enqChart(enq){
     if(!enq||!enq.length) return '';
     var now=Date.now(), wk=7*864e5, N=12, b=[]; for(var i=0;i<N;i++)b.push(0);
@@ -737,6 +738,33 @@
     return back+'<h2 class="vt">Viewing</h2><div class="vsub">The full detail for this viewing, pulled live from Street.</div>'+hero+who+party+fbHtml+notesHtml+nothing;
   }
 
+  function viewSale(){
+    var back='<a class="backlink" href="#sales" onclick="if(history.length>1){history.back();return false;}">‹ Back</a>';
+    var S=D.sale;
+    if(!S||S.id!==SALE_ID||!S.got) return back+'<h2 class="vt">Sale</h2><div class="vsub">Pulling the full sale from Street…</div><div class="card" style="color:var(--muted)">One moment…</div>';
+    var d=S.data;
+    if(!d||!d.ok||!d.found) return back+'<h2 class="vt">Sale</h2><div class="card" style="color:var(--muted)">We could not load this sale from Street.</div>';
+    var s=d.sale||{}, prop=d.property||null, buyer=d.buyer||null, vend=d.vendor||null, ss=d.sellerSolicitor||null, bs=d.buyerSolicitor||null, notes=d.notes||[];
+    var addr=(prop&&prop.label)||s.address||'Sale';
+    var priceTxt=(s.price!=null)?('£'+Number(s.price).toLocaleString('en-GB')):'POA';
+    var hero='<div class="card"><div style="font-family:var(--serif);font-weight:700;font-size:1.4rem">'+(prop?propLink(prop.id,addr):esc(addr))+'</div>'
+      +'<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:1.2rem;font-weight:700">'+esc(priceTxt)+'</span>'+(s.status?statusPill(s.status):'')+'</div></div>';
+    // progression timeline
+    var steps=[['Offer accepted',s.created_at,true],['Exchange',s.exchanged||s.expected_exchange,!!s.exchanged],['Completion',s.completed||s.expected_completion,!!s.completed]];
+    var tl=steps.filter(function(x){return x[1];}).map(function(x){ var done=x[2]; return '<div style="display:flex;gap:9px;align-items:baseline;margin-bottom:6px"><span style="color:'+(done?'var(--g)':'var(--muted)')+';font-size:.95rem">'+(done?'●':'○')+'</span><span style="min-width:130px;font-weight:600">'+esc(x[0])+'</span><span style="color:var(--muted)">'+tdsDate(x[1])+(done?'':' (expected)')+'</span></div>'; }).join('');
+    var timeline=tl?('<div class="secttl">Progression</div><div class="card" style="margin-bottom:8px">'+tl+'</div>'):'';
+    function pcard(label,inner){ return '<div class="card" style="margin-bottom:8px"><div style="color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+esc(label)+'</div>'+inner+'</div>'; }
+    var parties='';
+    if(buyer){ var bits=[(buyer.lead_rating?('Lead: '+esc(buyer.lead_rating)):''),(buyer.buying_position?esc(buyer.buying_position):''),(buyer.financial_position?esc(buyer.financial_position):'')].filter(Boolean).join(' · ');
+      parties+=pcard('Buyer','<b>'+esc(buyer.name||'Applicant')+'</b>'+(bits?('<div style="color:var(--muted);font-size:.85rem;margin-top:3px">'+bits+'</div>'):'')); }
+    if(vend&&vend.name)parties+=pcard('Vendor','<b>'+esc(vend.name)+'</b>');
+    if(bs)parties+=pcard('Buyer’s solicitor','<b>'+esc(bs)+'</b>');
+    if(ss)parties+=pcard('Seller’s solicitor','<b>'+esc(ss)+'</b>');
+    var notesHtml='';
+    if(notes.length){ notesHtml='<div class="secttl">Notes ('+notes.length+')</div>'+notes.map(function(n){ return '<div class="card" style="margin-bottom:8px">'+(n.pinned?'<span class="pill pill-a" style="margin-right:6px">Pinned</span>':'')+esc(String(n.body||''))+'<div style="color:var(--muted);font-size:.78rem;margin-top:4px">'+[(n.author?('— '+esc(n.author)):''),(n.date?tdsDate(n.date):'')].filter(Boolean).join(' · ')+'</div></div>'; }).join(''); }
+    return back+'<h2 class="vt">Sale</h2><div class="vsub">The full sale, both sides of it, pulled live from Street.</div>'+hero+timeline+parties+notesHtml;
+  }
+
   var GSQ='', GST=null, GSRES=null, GSSEL=-1;
   function gsIcon(t){ return ({property:'⌂',enquiry:'✉',contact:'☰',viewing:'◷',valuation:'£'})[t]||'•'; }
   function gsFlat(){ var f=[]; (GSRES||[]).forEach(function(g){ (g.items||[]).forEach(function(it){ f.push(it); }); }); return f; }
@@ -825,11 +853,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.89', BUILD='26 Jun 2026';
+  var HUB_VERSION='0.90', BUILD='26 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'}; VER.profile='1.2';
   var CHANGELOG=[
+    {v:'0.90',d:'26 Jun 2026',items:['Sales now open as a full deal, not a one-line row. Click any sale to see both sides pulled live from Street: the price and status, the exchange and completion timeline, the buyer (with their position), the vendor, both solicitors, and the notes on the file. First result of a full data audit across every screen — tenancies, maintenance and more get the same treatment next.']},
     {v:'0.89',d:'26 Jun 2026',items:['Viewings come alive. Click any viewing (on the Viewings screen or a property) to open its full detail, pulled live from Street: who viewed it and how strong a buyer they are (lead rating, buying and financial position), the vendor, who conducted it, the date and time, whether it was confirmed or a no-show, plus every note and any written feedback with its interest and price rating. The Viewings list now opens straight into this detail. A viewing used to be a single line; now it tells the whole story.']},
     {v:'0.88',d:'26 Jun 2026',items:['A property now shows the real activity around it, pulled live from Street: every viewing, every offer (with amount and status), the sale itself, and the notes on the file. Until now the page looked empty because the synced viewings had lost their link to the property, so nothing joined up. We now read a property\'s activity live, so opening Mike Hind\'s 18 Runswick Road shows its 6 viewings, the offer and the agreed sale, and his profile shows those counts too. The underlying sync link will be repaired next so the Viewings screen groups by property as well.']},
     {v:'0.87',d:'26 Jun 2026',items:['Profile now surfaces the whole chain behind a valuation, not just the appraisal. For a vendor it shows who valued the property and from which branch, the date it was formally instructed, the price it was listed at, and a link straight to the property itself, where its viewings and enquiries are gathered. So opening Mike Hind now shows his appraisal at 18 Runswick Road, who did it, when it was instructed, what it went on at, and the activity around the sale, all pulled live from Street.']},
@@ -981,6 +1010,10 @@
     if(raw.indexOf('viewing=')===0){
       VW_ID=decodeURIComponent(raw.slice(8)); ROUTE='viewingdetail'; NAVOPEN=false;
       loadVw(VW_ID); updateActive(); renderView(true); stopFeed(); return;
+    }
+    if(raw.indexOf('sale=')===0){
+      SALE_ID=decodeURIComponent(raw.slice(5)); ROUTE='saledetail'; NAVOPEN=false;
+      loadSale(SALE_ID); updateActive(); renderView(true); stopFeed(); return;
     }
     var id=raw;
     if(id!=='profile' && !findItem(id)) id='home';
@@ -1506,6 +1539,7 @@
     else if(id==='property')return viewProperty();
     else if(id==='contact')return viewContact();
     else if(id==='viewingdetail')return viewVw();
+    else if(id==='saledetail')return viewSale();
     else if(GENVIEWS[id])body=viewGeneric(id,GENVIEWS[id]);
     else body=viewSoon(id);
     return body+srcLine(id);
@@ -1523,6 +1557,7 @@
       html:function(r){ var v=r[k]; if(v==null||v==='')return '—'; var s=String(v); if(s.charAt(0)==='{'||s.charAt(0)==='[')return '<span style="color:var(--muted)" title="structured field — open the row to see it">…</span>'; if((/_at$|_date$|^start$|^end$/.test(k))&&/^\d{4}-\d\d-\d\d/.test(s))return smartDate(s); if(/price|amount|fee|rent|deposit/.test(k)&&/^-?\d+(\.\d+)?$/.test(s))return '£'+Number(s).toLocaleString('en-GB'); if(s.length>60)return esc(s.slice(0,60))+'…'; return esc(s); },
       sortVal:function(r){ var v=r[k]; if(/_at$|_date$|^start$|^end$/.test(k))return v?new Date(v).getTime():0; if(/price|amount|fee|rent|deposit/.test(k))return Number(v)||0; return v==null?'':String(v); },
       text:function(r){return r[k];} }; });
+    if(name==='sales'){ cols.push({key:'_sale',label:'',html:function(r){return r.id?('<a class="syslink" href="#sale='+encodeURIComponent(r.id)+'">Detail ›</a>'):'';},sort:false,search:false}); }
     return sub+dataTable('gen_'+name,L.rows,cols,'Search '+esc(title)+'…',name,{name:name,total:L.total||0});
   }
 
@@ -1610,11 +1645,13 @@
       if(propDeep){ PROP_ID=decodeURIComponent(id.slice(9)); ROUTE='property'; }
       else if(contactDeep){ CONTACT_ID=decodeURIComponent(id.slice(8)); ROUTE='contact'; }
       else if(vwDeep){ VW_ID=decodeURIComponent(id.slice(8)); ROUTE='viewingdetail'; }
+      else if(id.indexOf('sale=')===0){ SALE_ID=decodeURIComponent(id.slice(5)); ROUTE='saledetail'; }
       else if(id&&(findItem(id)||id==='profile')&&roleAllows(id)) ROUTE=id;
       renderShell();
       if(propDeep) loadProperty(PROP_ID);
       if(contactDeep) loadContact(CONTACT_ID);
       if(vwDeep) loadVw(VW_ID);
+      if(ROUTE==='saledetail') loadSale(SALE_ID);
       fetch('/api/enquiries',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.enquiries=(d&&d.enquiries)||[]; if(d&&d.byKind)D.enqByKind=d.byKind; D.enqTotal=(d&&d.total!=null)?d.total:null; D.enqSyncedAt=(d&&d.synced_at)||null; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); }).catch(function(){ D.enquiries=[]; if(ROUTE==='enquiries'||ROUTE==='feed') renderView(false); });
       fetch('/api/sync-status',{headers:hk}).then(function(r){return r.json();}).then(function(d){ D.sync=(d&&d.datasets)||null; if(ROUTE==='connections') renderView(false); }).catch(function(){});
     }).catch(function(e){

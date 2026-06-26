@@ -1963,7 +1963,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sale-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2834,6 +2834,34 @@ export default {
       const notes = relArr("notes").map(function (n) { const na = n.attributes || {}; return { date: _t(na.created_at), author: _t(na.author), body: _t(na.body), pinned: !!na.pinned_at }; }).sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
       const feedback = relArr("viewingFeedback").map(function (f) { const fa = f.attributes || {}; return { feedback: _t(fa.feedback), rating: _t(fa.rating), price_rating: _t(fa.price_rating), status: _t(fa.status), visible_to_vendor: !!fa.visible_to_vendor, date: _t(fa.created_at) }; });
       return respond(JSON.stringify({ ok: true, found: true, id: id, viewing: viewing, property: property, applicant: applicant, owner: owner, negotiator: negotiator, notes: notes, feedback: feedback }), 200, J);
+    }
+
+    // Everything about ONE sale, live from Street: the deal (price, status, the exchange/completion timeline), the
+    // property, the buyer (with their position), the vendor, BOTH solicitors, and the notes on the file. A sale is
+    // the whole transaction — this shows both sides of it instead of a one-line row.
+    if (path === "/api/sale-hub" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const id = String(url.searchParams.get("id") || "");
+      if (!id) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
+      let sr; try { sr = await streetGet(env, "/sales/" + encodeURIComponent(id) + "?include=property,applicant,vendor,sellerSolicitor,buyerSolicitor,notes"); } catch (e) { return respond(JSON.stringify({ ok: false, error: "street: " + String((e && e.message) || e) }), 200, J); }
+      const d = sr && sr.body && sr.body.data;
+      if (!d) return respond(JSON.stringify({ ok: true, found: false }), 200, J);
+      const inc = {}; (((sr.body && sr.body.included) || [])).forEach(function (x) { inc[x.type + ":" + x.id] = x; });
+      const relObj = function (nm) { const rd = d.relationships && d.relationships[nm] && d.relationships[nm].data; if (!rd || Array.isArray(rd)) return null; return inc[rd.type + ":" + rd.id] || null; };
+      const relArr = function (nm) { const rd = d.relationships && d.relationships[nm] && d.relationships[nm].data; return (Array.isArray(rd) ? rd : []).map(function (r) { return inc[r.type + ":" + r.id]; }).filter(Boolean); };
+      const a = d.attributes || {}; const dt = a.dates || {};
+      const prop = relObj("property"), buyer = relObj("applicant"), vend = relObj("vendor"), ss = relObj("sellerSolicitor"), bs = relObj("buyerSolicitor");
+      const solName = function (s) { if (!s) return null; const sa = s.attributes || {}; return _t(sa.full_name || ((sa.first_name || "") + " " + (sa.last_name || "")).trim()) || null; };
+      const sale = { status: _t(a.status), price: (a.sale_price != null ? a.sale_price : null), address: _t(a.address), created_at: _t(a.created_at),
+        expected_exchange: _t(dt.expected_exchange_date), exchanged: _t(dt.exchanged_date), expected_completion: _t(dt.expected_completion_date), completed: _t(dt.completed_date) };
+      const property = prop ? { id: prop.id, label: _t((prop.attributes || {}).display_address || (prop.attributes || {}).public_address || (prop.attributes || {}).address) } : null;
+      const buyerO = buyer ? { id: buyer.id, name: _t((buyer.attributes || {}).name), lead_rating: _t((buyer.attributes || {}).lead_rating), buying_position: _t((buyer.attributes || {}).buying_position), financial_position: _t((buyer.attributes || {}).financial_position) } : null;
+      const vendorO = vend ? { name: _t((vend.attributes || {}).full_name || (((vend.attributes || {}).first_name || "") + " " + ((vend.attributes || {}).last_name || "")).trim()) } : null;
+      const notes = relArr("notes").map(function (n) { const na = n.attributes || {}; return { date: _t(na.created_at), author: _t(na.author), body: _t(na.body), pinned: !!na.pinned_at }; }).sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
+      return respond(JSON.stringify({ ok: true, found: true, id: id, sale: sale, property: property, buyer: buyerO, vendor: vendorO, sellerSolicitor: solName(ss), buyerSolicitor: solName(bs), notes: notes }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.
