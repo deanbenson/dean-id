@@ -45,6 +45,10 @@
 		{
 			"binding": "RECORDINGS",
 			"bucket_name": "gr-estates-recordings"
+		},
+		{
+			"bucket_name": "gr-estates-recordings",
+			"binding": "gr_estates_recordings"
 		}
 	]
 }
