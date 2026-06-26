@@ -2963,17 +2963,24 @@ export default {
       const r2key = "rec/" + id + ".wav";
       try { await env.RECORDINGS.put(r2key, buf, { httpMetadata: { contentType: "audio/wav" } }); } catch (e) { return respond(JSON.stringify({ ok: false, error: "r2: " + String((e && e.message) || e) }), 200, J); }
       let transcript = "", summary = "", aerr = null, meta = {};
-      try { const tr = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)], language: "en" }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper: " + String((e && e.message) || e); }
-      // Structured AI extraction — pull the useful facts out of the call so the whole hub can use them.
+      function toB64(b) { const bytes = new Uint8Array(b); let bin = ""; const ch = 0x8000; for (let i = 0; i < bytes.length; i += ch) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + ch)); return btoa(bin); }
+      // Transcribe — turbo Whisper (honours forced English), falling back to the base model if needed.
+      try { const tr = await env.AI.run("@cf/openai/whisper-large-v3-turbo", { audio: toB64(buf), language: "en", task: "transcribe" }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper-turbo: " + String((e && e.message) || e); }
+      if (!transcript) { try { const tr2 = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)] }); transcript = (tr2 && (tr2.text || tr2.transcription)) || ""; if (transcript) aerr = null; } catch (e) { aerr = (aerr ? aerr + "; " : "") + "whisper: " + String((e && e.message) || e); } }
+      // Structured AI extraction, forced to valid JSON via a schema, so the whole hub can use the facts.
       if (transcript) {
         try {
+          const schema = { type: "object", properties: { title: { type: "string" }, category: { type: "string" }, sentiment: { type: "string" }, caller_type: { type: "string" }, summary: { type: "string" }, people: { type: "array", items: { type: "string" } }, property_address: { type: ["string", "null"] }, action_items: { type: "array", items: { type: "string" } }, outcome: { type: "string" }, urgency: { type: "string" } }, required: ["title", "category", "sentiment", "summary", "action_items"] };
           const ex = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [
-            { role: "system", content: "You are an assistant for a UK estate agency. From a phone-call transcript, extract structured facts. Respond with ONLY a JSON object (no prose, no markdown fences) using these keys: title (a 4-6 word label for the call), category (one of: Sale progression, Viewing, Valuation, Offer, Maintenance, Tenancy, Complaint, General), sentiment (Positive, Neutral or Negative), caller_type (Vendor, Buyer, Landlord, Tenant, Solicitor, Contractor or Other), summary (2-3 sentence plain-English summary), people (array of person names mentioned), property_address (the single property/address discussed, or null), action_items (array of short follow-up actions for staff; [] if none), outcome (one short sentence), urgency (High, Medium or Low). If the call is unclear or too short, still return the JSON with best-effort values or nulls." },
+            { role: "system", content: "You are an assistant for a UK estate agency. Extract structured facts from the call transcript. category is one of: Sale progression, Viewing, Valuation, Offer, Maintenance, Tenancy, Complaint, General. sentiment is Positive, Neutral or Negative. caller_type is Vendor, Buyer, Landlord, Tenant, Solicitor, Contractor or Other. summary is 2-3 plain sentences. property_address is the single property/address discussed, or null. action_items are short follow-up actions for staff. urgency is High, Medium or Low." },
             { role: "user", content: transcript.slice(0, 6000) }
-          ], max_tokens: 600, temperature: 0.2 });
-          const raw = (ex && ex.response) || ""; summary = raw;
-          try { let j = raw.trim(); const a = j.indexOf("{"), b = j.lastIndexOf("}"); if (a >= 0 && b > a) j = j.slice(a, b + 1); meta = JSON.parse(j) || {}; if (meta.summary) summary = meta.summary; } catch (_) {}
+          ], max_tokens: 600, temperature: 0.2, response_format: { type: "json_schema", json_schema: schema } });
+          let rr = ex && ex.response;
+          if (rr && typeof rr === "object") meta = rr;
+          else { const raw = String(rr || ""); try { let j = raw.trim(); const a = j.indexOf("{"), b = j.lastIndexOf("}"); if (a >= 0 && b > a) j = j.slice(a, b + 1); meta = JSON.parse(j) || {}; } catch (_) { meta = {}; } }
+          if (meta && meta.summary) summary = meta.summary;
         } catch (e) { aerr = (aerr ? aerr + "; " : "") + "extract: " + String((e && e.message) || e); }
+        if (!summary) { try { const sm = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "system", content: "Summarise this UK estate-agency phone call in 2-3 sentences." }, { role: "user", content: transcript.slice(0, 6000) }], max_tokens: 200, temperature: 0.3 }); summary = (sm && sm.response) || ""; } catch (_) {} }
       }
       const num = url.searchParams.get("number") || null;
       const normP = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
