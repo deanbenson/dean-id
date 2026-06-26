@@ -1963,7 +1963,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2806,6 +2806,34 @@ export default {
       const live = await streetPropertyActivity(env, id);
       const counts = { enquiries: enquiries.length, viewings: Math.max(viewings.length, live.counts.viewings), offers: live.counts.offers, notes: live.counts.notes, people: Object.keys(uniq).length };
       return respond(JSON.stringify({ ok: true, id: id, property: property, label: label, branch: branch, enquiries: enquiries, viewings: viewings, live: live, byKind: byKind, counts: counts }), 200, J);
+    }
+
+    // Everything about ONE viewing, pulled live from Street: the appointment detail plus who viewed (the applicant
+    // with their lead rating and buying position), the property, the vendor, the negotiator, every note and any
+    // structured feedback (rating / price view / comments). This is what makes a viewing tell its whole story.
+    if (path === "/api/viewing-hub" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      const id = String(url.searchParams.get("id") || "");
+      if (!id) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
+      let sr; try { sr = await streetGet(env, "/viewings/" + encodeURIComponent(id) + "?include=property,applicant,owner,viewer,notes,viewingFeedback"); } catch (e) { return respond(JSON.stringify({ ok: false, error: "street: " + String((e && e.message) || e) }), 200, J); }
+      const d = sr && sr.body && sr.body.data;
+      if (!d) return respond(JSON.stringify({ ok: true, found: false }), 200, J);
+      const inc = {}; (((sr.body && sr.body.included) || [])).forEach(function (x) { inc[x.type + ":" + x.id] = x; });
+      const relObj = function (nm) { const rd = d.relationships && d.relationships[nm] && d.relationships[nm].data; if (!rd || Array.isArray(rd)) return null; return inc[rd.type + ":" + rd.id] || null; };
+      const relArr = function (nm) { const rd = d.relationships && d.relationships[nm] && d.relationships[nm].data; return (Array.isArray(rd) ? rd : []).map(function (r) { return inc[r.type + ":" + r.id]; }).filter(Boolean); };
+      const a = d.attributes || {};
+      const prop = relObj("property"), appl = relObj("applicant"), own = relObj("owner"), vwr = relObj("viewer");
+      const viewing = { date: _t(a.start), end: _t(a.end), type: _t(a.viewing_type || a.type), status: _t(a.status), no_show: !!a.no_show, agent_confirmed: !!a.agent_confirmed, applicant_confirmed: !!a.applicant_confirmed, unaccompanied: !!a.unaccompanied, provisional: !!a.provisional, occupant_type: _t(a.occupant_type), address: _t(a.address), created_at: _t(a.created_at), cancelled_at: _t(a.cancelled_at) };
+      const property = prop ? { id: prop.id, label: _t((prop.attributes || {}).display_address || (prop.attributes || {}).public_address || (prop.attributes || {}).address) } : null;
+      const applicant = appl ? { id: appl.id, name: _t((appl.attributes || {}).name), lead_rating: _t((appl.attributes || {}).lead_rating), financial_position: _t((appl.attributes || {}).financial_position), buying_position: _t((appl.attributes || {}).buying_position), applicant_type: _t((appl.attributes || {}).applicant_type) } : null;
+      const owner = own ? { name: _t((own.attributes || {}).contact_name) } : null;
+      const negotiator = vwr ? _t((vwr.attributes || {}).name || (((vwr.attributes || {}).first_name || "") + " " + ((vwr.attributes || {}).last_name || "")).trim()) : null;
+      const notes = relArr("notes").map(function (n) { const na = n.attributes || {}; return { date: _t(na.created_at), author: _t(na.author), body: _t(na.body), pinned: !!na.pinned_at }; }).sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
+      const feedback = relArr("viewingFeedback").map(function (f) { const fa = f.attributes || {}; return { feedback: _t(fa.feedback), rating: _t(fa.rating), price_rating: _t(fa.price_rating), status: _t(fa.status), visible_to_vendor: !!fa.visible_to_vendor, date: _t(fa.created_at) }; });
+      return respond(JSON.stringify({ ok: true, found: true, id: id, viewing: viewing, property: property, applicant: applicant, owner: owner, negotiator: negotiator, notes: notes, feedback: feedback }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.
