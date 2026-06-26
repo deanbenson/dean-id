@@ -2662,7 +2662,11 @@ export default {
       const id = String(url.searchParams.get("id") || "");
       if (!id || !env.gr_estates) return respond(JSON.stringify({ ok: false, error: "bad id" }), 400, J);
       const db = env.gr_estates;
-      let contact = null; try { contact = await db.prepare("SELECT * FROM street_contacts WHERE id = ?").bind(id).first(); } catch (_) {}
+      let contact = null;
+      try {
+        if (id.indexOf("@") >= 0) contact = await db.prepare("SELECT * FROM street_contacts WHERE LOWER(email) = ? LIMIT 1").bind(id.toLowerCase()).first();
+        else contact = await db.prepare("SELECT * FROM street_contacts WHERE id = ?").bind(id).first();
+      } catch (_) {}
       if (!contact) return respond(JSON.stringify({ ok: true, found: false }), 200, J);
       let raw = null; try { raw = JSON.parse(contact.raw); } catch (_) {}
       const attr = (raw && raw.attributes) || {};

@@ -536,6 +536,7 @@
   function statusPill(s){ if(s==null||s==='') return '—'; var t=String(s).replace(/_/g,' '); var low=t.toLowerCase(); var c='n'; if(/cancel|declin|withdraw|lost|fell|no show|void/.test(low))c='r'; else if(/complet|carried|confirm|success|won|sold|let agreed|exchang|move/.test(low))c='g'; else if(/pending|await|propos|booked|new|active|request|offer/.test(low))c='a'; return '<span class="pill pill-'+c+'">'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span>'; }
   function propLink(id,label){ return id?'<a class="syslink" href="#property='+encodeURIComponent(id)+'">'+esc(label||'View property')+'</a>':esc(label||'—'); }
   function contactLink(id,label){ return id?'<a class="syslink" href="#contact='+encodeURIComponent(id)+'">'+esc(label||'View')+'</a>':esc(label||'—'); }
+  function personLink(email,label){ return email?'<a class="syslink" href="#contact='+encodeURIComponent(email)+'">'+esc(label||'View')+'</a>':esc(label||'—'); }
   function viewViewings(){
     ensureLocal('viewings'); var L=D.L_viewings; if(!L) return localLoading('Viewings');
     var body;
@@ -771,11 +772,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.79', BUILD='23 Jun 2026';
+  var HUB_VERSION='0.80', BUILD='23 Jun 2026';
   var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
   var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'};
   var CHANGELOG=[
+    {v:'0.80',d:'23 Jun 2026',items:['Joining the data up: names on the Enquiries screen now link straight to that person\'s full profile (matched by email), so you can jump from any enquiry to everything you hold on them. The profile also opens by email now, the universal join key. First step toward every record linking to the people and properties around it.']},
     {v:'0.79',d:'23 Jun 2026',items:['Contact profile now links a person to their role with you, not just their enquiries. It surfaces whether they are a vendor, landlord or tenant (matched on email), alongside any enquiries and requirements. The first version only matched enquiries, so a contact whose activity is a sale or a tenancy came up empty.']},
     {v:'0.78',d:'23 Jun 2026',items:['New contact profile: click any name on the Contacts screen to open everything we hold on that person in one place. Their details and the best ways to reach them at the top, then how many enquiries, viewing and valuation requests they have made, what they are looking for (budget and beds), and a searchable timeline of every enquiry. The first of bringing the data to life as a proper single view of each customer.']},
     {v:'0.77',d:'23 Jun 2026',items:['Enquiries now search and filter the whole list, not just what is on screen. There are 25,576 enquiries; the screen loads the most recent 2,000 for speed, so searching or filtering by type used to miss older ones and the chip counts only counted what was loaded. The chip counts are now the true totals, and the search box and the type filters query the full list on the server.']},
@@ -1042,7 +1044,7 @@
     else { var cols=[
       {key:'at',label:'When',html:function(L){return smartDate(L.at);},sortVal:function(L){return L.at?new Date(L.at).getTime():0;},text:function(L){return L.at;}},
       {key:'kind',label:'Type',html:function(L){return '<span class="kind">'+esc(L.kind||'enquiry')+'</span>';},get:function(L){return L.kind||'enquiry';}},
-      {key:'name',label:'Name',get:function(L){return L.name||'—';}},
+      {key:'name',label:'Name',html:function(L){return personLink(L.email,L.name||'—');},text:function(L){return L.name;},get:function(L){return L.name;}},
       {key:'contact',label:'Contact',html:function(L){return [L.email,L.phone].filter(Boolean).map(esc).join('<br>')||'—';},text:function(L){return (L.email||'')+' '+(L.phone||'');},sort:false},
       {key:'property',label:'Property / branch',html:function(L){ var propTxt=L.property?propLink(L.propertyId,L.property):''; var meta=[propTxt,(L.branch?esc(L.branch):'')].filter(Boolean).join(' · '); var src=L.source?'<div style="color:var(--muted);font-size:.74rem">via '+esc(L.source)+'</div>':''; return (meta||'<span style="color:var(--muted)">—</span>')+src; },text:function(L){return (L.property||'')+' '+(L.branch||'')+' '+(L.source||'');}}
     ]; body=dataTable('enq',shown,cols,'Search all '+enqTot.toLocaleString('en-GB')+' enquiries…','enquiries',{total:enqTot,always:true,build:function(q){return '/api/enquiries?kind='+encodeURIComponent(ENQFILTER)+'&q='+encodeURIComponent(q);}}); }
