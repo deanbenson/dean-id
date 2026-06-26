@@ -1963,7 +1963,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sale-hub","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sale-hub","/api/phone-import","/api/phone-calls","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2862,6 +2862,76 @@ export default {
       const vendorO = vend ? { name: _t((vend.attributes || {}).contact_name || (vend.attributes || {}).full_name || (((vend.attributes || {}).first_name || "") + " " + ((vend.attributes || {}).last_name || "")).trim()) } : null;
       const notes = relArr("notes").map(function (n) { const na = n.attributes || {}; return { date: _t(na.created_at), author: _t(na.author), body: _t(na.body), pinned: !!na.pinned_at }; }).sort(function (x, y) { return (Date.parse(y.date) || 0) - (Date.parse(x.date) || 0); });
       return respond(JSON.stringify({ ok: true, found: true, id: id, sale: sale, property: property, buyer: buyerO, vendor: vendorO, sellerSolicitor: solName(ss), buyerSolicitor: solName(bs), notes: notes }), 200, J);
+    }
+
+    // ---- Phone (Plustel Zeus) call records ----------------------------------------------------------------
+    // Plustel has no API yet, so we ingest the Zeus portal's "Download CSV" CDR export (same approach as the TDS
+    // deposit file). Each call's customer number is matched to a contact; the extension's "Extra Info" carries the
+    // staff/branch that handled it. CSV columns: Type,Date,Time,Originating,Destination,Description,Duration,
+    // Status,Charge,Extra Info,CLI Presented,Customer.
+    if (path === "/api/phone-import" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      const db = env.gr_estates;
+      const text = await request.text();
+      function parseCSV(t) { t = String(t || "").replace(/^﻿/, ""); const out = []; let i = 0, f = "", row = [], q = false; while (i < t.length) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i += 2; continue; } q = false; i++; continue; } f += c; i++; continue; } if (c === '"') { q = true; i++; continue; } if (c === ",") { row.push(f); f = ""; i++; continue; } if (c === "\r") { i++; continue; } if (c === "\n") { row.push(f); out.push(row); row = []; f = ""; i++; continue; } f += c; i++; } if (f.length || row.length) { row.push(f); out.push(row); } return out; }
+      const rows = parseCSV(text); if (rows.length) rows.shift();
+      const isExt = function (s) { return /^\d{3,5}-\d{3,4}-\d{3,4}$/.test(String(s || "")); };
+      const norm = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS phone_calls (id TEXT PRIMARY KEY, started_at TEXT, call_date TEXT, call_time TEXT, direction TEXT, customer_number TEXT, customer_norm TEXT, extension TEXT, handler TEXT, description TEXT, duration_sec INTEGER, status TEXT, charge REAL, contact_id TEXT, raw TEXT, imported_at TEXT)").run(); } catch (e) { return respond(JSON.stringify({ ok: false, error: "schema: " + String((e && e.message) || e) }), 500, J); }
+      try { await db.prepare("CREATE INDEX IF NOT EXISTS idx_pc_started ON phone_calls(started_at)").run(); } catch (_) {}
+      try { await db.prepare("CREATE INDEX IF NOT EXISTS idx_pc_cust ON phone_calls(customer_norm)").run(); } catch (_) {}
+      try { await db.prepare("CREATE INDEX IF NOT EXISTS idx_pc_contact ON phone_calls(contact_id)").run(); } catch (_) {}
+      const cmap = {};
+      try { const cr = await db.prepare("SELECT id, phone FROM street_contacts WHERE phone IS NOT NULL AND phone != ''").all(); ((cr && cr.results) || []).forEach(function (c) { const n = norm(c.phone); if (n.length >= 10 && !cmap[n]) cmap[n] = c.id; }); } catch (_) {}
+      const toIso = function (d, t) { const m = String(d || "").match(/(\d{2})\/(\d{2})\/(\d{4})/); if (!m) return null; return m[3] + "-" + m[2] + "-" + m[1] + "T" + (String(t || "00:00").length === 5 ? t : "00:00") + ":00"; };
+      let stored = 0, matched = 0; const errors = [];
+      for (const r of rows) {
+        if (!r || r.length < 9) continue;
+        const orig = r[3], dest = r[4], desc = r[5], dur = r[6], st = r[7], charge = r[8], extra = r[9] || "";
+        let direction, ext, customer;
+        if (isExt(orig) && isExt(dest)) { direction = "internal"; ext = orig; customer = dest; }
+        else if (isExt(orig)) { direction = "outbound"; ext = orig; customer = dest; }
+        else if (isExt(dest)) { direction = "inbound"; ext = dest; customer = orig; }
+        else { direction = "unknown"; ext = null; customer = orig; }
+        const handler = (String(extra).split(" - ")[1] || "").trim() || null;
+        const cn = norm(customer); const cid = cmap[cn] || null; if (cid) matched++;
+        const iso = toIso(r[1], r[2]);
+        const id = (r[1] + "|" + r[2] + "|" + orig + "|" + dest + "|" + dur).replace(/\s+/g, "");
+        try {
+          await db.prepare("INSERT INTO phone_calls (id,started_at,call_date,call_time,direction,customer_number,customer_norm,extension,handler,description,duration_sec,status,charge,contact_id,raw,imported_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,duration_sec=excluded.duration_sec,contact_id=excluded.contact_id,handler=excluded.handler")
+            .bind(id, iso, r[1], r[2], direction, String(customer || ""), cn, ext, handler, String(desc || ""), parseInt(dur, 10) || 0, String(st || ""), parseFloat(charge) || 0, cid, JSON.stringify(r), new Date().toISOString()).run();
+          stored++;
+        } catch (e) { if (errors.length < 5) errors.push(String((e && e.message) || e)); }
+      }
+      try { if (env.LISTINGS) await env.LISTINGS.put("phone:last_import", JSON.stringify({ at: new Date().toISOString(), rows: rows.length, stored: stored, matched: matched })); } catch (_) {}
+      return respond(JSON.stringify({ ok: true, rows: rows.length, stored: stored, matched: matched, errors: errors }), 200, J);
+    }
+
+    // Read stored call records (admin). Optional ?q= search; recent first; with matched contact name + quick stats.
+    if (path === "/api/phone-calls" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: true, rows: [], total: 0 }), 200, J);
+      const db = env.gr_estates;
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS phone_calls (id TEXT PRIMARY KEY, started_at TEXT, call_date TEXT, call_time TEXT, direction TEXT, customer_number TEXT, customer_norm TEXT, extension TEXT, handler TEXT, description TEXT, duration_sec INTEGER, status TEXT, charge REAL, contact_id TEXT, raw TEXT, imported_at TEXT)").run(); } catch (_) {}
+      const q = (url.searchParams.get("q") || "").trim();
+      let total = 0, rows = [], last = null;
+      try { const c = await db.prepare("SELECT COUNT(*) AS n FROM phone_calls").first(); total = (c && c.n) || 0; } catch (_) {}
+      try { if (env.LISTINGS) { const v = await env.LISTINGS.get("phone:last_import"); if (v) last = JSON.parse(v); } } catch (_) {}
+      const sel = "SELECT pc.id,pc.started_at,pc.direction,pc.customer_number,pc.extension,pc.handler,pc.description,pc.duration_sec,pc.status,pc.contact_id,c.name AS contact_name FROM phone_calls pc LEFT JOIN street_contacts c ON c.id = pc.contact_id ";
+      try {
+        if (q) { const like = "%" + q + "%"; const r = await db.prepare(sel + "WHERE pc.customer_number LIKE ? OR pc.handler LIKE ? OR pc.description LIKE ? OR c.name LIKE ? ORDER BY pc.started_at DESC LIMIT 1000").bind(like, like, like, like).all(); rows = (r && r.results) || []; }
+        else { const r = await db.prepare(sel + "ORDER BY pc.started_at DESC LIMIT 1000").all(); rows = (r && r.results) || []; }
+      } catch (_) {}
+      const stats = {}; try { const sr = await db.prepare("SELECT direction, COUNT(*) AS n FROM phone_calls GROUP BY direction").all(); ((sr && sr.results) || []).forEach(function (x) { stats[x.direction] = x.n; }); } catch (_) {}
+      let missed = 0; try { const mr = await db.prepare("SELECT COUNT(*) AS n FROM phone_calls WHERE status IN ('NO ANSWER','BUSY')").first(); missed = (mr && mr.n) || 0; } catch (_) {}
+      return respond(JSON.stringify({ ok: true, total: total, rows: rows, q: q, stats: stats, missed: missed, last_import: last }), 200, J);
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.

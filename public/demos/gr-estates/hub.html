@@ -550,6 +550,33 @@
     ]; body=dataTable('viewings',L.rows,cols,'Search viewings, address, status…','viewings',{name:'viewings',total:L.total||0}); }
     return '<h2 class="vt">Viewings</h2><div class="vsub">Every viewing in Street, from the local copy. '+L.total+' total'+localSync(L)+pageSyncLine('15min')+'.</div>'+body;
   }
+
+  function loadCalls(q){ fetch('/api/phone-calls?q='+encodeURIComponent(q||''),{headers:{'x-admin-key':key()}}).then(function(r){return r.json();}).then(function(d){ D.calls=d; if(ROUTE==='calls')renderView(false); }).catch(function(){ D.calls={ok:false}; if(ROUTE==='calls')renderView(false); }); }
+  window.grUploadCalls=function(inp){ var f=inp&&inp.files&&inp.files[0]; if(!f)return; var msg=document.getElementById('callupmsg'); if(msg)msg.textContent='Uploading…'; var rd=new FileReader(); rd.onload=function(){ fetch('/api/phone-import',{method:'POST',headers:{'x-admin-key':key(),'content-type':'text/csv'},body:rd.result}).then(function(r){return r.json();}).then(function(d){ if(msg)msg.textContent=d.ok?('Imported '+d.stored+' calls · '+d.matched+' matched to a contact.'):('Error: '+esc(d.error||'failed')); D.calls=null; loadCalls(''); }).catch(function(){ if(msg)msg.textContent='Upload failed.'; }); }; rd.readAsText(f); };
+  function viewCalls(){
+    if(D.calls===undefined){ D.calls=null; loadCalls(''); }
+    var head='<h2 class="vt">Calls</h2><div class="vsub">Call records from the phone system (Zeus · Plustel), matched to your contacts by number. The handler comes straight from the line that took the call.</div>';
+    var up='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:3px">Import call records (CSV)</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:8px">In Zeus: Call Records → Search CDRs → tick <b>CSV Download Link · Enable</b>, set the dates, Search, then <b>Download CSV File</b> — and drop it here.</div><input type="file" accept=".csv,text/csv" id="callcsv" onchange="grUploadCalls(this)"><span id="callupmsg" style="margin-left:10px;color:var(--muted);font-size:.85rem"></span></div>';
+    var d=D.calls;
+    if(!d) return head+up+'<div class="card" style="color:var(--muted)">Loading…</div>';
+    var st=d.stats||{};
+    var tiles='<div class="tiles">'+
+      '<div class="tile"><div class="ttl">Total calls</div><div class="tnm">'+((d.total||0).toLocaleString('en-GB'))+'</div></div>'+
+      '<div class="tile"><div class="ttl">Inbound</div><div class="tnm">'+((st.inbound||0).toLocaleString('en-GB'))+'</div></div>'+
+      '<div class="tile"><div class="ttl">Outbound</div><div class="tnm">'+((st.outbound||0).toLocaleString('en-GB'))+'</div></div>'+
+      '<div class="tile"><div class="ttl">Missed (no answer/busy)</div><div class="tnm">'+((d.missed||0).toLocaleString('en-GB'))+'</div></div>'+'</div>';
+    var rows=d.rows||[];
+    var body=rows.length?dataTable('calls',rows,[
+      {key:'when',label:'When',html:function(r){return smartDate(r.started_at);},sortVal:function(r){return r.started_at?new Date(r.started_at).getTime():0;},text:function(r){return r.started_at;}},
+      {key:'direction',label:'Direction',html:function(r){var c=r.direction==='inbound'?'g':(r.direction==='outbound'?'a':'n');return '<span class="pill pill-'+c+'">'+esc(r.direction||'—')+'</span>';},get:function(r){return r.direction;}},
+      {key:'customer',label:'Customer',html:function(r){return r.contact_id?contactLink(r.contact_id,r.contact_name||r.customer_number):esc(r.customer_number||'—');},text:function(r){return (r.contact_name||'')+' '+(r.customer_number||'');},get:function(r){return r.contact_name||r.customer_number;}},
+      {key:'handler',label:'Handled by',get:function(r){return r.handler||'—';}},
+      {key:'dur',label:'Length',html:function(r){var s=r.duration_sec||0;return s<60?(s+'s'):(Math.floor(s/60)+'m '+(s%60)+'s');},sortVal:function(r){return r.duration_sec||0;},get:function(r){return r.duration_sec;}},
+      {key:'status',label:'Status',html:function(r){return statusPill(r.status);},get:function(r){return r.status;}}
+    ],'Search calls by number, name or who took it…',null,{name:'calls',total:d.total||0,build:function(q){return '/api/phone-calls?q='+encodeURIComponent(q);}}):'<div class="card" style="color:var(--muted)">No call records yet — upload a CSV above to begin.</div>';
+    var lastImp=d.last_import?('<div style="color:var(--muted);font-size:.8rem;margin-top:10px">Last import '+tdsDate(d.last_import.at)+' · '+(d.last_import.matched||0)+' of '+(d.last_import.rows||0)+' calls matched to a contact.</div>'):'';
+    return head+up+(d.total?tiles:'')+body+lastImp;
+  }
   function viewValuations(){
     ensureLocal('valuations'); var L=D.L_valuations; if(!L) return localLoading('Valuations');
     var body;
@@ -803,7 +830,7 @@
 
   var NAV=[
     {g:'Overview',items:[{id:'home',l:'Home',ic:'⌂',rag:'g'},{id:'connections',l:'Connections',ic:'⚯',rag:'a'},{id:'status',l:'System status',ic:'◉',rag:'g'},{id:'ask',l:'Ask Georgina',ic:'✦',rag:'g'}]},
-    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'rightmove',l:'Rightmove leads',ic:'➤',rag:'a'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
+    {g:'Pipeline',items:[{id:'enquiries',l:'Enquiries',ic:'✉',rag:'g'},{id:'rightmove',l:'Rightmove leads',ic:'➤',rag:'a'},{id:'valuations',l:'Valuations',ic:'£',rag:'g'},{id:'viewings',l:'Viewings',ic:'◷',rag:'g'},{id:'calls',l:'Calls',ic:'☎',rag:'g'},{id:'sales',l:'Sales',ic:'✓',rag:'g'},{id:'progression',l:'Progression',ic:'↗',rag:'g'}]},
     {g:'People',items:[{id:'contacts',l:'Contacts',ic:'☰',rag:'g'},{id:'vendors',l:'Vendors',ic:'☺',rag:'g'},{id:'landlords',l:'Landlords',ic:'☺',rag:'g'},{id:'tenants',l:'Tenants',ic:'☺',rag:'g'},{id:'solicitors',l:'Solicitors',ic:'§',rag:'g'},{id:'calendar',l:'Calendar',ic:'▦',rag:'g'}]},
     {g:'Property',items:[{id:'listings',l:'Listings',ic:'⌂',rag:'g'},{id:'properties_all',l:'All properties',ic:'⌂',rag:'g'},{id:'property_keys',l:'Keys',ic:'⚿',rag:'g'},{id:'map',l:'Map',ic:'◎',rag:'g'},{id:'marketing',l:'Marketing',ic:'◈',rag:'a'}]},
     {g:'Lettings',items:[{id:'tenancies',l:'Tenancies',ic:'⚿',rag:'g'},{id:'inspections',l:'Inspections',ic:'✓',rag:'g'},{id:'maintenance_jobs',l:'Maintenance',ic:'✸',rag:'g'},{id:'move_outs',l:'Move outs',ic:'⊠',rag:'g'}]},
@@ -853,11 +880,12 @@
     settings:'People, access and integration settings.',
     map:'Will plot your branches and property locations from Street.'
   };
-  var HUB_VERSION='0.90', BUILD='26 Jun 2026';
-  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1};
+  var HUB_VERSION='0.91', BUILD='26 Jun 2026';
+  var LIVE_VIEWS={home:1,connections:1,status:1,ask:1,enquiries:1,listings:1,reviews:1,roadmap:1,staff:1,feed:1,changelog:1,profile:1,viewings:1,valuations:1,contacts:1,sales:1,vendors:1,landlords:1,tenants:1,solicitors:1,properties_all:1,property_keys:1,tenancies:1,inspections:1,maintenance_jobs:1,move_outs:1,deposits:1,rightmove:1,rmperf:1,calls:1};
   var GENVIEWS={sales:'Sales',vendors:'Vendors',landlords:'Landlords',tenants:'Tenants',solicitors:'Solicitors',properties_all:'All properties',property_keys:'Property keys',tenancies:'Tenancies',inspections:'Inspections',maintenance_jobs:'Maintenance jobs',move_outs:'Move outs'};
-  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0'}; VER.profile='1.2';
+  var VER={home:'1.5',connections:'1.10',status:'1.0',ask:'1.0',enquiries:'2.2',listings:'1.3',reviews:'1.0',roadmap:'1.0',staff:'3.0',feed:'1.1',profile:'1.1',changelog:'1.0',viewings:'1.2',valuations:'1.2',contacts:'1.2',deposits:'1.0',rightmove:'1.0',rmperf:'1.0',calls:'1.0'}; VER.profile='1.2';
   var CHANGELOG=[
+    {v:'0.91',d:'26 Jun 2026',items:['Phone calls are in the hub. New Calls screen ingests the call records exported from the phone system (Zeus · Plustel) and matches every call to a contact by number, so you see who rang, which way (in/out), how long, whether it was missed, and which line or person took it. Upload the CSV from Zeus and it lands instantly — inbound/outbound/missed totals up top, every call searchable below. First step to call history showing on each contact, and the route to automating the pull once Plustel grant API access.']},
     {v:'0.90',d:'26 Jun 2026',items:['Sales now open as a full deal, not a one-line row. Click any sale to see both sides pulled live from Street: the price and status, the exchange and completion timeline, the buyer (with their position), the vendor, both solicitors, and the notes on the file. First result of a full data audit across every screen — tenancies, maintenance and more get the same treatment next.']},
     {v:'0.89',d:'26 Jun 2026',items:['Viewings come alive. Click any viewing (on the Viewings screen or a property) to open its full detail, pulled live from Street: who viewed it and how strong a buyer they are (lead rating, buying and financial position), the vendor, who conducted it, the date and time, whether it was confirmed or a no-show, plus every note and any written feedback with its interest and price rating. The Viewings list now opens straight into this detail. A viewing used to be a single line; now it tells the whole story.']},
     {v:'0.88',d:'26 Jun 2026',items:['A property now shows the real activity around it, pulled live from Street: every viewing, every offer (with amount and status), the sale itself, and the notes on the file. Until now the page looked empty because the synced viewings had lost their link to the property, so nothing joined up. We now read a property\'s activity live, so opening Mike Hind\'s 18 Runswick Road shows its 6 viewings, the offer and the agreed sale, and his profile shows those counts too. The underlying sync link will be repaired next so the Viewings screen groups by property as well.']},
@@ -1534,6 +1562,7 @@
     else if(id==='feed')body=viewFeed();
     else if(id==='changelog')body=viewChangelog();
     else if(id==='viewings')body=viewViewings();
+    else if(id==='calls')body=viewCalls();
     else if(id==='valuations')body=viewValuations();
     else if(id==='contacts')body=viewContacts();
     else if(id==='property')return viewProperty();
