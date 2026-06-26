@@ -2727,6 +2727,35 @@ export default {
       const jobs = [];
       for (let ri = 0; ri < roles.length; ri++) { const ds = roles[ri].dataset; const ric = roleInc[ds]; if (ric) jobs.push(pullRel("/" + ds + "/" + encodeURIComponent(roles[ri].id) + "?include=" + ric.inc, ric.map)); }
       try { await Promise.all(jobs); } catch (_) {}
+      // Enrich each valuation with its property, valuer, branch and instruction. A vendor's valuation is the spine
+      // of their relationship (appraisal -> instruction -> the home we're selling for them), so this surfaces who
+      // valued it, from which branch, what it was listed at, and links the actual property. Street only returns
+      // these links with ?include, so we fetch each valuation once more with the chain.
+      try {
+        await Promise.all(related.valuations.map(async function (vrec) {
+          let vr; try { vr = await streetGet(env, "/valuations/" + encodeURIComponent(vrec.id) + "?include=property,valuer,branch,salesInstruction,lettingsInstruction"); } catch (_) { return; }
+          const vd = vr && vr.body && vr.body.data; if (!vd || !vd.relationships) return;
+          const inc = {}; (((vr.body && vr.body.included) || [])).forEach(function (x) { inc[x.type + ":" + x.id] = x; });
+          const relOf = function (nm) { const dr = vd.relationships[nm] && vd.relationships[nm].data; if (!dr) return null; return inc[dr.type + ":" + dr.id] || { id: dr.id, type: dr.type, attributes: {} }; };
+          const prop = relOf("property"), valuer = relOf("valuer"), br = relOf("branch"), inst = relOf("salesInstruction") || relOf("lettingsInstruction");
+          if (valuer && valuer.attributes) { const va = valuer.attributes; vrec.valuer = _t(va.name || ((va.first_name || "") + " " + (va.last_name || "")).trim()) || null; }
+          if (br && br.attributes) vrec.branch = _t(br.attributes.name || br.attributes.branch_name) || null;
+          if (inst && inst.attributes) { vrec.instructedAt = inst.attributes.instructed_at || inst.attributes.created_at || null; if (inst.attributes.marketing_price != null) vrec.marketingPrice = inst.attributes.marketing_price; }
+          if (prop && prop.id) {
+            const pa = prop.attributes || {};
+            const plabel = _t(pa.display_address || pa.address || pa.public_address) || vrec.label;
+            vrec.propertyId = prop.id; if (plabel) vrec.label = plabel;
+            if (!related.properties.some(function (p) { return p.id === prop.id; })) related.properties.push({ id: prop.id, label: plabel, date: pa.created_at || null, status: _t(pa.status || pa.market_status || pa.sale_status) || null, amount: (pa.price != null ? pa.price : (pa.marketing_price != null ? pa.marketing_price : null)), sub: null });
+          }
+        }));
+      } catch (_) {}
+      // For each linked property, attach its local downstream activity (viewings + website enquiries) so the
+      // profile shows the sale happening around the person, not just the bare listing.
+      for (let pi = 0; pi < related.properties.length; pi++) {
+        const p = related.properties[pi];
+        try { const vc = await db.prepare("SELECT COUNT(*) AS n FROM street_viewings WHERE property_id = ?").bind(p.id).first(); p.viewings = (vc && vc.n) || 0; } catch (_) {}
+        try { const ec = await db.prepare("SELECT COUNT(*) AS n FROM enquiries WHERE property_id = ?").bind(p.id).first(); p.enquiries = (ec && ec.n) || 0; } catch (_) {}
+      }
       const properties = related.properties;
       const byKind = {}; enq.forEach(function (e) { const k = e.kind || "contact"; byKind[k] = (byKind[k] || 0) + 1; });
       const det = { id: contact.id, name: name, title: attr.title || null, emails: emails.length ? emails : (email ? [email] : []), phones: phones.length ? phones : (contact.phone ? [contact.phone] : []), address: addr, marketing: mk, statuses: (attr.statuses && attr.statuses.length) ? attr.statuses : [], created_at: contact.created_at || attr.created_at || null };
