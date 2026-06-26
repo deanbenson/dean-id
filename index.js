@@ -1963,7 +1963,7 @@ export default {
     // Admin / client-data endpoints may ONLY be reached through that Access-protected alias, so the
     // shared key alone can no longer pull client data — you have to be signed in. Public endpoints
     // (search, reviews, property, /api/up, team, social, etc.) are untouched.
-    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sale-hub","/api/phone-import","/api/phone-calls","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
+    const ADMIN_PATHS = new Set(["/api/health","/api/leads","/api/today","/api/hub","/api/hub-ask","/api/enquiries","/api/local","/api/record","/api/property-hub","/api/contact-hub","/api/viewing-hub","/api/sale-hub","/api/phone-import","/api/phone-calls","/api/recording-upload","/api/recordings","/api/recording","/api/sync-status","/api/sync-diag","/api/sync-now","/api/sync-test","/api/sync-probe","/api/data-audit","/api/hub-search","/api/branches","/api/tds","/api/tds-upload","/api/rightmove-leads","/api/rightmove-performance","/api/rightmove-sync"]);
     if (ADMIN_PATHS.has(path) && !viaAccess) {
       return new Response(JSON.stringify({ ok: false, error: "login required" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8" } });
     }
@@ -2942,6 +2942,60 @@ export default {
       const stats = {}; try { const sr = await db.prepare("SELECT direction, COUNT(*) AS n FROM phone_calls GROUP BY direction").all(); ((sr && sr.results) || []).forEach(function (x) { stats[x.direction] = x.n; }); } catch (_) {}
       let missed = 0; try { const mr = await db.prepare("SELECT COUNT(*) AS n FROM phone_calls WHERE status IN ('NO ANSWER','BUSY')").first(); missed = (mr && mr.n) || 0; } catch (_) {}
       return respond(JSON.stringify({ ok: true, total: total, rows: rows, q: q, stats: stats, missed: missed, last_import: last }), 200, J);
+    }
+
+    // ---- Call recordings: store the Zeus .wav in R2, transcribe with Workers AI (Whisper) and summarise it. ----
+    // Needs an R2 bucket bound as env.RECORDINGS. Audio lives in R2; transcript/summary + metadata live in D1.
+    if (path === "/api/recording-upload" && request.method === "POST") {
+      const J = { "content-type": "application/json; charset=utf-8" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.RECORDINGS) return respond(JSON.stringify({ ok: false, error: "R2 not configured yet — add an R2 bucket bound as RECORDINGS, then redeploy." }), 200, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: false, error: "no database" }), 500, J);
+      const db = env.gr_estates;
+      const id = String(url.searchParams.get("id") || ("rec_" + Date.now()));
+      const buf = await request.arrayBuffer();
+      if (!buf || buf.byteLength < 200) return respond(JSON.stringify({ ok: false, error: "empty audio" }), 200, J);
+      const r2key = "rec/" + id + ".wav";
+      try { await env.RECORDINGS.put(r2key, buf, { httpMetadata: { contentType: "audio/wav" } }); } catch (e) { return respond(JSON.stringify({ ok: false, error: "r2: " + String((e && e.message) || e) }), 200, J); }
+      let transcript = "", summary = "", aerr = null;
+      try { const tr = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)] }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper: " + String((e && e.message) || e); }
+      if (transcript) { try { const sm = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "system", content: "You summarise estate-agency phone calls for staff. In 2-3 short sentences: who it was likely between, the purpose, and any action or outcome. If the transcript is unclear or too short, say so briefly." }, { role: "user", content: transcript.slice(0, 6000) }], max_tokens: 200, temperature: 0.3 }); summary = (sm && sm.response) || ""; } catch (e) { aerr = (aerr ? aerr + "; " : "") + "summary: " + String((e && e.message) || e); } }
+      const num = url.searchParams.get("number") || null;
+      const normP = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
+      let callId = null;
+      try {
+        await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, error TEXT, created_at TEXT)").run();
+        if (num) { const nn = normP(num); const c = await db.prepare("SELECT id FROM phone_calls WHERE customer_norm = ? ORDER BY started_at DESC LIMIT 1").bind(nn).first(); if (c) callId = c.id; }
+        await db.prepare("INSERT INTO phone_recordings (id,r2_key,bytes,call_id,customer_number,transcript,summary,error,created_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET r2_key=excluded.r2_key,bytes=excluded.bytes,transcript=excluded.transcript,summary=excluded.summary,error=excluded.error")
+          .bind(id, r2key, buf.byteLength, callId, num, transcript, summary, aerr, new Date().toISOString()).run();
+      } catch (e) { return respond(JSON.stringify({ ok: false, error: "store: " + String((e && e.message) || e) }), 200, J); }
+      return respond(JSON.stringify({ ok: true, id: id, bytes: buf.byteLength, transcript_len: transcript.length, summary: summary, error: aerr }), 200, J);
+    }
+
+    // List stored recordings (admin) with transcript + summary.
+    if (path === "/api/recordings" && request.method === "GET") {
+      const J = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+      if (!env || !env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "locked" }), 403, J);
+      const akey = request.headers.get("x-admin-key") || url.searchParams.get("key") || "";
+      if (akey !== env.LEADS_KEY) return respond(JSON.stringify({ ok: false, error: "unauthorised" }), 403, J);
+      if (!env.gr_estates) return respond(JSON.stringify({ ok: true, rows: [] }), 200, J);
+      const db = env.gr_estates;
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS phone_recordings (id TEXT PRIMARY KEY, r2_key TEXT, bytes INTEGER, call_id TEXT, customer_number TEXT, transcript TEXT, summary TEXT, error TEXT, created_at TEXT)").run(); } catch (_) {}
+      let rows = []; try { const r = await db.prepare("SELECT id, bytes, call_id, customer_number, transcript, summary, error, created_at FROM phone_recordings ORDER BY created_at DESC LIMIT 200").all(); rows = (r && r.results) || []; } catch (_) {}
+      return respond(JSON.stringify({ ok: true, rows: rows, r2: !!env.RECORDINGS }), 200, J);
+    }
+
+    // Stream a recording's audio from R2. Reached via /api/admin/recording (Access cookie) so an <audio> tag can
+    // play it without a header; the ADMIN_PATHS gate already enforces the Access login.
+    if (path === "/api/recording" && request.method === "GET") {
+      if (!env || !env.RECORDINGS) return new Response("not found", { status: 404 });
+      const id = String(url.searchParams.get("id") || "");
+      if (!id) return new Response("bad id", { status: 400 });
+      const obj = await env.RECORDINGS.get("rec/" + id + ".wav");
+      if (!obj) return new Response("not found", { status: 404 });
+      return new Response(obj.body, { headers: { "content-type": "audio/wav", "cache-control": "private, max-age=3600" } });
     }
 
     // What's in the local synced copy — row counts + last sync per dataset. Admin-gated.

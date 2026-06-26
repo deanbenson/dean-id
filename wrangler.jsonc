@@ -40,5 +40,11 @@
 	],
 	"ai": {
 		"binding": "AI"
-	}
+	},
+	"r2_buckets": [
+		{
+			"binding": "RECORDINGS",
+			"bucket_name": "gr-estates-recordings"
+		}
+	]
 }
