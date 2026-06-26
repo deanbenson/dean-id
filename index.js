@@ -2960,7 +2960,7 @@ export default {
       const r2key = "rec/" + id + ".wav";
       try { await env.RECORDINGS.put(r2key, buf, { httpMetadata: { contentType: "audio/wav" } }); } catch (e) { return respond(JSON.stringify({ ok: false, error: "r2: " + String((e && e.message) || e) }), 200, J); }
       let transcript = "", summary = "", aerr = null;
-      try { const tr = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)] }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper: " + String((e && e.message) || e); }
+      try { const tr = await env.AI.run("@cf/openai/whisper", { audio: [...new Uint8Array(buf)], language: "en" }); transcript = (tr && (tr.text || tr.transcription)) || ""; } catch (e) { aerr = "whisper: " + String((e && e.message) || e); }
       if (transcript) { try { const sm = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "system", content: "You summarise estate-agency phone calls for staff. In 2-3 short sentences: who it was likely between, the purpose, and any action or outcome. If the transcript is unclear or too short, say so briefly." }, { role: "user", content: transcript.slice(0, 6000) }], max_tokens: 200, temperature: 0.3 }); summary = (sm && sm.response) || ""; } catch (e) { aerr = (aerr ? aerr + "; " : "") + "summary: " + String((e && e.message) || e); } }
       const num = url.searchParams.get("number") || null;
       const normP = function (s) { let d = String(s || "").replace(/\D/g, ""); if (d.length > 10 && d.indexOf("44") === 0) d = d.slice(2); return d.slice(-10); };
