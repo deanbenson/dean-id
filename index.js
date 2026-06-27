@@ -3589,6 +3589,14 @@ export default {
       });
     }
 
+    if (path === "/.well-known/mta-sts.txt") {
+      const policy = "version: STSv1\nmode: testing\nmx: smtp.google.com\nmx: aspmx.l.google.com\nmx: *.aspmx.l.google.com\nmax_age: 86400\n";
+      return respond(policy, 200, {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=86400"
+      });
+    }
+
     if (path === "/robots.txt") {
       const robots = [
         "# dean.id: humans and machines welcome",

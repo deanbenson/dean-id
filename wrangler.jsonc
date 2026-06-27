@@ -17,6 +17,10 @@
 		{
 			"pattern": "www.dean.id",
 			"custom_domain": true
+		},
+		{
+			"pattern": "mta-sts.dean.id",
+			"custom_domain": true
 		}
 	],
 	"kv_namespaces": [
