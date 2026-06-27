@@ -215,7 +215,7 @@ const HOME = `<!doctype html>
   "mainEntityOfPage": "https://dean.id/v1/me"
 }
 </script>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>${STYLE}</style>
 </head>
 <body>
@@ -633,7 +633,7 @@ function errorPage(code, method, path) {
 <meta name="description" content="${code} ${reason} — dean.id is a real API. Try GET /v1/me.">
 <meta name="theme-color" content="#111113">
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><rect x='30' y='30' width='18' height='40' fill='%2328c840'/></svg>">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>${STYLE}
   .badge200.e4 { background: #3a1518; color: #ff6b5e; }
   .badge200.e5 { background: #3a2a12; color: #f0a13b; }
@@ -3582,7 +3582,7 @@ export default {
     }
 
     if (path === "/favicon.ico" || path === "/favicon.svg") {
-      const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="#0d1117"/><rect x="30" y="30" width="18" height="40" fill="#28c840"/></svg>`;
+      const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#111113"/><g transform="translate(107.49 342.69) scale(0.11420 -0.11420)" fill="#EDEDED"><path d="M934 956V1556H1294V0H934V162Q860 63 771.0 17.0Q682 -29 565 -29Q358 -29 225.0 135.5Q92 300 92 559Q92 818 225.0 982.5Q358 1147 565 1147Q681 1147 770.5 1100.5Q860 1054 934 956ZM698 231Q813 231 873.5 315.0Q934 399 934 559Q934 719 873.5 803.0Q813 887 698 887Q584 887 523.5 803.0Q463 719 463 559Q463 399 523.5 315.0Q584 231 698 231Z"/></g><rect x="286" y="235" width="117" height="112" fill="#28C840"/></svg>`;
       return respond(icon, 200, {
         "content-type": "image/svg+xml",
         "cache-control": "public, max-age=604800"
