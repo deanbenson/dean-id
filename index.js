@@ -7,6 +7,12 @@ const ME = {
   contact: "hello@dean.id",
   work: "https://dean.id/v1/work",
   built_by: "dean.id",
+  company: {
+    legal_name: "Dean.id Ltd",
+    company_no: "11718666",
+    registered: "England & Wales",
+    registered_office: "24 Finkle Street, Thirsk YO7 1DA"
+  },
   _comment: "yes, I tag my own work"
 };
 
@@ -159,12 +165,6 @@ const STYLE = `
     color: #8a8a93;
   }
   .get a { color: #b8b8c0; }
-  .legal {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 11px;
-    color: #6e6e78;
-    text-align: center;
-  }
   .toggle {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 13.5px;
@@ -238,8 +238,7 @@ const HOME = `<!doctype html>
   <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
-    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
-    <span class="legal">Dean.id Ltd &middot; Company No. 11718666 &middot; Registered in England &amp; Wales &middot; 24 Finkle Street, Thirsk YO7 1DA</span>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a> &nbsp;&middot;&nbsp; <a href="/v1/me">legal</a></span>
   </p>
   </main>
 <script>
@@ -664,8 +663,7 @@ function errorPage(code, method, path) {
   <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
-    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a></span>
-    <span class="legal">Dean.id Ltd &middot; Company No. 11718666 &middot; Registered in England &amp; Wales &middot; 24 Finkle Street, Thirsk YO7 1DA</span>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a> &nbsp;&middot;&nbsp; <a href="/v1/me">legal</a></span>
   </p>
   </main>
 <script>
