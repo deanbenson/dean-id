@@ -159,6 +159,12 @@ const STYLE = `
     color: #8a8a93;
   }
   .get a { color: #b8b8c0; }
+  .legal {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 11px;
+    color: #6e6e78;
+    text-align: center;
+  }
   .toggle {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 13.5px;
@@ -233,6 +239,7 @@ const HOME = `<!doctype html>
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
     <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a></span>
+    <span class="legal">Dean.id Ltd &middot; Company No. 11718666 &middot; Registered in England &amp; Wales &middot; 24 Finkle Street, Thirsk YO7 1DA</span>
   </p>
   </main>
 <script>
@@ -658,6 +665,7 @@ function errorPage(code, method, path) {
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
     <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a></span>
+    <span class="legal">Dean.id Ltd &middot; Company No. 11718666 &middot; Registered in England &amp; Wales &middot; 24 Finkle Street, Thirsk YO7 1DA</span>
   </p>
   </main>
 <script>
