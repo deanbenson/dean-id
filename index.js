@@ -238,7 +238,7 @@ const HOME = `<!doctype html>
   <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
-    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a> &nbsp;&middot;&nbsp; <a href="/v1/me">legal</a></span>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/badge">the stamp</a> &nbsp;&middot;&nbsp; <a href="/legal">legal</a></span>
   </p>
   </main>
 <script>
@@ -663,7 +663,7 @@ function errorPage(code, method, path) {
   <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
   <p class="foot">
     <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
-    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a> &nbsp;&middot;&nbsp; <a href="/v1/me">legal</a></span>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a> &nbsp;&middot;&nbsp; <a href="/legal">legal</a></span>
   </p>
   </main>
 <script>
@@ -704,6 +704,112 @@ function errorPage(code, method, path) {
     out.className = human ? 'human' : '';
     document.getElementById('m').textContent = human ? '${code}' : METHOD;
     document.getElementById('u').textContent = human ? 'what happened, in plain english' : URLTXT;
+    modeLink.innerHTML = human ? 'see the techie version' : '<span class="dot"></span>not a robot? read this in plain english';
+    modeLink.setAttribute('href', human ? '#' : '#human');
+    typeSet(human ? humanLines : jsonLines, instant || reduced);
+  }
+  modeLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    var next = mode === 'machine' ? 'human' : 'machine';
+    if (history.replaceState) { history.replaceState(null, '', next === 'human' ? '#human' : location.pathname); }
+    setMode(next, false);
+  });
+  if (location.hash === '#human') {
+    setMode('human', true);
+  } else {
+    timer = setTimeout(function () { typeSet(jsonLines, reduced); }, 350);
+  }
+</script>
+</body>
+</html>`;
+}
+
+// Company trading disclosure (Companies Act 2006 / 2015 Regs reg 25), rendered in the
+// same terminal-window style as the homepage: syntax-highlighted JSON + plain-english toggle.
+function legalPage() {
+  const lines = [
+    '<span class="p">{</span>',
+    '  <span class="k">"legal_name"</span>: <span class="s">"Dean.id Ltd"</span>,',
+    '  <span class="k">"company_no"</span>: <span class="s">"11718666"</span>,',
+    '  <span class="k">"registered"</span>: <span class="s">"England &amp; Wales"</span>,',
+    '  <span class="k">"registered_office"</span>: <span class="s">"24 Finkle Street, Thirsk YO7 1DA"</span>,',
+    '  <span class="k">"status"</span>: <span class="g">"active"</span>',
+    '<span class="p">}</span>'
+  ];
+  const human = [
+    '<span class="s">Dean.id Ltd</span> is a limited company registered in England &amp; Wales.',
+    'Company number <span class="s">11718666</span>.',
+    'Registered office: 24 Finkle Street, Thirsk YO7 1DA.',
+    'Back <a href="/" tabindex="-1">home</a> &middot; the API lives at <a href="/v1/me" tabindex="-1">dean.id/v1/me</a>.'
+  ];
+  const jl = JSON.stringify(lines).replace(/</g, "\\u003c");
+  const hl = JSON.stringify(human).replace(/</g, "\\u003c");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>legal · dean.id</title>
+<meta name="description" content="Dean.id Ltd — company registration details.">
+<meta name="theme-color" content="#111113">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>${STYLE}</style>
+</head>
+<body>
+  <h1 class="sr">dean.id — company details</h1>
+  <main style="display: contents;">
+  <div class="win" role="img" aria-label="Company registration details for Dean.id Ltd, shown as an API response; a human-readable toggle follows.">
+    <div class="bar">
+      <span class="method" id="m">GET</span>
+      <span class="url" id="u">https://dean.id/legal</span>
+      <span class="badge200" id="badge">200 OK</span>
+    </div>
+    <div id="out" aria-hidden="true"></div>
+  </div>
+  <a href="#human" id="mode" class="toggle"><span class="dot"></span>not a robot? read this in plain english</a>
+  <p class="foot">
+    <a class="stamp" href="https://dean.id"><img src="/badge.svg?theme=transparent-dark" alt="dean.id" width="92" height="26" style="display:block"></a>
+    <span class="get"><span style="font-family:ui-monospace,Menlo,monospace">curl dean.id/v1/me</span> &nbsp;&middot;&nbsp; <a href="/">home</a></span>
+  </p>
+  </main>
+<script>
+  var jsonLines = ${jl};
+  var humanLines = ${hl};
+  var out = document.getElementById('out');
+  var modeLink = document.getElementById('mode');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timer = null;
+  var mode = 'machine';
+  function render(arr, n, cur) {
+    var h = '';
+    for (var k = 0; k < n; k++) {
+      h += '<div>' + arr[k] + (cur && k === n - 1 ? '<span class="cursor"></span>' : '') + '</div>';
+    }
+    return h;
+  }
+  function typeSet(arr, instant) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var i = instant ? arr.length : 0;
+    function step() {
+      if (i < arr.length) {
+        out.innerHTML = render(arr, i + 1, true);
+        i++;
+        timer = setTimeout(step, 140);
+      } else {
+        out.innerHTML = render(arr, arr.length, false);
+        document.getElementById('badge').classList.add('show');
+      }
+    }
+    step();
+  }
+  function setMode(m, instant) {
+    mode = m;
+    var human = m === 'human';
+    out.className = human ? 'human' : '';
+    document.getElementById('m').textContent = human ? 'HI' : 'GET';
+    document.getElementById('u').textContent = human ? 'the legal bit, in plain english' : 'https://dean.id/legal';
     modeLink.innerHTML = human ? 'see the techie version' : '<span class="dot"></span>not a robot? read this in plain english';
     modeLink.setAttribute('href', human ? '#' : '#human');
     typeSet(human ? humanLines : jsonLines, instant || reduced);
@@ -2299,6 +2405,14 @@ export default {
       return respond(JSON.stringify(ME, null, 2) + "\n", 200, {
         "content-type": "application/json; charset=utf-8",
         "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=3600"
+      });
+    }
+
+    // Company trading disclosure, rendered in the homepage's terminal-window style.
+    if (path === "/legal") {
+      return respond(legalPage(), 200, {
+        "content-type": "text/html; charset=utf-8",
         "cache-control": "public, max-age=3600"
       });
     }
