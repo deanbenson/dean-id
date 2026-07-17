@@ -29,3 +29,9 @@ GOODLORD_API_KEY=""
 
 # DocuSign — Admin > Apps & Keys > Integration Key
 DOCUSIGN_INTEGRATION_KEY=""
+
+# Rightmove - Real Time Leads Svix signing secret (whsec_...) that verifies the
+# signature on POSTs to /api/rightmove/leads. Supplied by Rightmove ADF Support in a
+# password-protected zip. For production set the real value with:
+#   npx wrangler secret put RIGHTMOVE_WEBHOOK_SECRET
+RIGHTMOVE_WEBHOOK_SECRET=""

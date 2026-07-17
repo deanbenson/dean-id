@@ -54,5 +54,16 @@
 			"bucket_name": "gr-estates-recordings",
 			"binding": "gr_estates_recordings"
 		}
+	],
+	"vars": {
+		"RIGHTMOVE_NETWORK_ID": "14258",
+		"RIGHTMOVE_BRANCH_IDS": "217556",
+		"RIGHTMOVE_RTDF_BASE": "https://adfapi.adftest.rightmove.com"
+	},
+	"mtls_certificates": [
+		{
+			"binding": "RIGHTMOVE_RTDF",
+			"certificate_id": "f79ae5fe-8b27-4088-835a-00432cfa307d"
+		}
 	]
 }

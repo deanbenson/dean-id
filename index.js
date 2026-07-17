@@ -2286,28 +2286,29 @@ export default {
       let perfStored = 0, listStored = 0; const errors = [];
       for (const bid of branches) {
         try {
-          const resp = await rtdf("/v1/property/getbranchperformance", { Network_ID: num(net), Branch_ID: num(bid), Export_Date: exportDate });
+          const resp = await rtdf("/v1/property/getbranchperformance", { network: { network_id: num(net) }, branch: { branch_id: num(bid) }, export_date: exportDate });
           const d = resp.json || {};
-          if (d && d.Success) {
-            const ed = toIso(d.Export_Date) || toIso(exportDate);
-            await db.prepare("INSERT OR REPLACE INTO rightmove_branch_totals (export_date,branch_id,email_leads,phone_leads,replication_lag,synced_at) VALUES (?,?,?,?,?,?)").bind(ed, String(bid), num(d.Email_Leads), num(d.Phone_Leads), num(d.Replication_Lag), nowIso).run();
-            const props = d.Property_Data || d.Properties || [];
+          if (d && d.success) {
+            const ed = toIso(d.export_date) || toIso(exportDate);
+            const perf = d.performance_data || {};
+            await db.prepare("INSERT OR REPLACE INTO rightmove_branch_totals (export_date,branch_id,email_leads,phone_leads,replication_lag,synced_at) VALUES (?,?,?,?,?,?)").bind(ed, String(bid), num(perf.email_leads), num(perf.phone_leads), num(d.replication_lag), nowIso).run();
+            const props = perf.property_data || [];
             for (const p of (Array.isArray(props) ? props : [])) {
-              await db.prepare("INSERT OR REPLACE INTO rightmove_branch_perf (export_date,branch_id,agent_ref,rightmove_id,rightmove_url,display_address,price,channel,featured,premium,summary_total,summary_desktop,summary_mobile,detail_total,detail_desktop,detail_mobile,raw_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(ed, String(bid), str(p.Agent_Ref), str(p.Rightmove_Id || p.Rightmove_ID), str(p["Rightmove URL"] || p.Rightmove_URL), str(p.Display_Address), str(p.Price), str(p.Channel), (p.Featured_Property ? 1 : 0), (p.Premium_Listing ? 1 : 0), num(p.Total_Summary_Views), num(p.Desktop_Summary_Views), num(p.Mobile_Summary_Views), num(p.Total_Detail_Views), num(p.Desktop_Detail_Views), num(p.Mobile_Detail_Views), JSON.stringify(p), nowIso).run();
+              await db.prepare("INSERT OR REPLACE INTO rightmove_branch_perf (export_date,branch_id,agent_ref,rightmove_id,rightmove_url,display_address,price,channel,featured,premium,summary_total,summary_desktop,summary_mobile,detail_total,detail_desktop,detail_mobile,raw_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(ed, String(bid), str(p.agent_ref), str(p.rightmove_id), str(p.rightmove_url), str(p.display_address), str(p.price), str(p.channel), (p.featured_property ? 1 : 0), (p.premium_listing ? 1 : 0), num((p.summary_views||{}).total_summary_views), num((p.summary_views||{}).desktop_summary_views), num((p.summary_views||{}).mobile_summary_views), num((p.detail_views||{}).total_detail_views), num((p.detail_views||{}).desktop_detail_views), num((p.detail_views||{}).mobile_detail_views), JSON.stringify(p), nowIso).run();
               perfStored++;
             }
-          } else { errors.push("perf " + bid + ": " + ((d && (d.Error_Description || d.Message)) || resp.status)); }
+          } else { errors.push("perf " + bid + ": " + ((d && d.message) || resp.status)); }
         } catch (e) { errors.push("perf " + bid + ": " + String((e && e.message) || e)); }
         try {
-          const resp = await rtdf("/v1/property/getbranchpropertylist", { Network_ID: num(net), Branch_ID: num(bid) });
+          const resp = await rtdf("/v1/property/getbranchpropertylist", { network: { network_id: num(net) }, branch: { branch_id: num(bid) } });
           const d = resp.json || {};
-          if (d && d.Success) {
-            const props = d.Property || d.Properties || d.Property_Data || [];
+          if (d && d.success) {
+            const props = d.property || d.properties || [];
             for (const p of (Array.isArray(props) ? props : [])) {
-              await db.prepare("INSERT OR REPLACE INTO rightmove_property_list (branch_id,channel,rightmove_id,agent_ref,update_date,snapshot_at) VALUES (?,?,?,?,?,?)").bind(String(bid), str(p.Channel), str(p.Rightmove_ID || p.Rightmove_Id), str(p.Agent_Ref), toIso(p.Update_Date), nowIso).run();
+              await db.prepare("INSERT OR REPLACE INTO rightmove_property_list (branch_id,channel,rightmove_id,agent_ref,update_date,snapshot_at) VALUES (?,?,?,?,?,?)").bind(String(bid), str(p.channel), str(p.rightmove_id), str(p.agent_ref), toIso(p.update_date), nowIso).run();
               listStored++;
             }
-          } else { errors.push("list " + bid + ": " + ((d && (d.Error_Description || d.Message)) || resp.status)); }
+          } else { errors.push("list " + bid + ": " + ((d && d.message) || resp.status)); }
         } catch (e) { errors.push("list " + bid + ": " + String((e && e.message) || e)); }
       }
       return respond(JSON.stringify({ ok: true, export_date: exportDate, perf_stored: perfStored, list_stored: listStored, errors: errors }), 200, J);
