@@ -2040,32 +2040,13 @@ async function runHealth(env, live) {
 }
 
 // ---------------------------------------------------------------------------
-// Hull of a Party demo — enquiry capture.
-// Stores enquiries in the LISTINGS KV under "hop:enquiry:*" (180-day TTL) and
-// serves a simple admin list. Change HOP_ADMIN_KEY before sharing the URL:
+// Hull of a Party — archive of the demo-era enquiries.
+// The business now lives at hullofaparty.co.uk with its own form and its own KV.
+// This read-only list is all that remains here, so the entries captured while it
+// was a demo (LISTINGS KV, "hop:enquiry:*", 180-day TTL) are not stranded. Once
+// those have expired or been cleared, this whole block can go:
 // https://dean.id/demos/hullofaparty/enquiries?key=<HOP_ADMIN_KEY>
 const HOP_ADMIN_KEY = "confetti-and-chaos";
-
-async function hopEnquire(request, env) {
-  const json = (body, status) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
-  let data;
-  try { data = await request.json(); } catch (_) { return json({ ok: false, error: "bad json" }, 400); }
-  if (data.website) return json({ ok: true }, 200); // honeypot field: bots fill it, humans never see it
-  const clean = (v, n) => String(v || "").slice(0, n).trim();
-  const entry = {
-    name: clean(data.name, 120),
-    contact: clean(data.contact, 160),
-    date: clean(data.date, 40),
-    occasion: clean(data.occasion, 60),
-    message: clean(data.message, 2000),
-    at: new Date().toISOString(),
-    ip: request.headers.get("cf-connecting-ip") || ""
-  };
-  if (!entry.name || !entry.contact) return json({ ok: false, error: "name and contact required" }, 400);
-  const key = "hop:enquiry:" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await env.LISTINGS.put(key, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 180 });
-  return json({ ok: true }, 200);
-}
 
 async function hopEnquiries(request, env, url) {
   if (url.searchParams.get("key") !== HOP_ADMIN_KEY) return new Response("Not found.", { status: 404 });
@@ -2445,12 +2426,18 @@ export default {
       return await propertyShare(request, env, url);
     }
 
-    // Hull of a Party demo — working enquiry form.
-    if (path === "/demos/hullofaparty/enquire" && request.method === "POST") {
-      return await hopEnquire(request, env);
-    }
+    // Hull of a Party has its own domain now. The demo copy has been removed and
+    // everything under the old path is redirected so the two sites never compete
+    // in search. The enquiries admin stays put: it is the only way to read the
+    // demo-era entries still sitting in KV.
     if (path === "/demos/hullofaparty/enquiries") {
       return await hopEnquiries(request, env, url);
+    }
+    if (path === "/demos/hullofaparty" || path.startsWith("/demos/hullofaparty/")) {
+      return respond(null, 301, {
+        location: "https://hullofaparty.co.uk/",
+        "cache-control": "public, max-age=3600"
+      });
     }
 
     if (path === "/v1/me") {
