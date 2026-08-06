@@ -93,7 +93,7 @@ nav{position:sticky;top:0;z-index:60;background:rgba(244,237,225,.9);backdrop-fi
 .heroart{position:relative;height:560px}
 .arch{border-radius:999px 999px 18px 18px;overflow:hidden;position:relative}
 .heroart .a1{position:absolute;right:0;top:0;width:74%;height:100%;background:var(--dark);box-shadow:0 30px 80px rgba(23,19,16,.28)}
-.heroart .a2{position:absolute;left:0;bottom:-30px;width:44%;height:62%;background:var(--champ);box-shadow:0 30px 60px rgba(23,19,16,.18)}
+.heroart .a2{position:absolute;left:0;bottom:-30px;width:44%;height:62%;background:var(--champ);border:6px solid var(--ivory);box-shadow:0 30px 60px rgba(23,19,16,.18)}
 .heroart .outline{position:absolute;left:6%;top:-24px;width:74%;height:100%;border:1px solid var(--gold);border-radius:999px 999px 18px 18px;opacity:.6}
 .heroart svg{position:absolute;inset:0;width:100%;height:100%}
 .spark{position:absolute;color:var(--gold);animation:tw 3.5s ease-in-out infinite}
@@ -144,6 +144,9 @@ nav{position:sticky;top:0;z-index:60;background:rgba(244,237,225,.9);backdrop-fi
 .look figcaption b{color:var(--gold-b);font-weight:800}
 .arch svg{position:absolute;inset:0;width:100%;height:100%}
 .arch img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.heroart .arch img{transition:transform 8s ease}
+.ipost img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.ipost:hover img{transform:scale(1.06)}
 /* rules */
 .rules{background:var(--ivory)}
 .ruleitem{display:grid;grid-template-columns:110px 1fr;gap:34px;padding:44px 0;border-top:1px solid var(--line);align-items:start}
@@ -277,24 +280,13 @@ footer .stack a{display:block;padding:5px 0}
         <span>By Lily &amp; Ellie</span>
       </div>
     </div>
-    <div class="heroart" aria-hidden="true">
-      <div class="outline"></div>
-      <div class="arch a1">
-        <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">
-          <circle cx="36" cy="60" r="46" fill="#E5D5B8"/><circle cx="98" cy="34" r="30" fill="#D8C49C"/><circle cx="150" cy="66" r="40" fill="#D3B06E"/><circle cx="210" cy="36" r="26" fill="#F4EDE1"/><circle cx="256" cy="72" r="38" fill="#8A6D3F"/><circle cx="290" cy="130" r="30" fill="#D8C49C"/><circle cx="66" cy="118" r="26" fill="#8A6D3F"/><circle cx="14" cy="140" r="30" fill="#D3B06E"/>
-          <circle cx="252" cy="332" r="44" fill="#D8C49C"/><circle cx="292" cy="270" r="30" fill="#E5D5B8"/><circle cx="206" cy="376" r="30" fill="#D3B06E"/><circle cx="286" cy="380" r="26" fill="#F4EDE1"/>
-          <circle cx="41" cy="55" r="12" fill="rgba(255,255,255,.32)"/><circle cx="154" cy="58" r="10" fill="rgba(255,255,255,.32)"/><circle cx="248" cy="326" r="12" fill="rgba(255,255,255,.25)"/>
-        </svg>
-      </div>
-      <div class="arch a2">
-        <svg viewBox="0 0 180 260" preserveAspectRatio="xMidYMid slice">
-          <circle cx="150" cy="40" r="34" fill="#131011"/><circle cx="96" cy="24" r="24" fill="#8A6D3F"/><circle cx="160" cy="104" r="24" fill="#D8C49C"/><circle cx="40" cy="16" r="20" fill="#D3B06E"/>
-          <circle cx="24" cy="236" r="30" fill="#D3B06E"/><circle cx="76" cy="252" r="22" fill="#131011"/>
-        </svg>
-      </div>
-      <span class="spark" style="right:8%;top:6%;font-size:1.5rem">&#9829;</span>
-      <span class="spark" style="left:2%;top:34%;font-size:1rem;animation-delay:1.2s">&#9829;</span>
-      <span class="spark" style="right:30%;bottom:4%;font-size:1.2rem;animation-delay:2.2s">&#9829;</span>
+    <div class="heroart">
+      <div class="outline" aria-hidden="true"></div>
+      <div class="arch a1"><img src="img/hero-1.jpg" alt="Rose gold, white and champagne balloon garland cascading over a styled birthday table"></div>
+      <div class="arch a2"><img src="img/hero-2.jpg" alt="Black and gold happy birthday banner with silver balloons"></div>
+      <span class="spark" style="right:8%;top:6%;font-size:1.5rem" aria-hidden="true">&#9829;</span>
+      <span class="spark" style="left:2%;top:34%;font-size:1rem;animation-delay:1.2s" aria-hidden="true">&#9829;</span>
+      <span class="spark" style="right:30%;bottom:4%;font-size:1.2rem;animation-delay:2.2s" aria-hidden="true">&#9829;</span>
     </div>
   </div>
 </header>
@@ -537,14 +529,14 @@ footer .stack a{display:block;padding:5px 0}
     <h2>@hullofapartyuk, <em>everywhere</em>.</h2>
     <p class="sub">Every build, before and after. Follow along and steal ideas for your own do.</p>
     <div class="grid">
-      <div class="ipost" style="background:#1C1917"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"><circle cx="60" cy="240" r="66" fill="#E5D5B8"/><circle cx="150" cy="270" r="44" fill="#D3B06E"/><circle cx="240" cy="250" r="56" fill="#D8C49C"/><circle cx="280" cy="170" r="34" fill="#8A6D3F"/><circle cx="65" cy="232" r="15" fill="rgba(255,255,255,.3)"/></svg></div>
-      <div class="ipost" style="background:#E5D5B8"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"><rect x="90" y="90" width="120" height="210" rx="60" fill="#131011"/><circle cx="40" cy="60" r="34" fill="#8A6D3F"/><circle cx="110" cy="34" r="22" fill="#D8C49C"/><circle cx="180" cy="58" r="30" fill="#D3B06E"/><circle cx="250" cy="36" r="20" fill="#F4EDE1"/><circle cx="292" cy="80" r="26" fill="#131011"/></svg></div>
+      <div class="ipost"><img src="img/ig-1.jpg" alt="Pink and silver balloon arch behind a dessert table"></div>
+      <div class="ipost"><img src="img/ig-2.jpg" alt="Neutral balloon garland framing rustic barn doors at a wedding"></div>
       <a class="ipost follow" href="https://www.instagram.com/hullofapartyuk" target="_blank" rel="noopener">
         <div><span class="script" style="font-size:2.3rem;color:var(--gold-b)">Follow the build</span><small>@hullofapartyuk &#8599;</small></div>
       </a>
-      <div class="ipost" style="background:#D8C49C"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"><circle cx="150" cy="150" r="86" fill="#F4EDE1"/><text x="150" y="172" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-style="italic" font-size="64" fill="#B8934E">30</text><circle cx="42" cy="270" r="30" fill="#131011"/><circle cx="262" cy="42" r="26" fill="#D3B06E"/></svg></div>
-      <div class="ipost" style="background:#8A6D3F"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"><circle cx="80" cy="80" r="50" fill="#E5D5B8"/><circle cx="200" cy="60" r="34" fill="#131011"/><circle cx="270" cy="120" r="40" fill="#D8C49C"/><circle cx="240" cy="240" r="56" fill="#D3B06E"/><circle cx="86" cy="72" r="13" fill="rgba(255,255,255,.35)"/></svg></div>
-      <div class="ipost" style="background:#131011"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"><rect x="60" y="60" width="180" height="180" rx="90" fill="none" stroke="#D3B06E" stroke-width="1.5"/><text x="150" y="164" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-style="italic" font-size="40" fill="#E5D5B8">H.P.</text></svg></div>
+      <div class="ipost"><img src="img/ig-3.jpg" alt="Gold and white baby shower backdrop with balloon garland"></div>
+      <div class="ipost"><img src="img/ig-4.jpg" alt="Black and gold happy birthday banner with silver balloons"></div>
+      <div class="ipost"><img src="img/ig-5.jpg" alt="Bright primary colour balloon display at a children's party"></div>
     </div>
     <div class="socialrow">
       <a class="btn btn-line" href="https://www.instagram.com/hullofapartyuk" target="_blank" rel="noopener">Instagram</a>
