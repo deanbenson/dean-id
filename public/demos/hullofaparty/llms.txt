@@ -30,5 +30,5 @@
 - Leave no trace: install before guests arrive, strike after they leave
 
 ## Notes
-- Demo concept site. Reviews and social posts shown are examples while the business launches.
-- This page is a demo build by dean.id (https://dean.id).
+- Reviews and social posts shown are examples while the business launches.
+- Site by dean.id (https://dean.id).
