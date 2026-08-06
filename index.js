@@ -2039,6 +2039,49 @@ async function runHealth(env, live) {
   return snap;
 }
 
+// ---------------------------------------------------------------------------
+// Hull of a Party demo — enquiry capture.
+// Stores enquiries in the LISTINGS KV under "hop:enquiry:*" (180-day TTL) and
+// serves a simple admin list. Change HOP_ADMIN_KEY before sharing the URL:
+// https://dean.id/demos/hullofaparty/enquiries?key=<HOP_ADMIN_KEY>
+const HOP_ADMIN_KEY = "confetti-and-chaos";
+
+async function hopEnquire(request, env) {
+  const json = (body, status) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
+  let data;
+  try { data = await request.json(); } catch (_) { return json({ ok: false, error: "bad json" }, 400); }
+  if (data.website) return json({ ok: true }, 200); // honeypot field: bots fill it, humans never see it
+  const clean = (v, n) => String(v || "").slice(0, n).trim();
+  const entry = {
+    name: clean(data.name, 120),
+    contact: clean(data.contact, 160),
+    date: clean(data.date, 40),
+    occasion: clean(data.occasion, 60),
+    message: clean(data.message, 2000),
+    at: new Date().toISOString(),
+    ip: request.headers.get("cf-connecting-ip") || ""
+  };
+  if (!entry.name || !entry.contact) return json({ ok: false, error: "name and contact required" }, 400);
+  const key = "hop:enquiry:" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await env.LISTINGS.put(key, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 180 });
+  return json({ ok: true }, 200);
+}
+
+async function hopEnquiries(request, env, url) {
+  if (url.searchParams.get("key") !== HOP_ADMIN_KEY) return new Response("Not found.", { status: 404 });
+  const list = await env.LISTINGS.list({ prefix: "hop:enquiry:", limit: 200 });
+  const items = [];
+  for (const k of list.keys) {
+    const v = await env.LISTINGS.get(k.name);
+    if (v) { try { items.push(JSON.parse(v)); } catch (_) {} }
+  }
+  items.sort((a, b) => (a.at < b.at ? 1 : -1));
+  const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const rows = items.map((e) => `<tr><td>${esc((e.at || "").slice(0, 16).replace("T", " "))}</td><td>${esc(e.name)}</td><td>${esc(e.contact)}</td><td>${esc(e.date)}</td><td>${esc(e.occasion)}</td><td>${esc(e.message)}</td></tr>`).join("");
+  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hull of a Party — enquiries</title><style>body{font-family:system-ui,sans-serif;background:#131011;color:#F4EDE1;padding:30px}h1{color:#D3B06E;font-weight:600;font-size:22px}table{border-collapse:collapse;width:100%;font-size:14px;margin-top:18px}td,th{border-bottom:1px solid #3a352e;padding:10px 12px;text-align:left;vertical-align:top}th{color:#D3B06E;text-transform:uppercase;font-size:11px;letter-spacing:.14em}</style><h1>Hull of a Party &#9829; enquiries (${items.length})</h1><table><tr><th>When (UTC)</th><th>Name</th><th>Contact</th><th>Date</th><th>Occasion</th><th>Message</th></tr>${rows}</table>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+
 export default {
   async scheduled(event, env, ctx) {
     const hourly = !(event && event.cron && event.cron !== "0 * * * *");
@@ -2400,6 +2443,14 @@ export default {
     // Property detail page (Worker runs first here) — inject per-property preview tags.
     if (path === "/demos/gr-estates/property.html") {
       return await propertyShare(request, env, url);
+    }
+
+    // Hull of a Party demo — working enquiry form.
+    if (path === "/demos/hullofaparty/enquire" && request.method === "POST") {
+      return await hopEnquire(request, env);
+    }
+    if (path === "/demos/hullofaparty/enquiries") {
+      return await hopEnquiries(request, env, url);
     }
 
     if (path === "/v1/me") {

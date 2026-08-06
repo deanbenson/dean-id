@@ -21,6 +21,9 @@
 <meta name="twitter:description" content="Statement balloons and event styling by Lily &amp; Ellie, Hull &amp; East Yorkshire.">
 <meta name="twitter:image" content="https://dean.id/demos/hullofaparty/og.jpg">
 <meta name="twitter:image:alt" content="Hull of a Party, luxury balloons and event styling in Hull">
+<meta name="theme-color" content="#131011">
+<link rel="apple-touch-icon" href="https://dean.id/demos/hullofaparty/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How far ahead should we book balloon decor in Hull?","acceptedAnswer":{"@type":"Answer","text":"Two to three weeks is comfortable for most parties, and larger events like weddings deserve a couple of months. Short notice is often possible, just ask."}},{"@type":"Question","name":"Do you deliver and set up?","acceptedAnswer":{"@type":"Answer","text":"Always. Every collection includes delivery, install and styling, and most include takedown too."}},{"@type":"Question","name":"Which areas do you cover?","acceptedAnswer":{"@type":"Answer","text":"Hull, Beverley, Cottingham, Hessle, Willerby, Anlaby, Kirk Ella, Hedon, Brough and across the East Riding of Yorkshire."}},{"@type":"Question","name":"Can you match a theme or palette?","acceptedAnswer":{"@type":"Answer","text":"Yes, any theme and any palette, designed from scratch around a Pinterest board, a photo or a few words."}},{"@type":"Question","name":"What happens to everything afterwards?","acceptedAnswer":{"@type":"Answer","text":"We come back and take it all down. Latex balloons are biodegradable, foils are reused where possible, and frames and props are kept for future events."}},{"@type":"Question","name":"Do you take a deposit?","acceptedAnswer":{"@type":"Answer","text":"A small deposit holds the date, with the balance due on the day once everything is set up."}}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Hull of a Party","description":"Statement balloon installations, venue styling and full event design in Hull and East Yorkshire.","image":"https://dean.id/demos/hullofaparty/og.jpg","url":"https://dean.id/demos/hullofaparty/","email":"hello@hullofaparty.co.uk","priceRange":"££","areaServed":["Hull","Beverley","Cottingham","Hessle","Willerby","Hedon","East Riding of Yorkshire"],"address":{"@type":"PostalAddress","addressLocality":"Kingston upon Hull","addressRegion":"East Riding of Yorkshire","addressCountry":"GB"},"founder":[{"@type":"Person","name":"Lily"},{"@type":"Person","name":"Ellie"}],"sameAs":["https://www.instagram.com/hullofapartyuk","https://www.tiktok.com/@hullofapartyuk","https://www.facebook.com/hullofapartyuk"]}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23131011'/%3E%3Cpath d='M16 26C10.5 21.5 6 18 6 13.6 6 10.4 8.4 8.3 11.2 8.3c1.9 0 3.6 1 4.8 2.7 1.2-1.7 2.9-2.7 4.8-2.7 2.8 0 5.2 2.1 5.2 5.3C26 18 21.5 21.5 16 26z' fill='%23D3B06E'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,7 +49,10 @@ img{max-width:100%;display:block}
 a{color:inherit}
 .wrap{max-width:1200px;margin:0 auto;padding:0 26px}
 section{padding:104px 0}
-.eyebrow{display:block;font-size:.72rem;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
+.eyebrow{display:block;font-size:.72rem;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:var(--rust);margin-bottom:22px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2.5px solid var(--gold);outline-offset:3px;border-radius:4px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--ivory);padding:12px 22px;z-index:100;border-radius:0 0 12px 0;font-weight:800}
+.skip:focus{left:0}
 h2{font-size:clamp(2.3rem,5vw,3.6rem);margin-bottom:18px}
 .sub{color:var(--ink-soft);max-width:560px;font-size:1.05rem}
 .center{text-align:center}.center .sub{margin-left:auto;margin-right:auto}
@@ -240,6 +246,7 @@ footer .stack a{display:block;padding:5px 0}
 </style>
 </head>
 <body>
+<a class="skip" href="#services">Skip to content</a>
 <nav>
   <div class="navin">
     <a class="wordmark" href="#top">Hull of a <span class="script">Party</span> <b>&#9829;</b></a>
@@ -258,8 +265,8 @@ footer .stack a{display:block;padding:5px 0}
   <div class="wrap">
     <div>
       <span class="eyebrow">Hull &amp; East Yorkshire</span>
-      <h1>Hull of a<br><span class="script">Party</span> <span class="heart">&#9829;</span></h1>
-      <div class="brandline">Balloons &amp; Decor for Any Occasion <b>&#9829;</b></div>
+      <h1>Hull of a<br><span class="script">Party</span> <span class="heart" aria-hidden="true">&#9829;</span></h1>
+      <div class="brandline">Balloons &amp; Decor for Any Occasion <b aria-hidden="true">&#9829;</b></div>
       <p class="lede">It says it in the name: we throw a hell of a party. Statement balloons, considered styling and full event design, for people who want the room to look as good as the guest list.</p>
       <a class="btn btn-dark" href="#enquire">Start an enquiry</a>&nbsp;&nbsp;
       <a class="lnk" href="#work">View the lookbook</a>
@@ -649,9 +656,13 @@ footer .stack a{display:block;padding:5px 0}
         <label for="f-msg">The vibe</label>
         <textarea id="f-msg" name="message" rows="3" placeholder="Venue, guest count, palettes you love, palettes you hate. Anything helps."></textarea>
       </div>
+      <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+        <label for="f-website">Leave this empty</label>
+        <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
       <div class="full">
         <button class="btn btn-gold" type="submit">Send enquiry</button>
-        <div class="toast" id="toast"></div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
       </div>
     </form>
     <div class="contactside">
@@ -685,7 +696,7 @@ footer .stack a{display:block;padding:5px 0}
       </div>
       <div>
         <div class="head">Where we party</div>
-        <div class="areas">Hull &middot; Beverley &middot; Cottingham &middot; Hessle &middot; Willerby &middot; Anlaby &middot; Kirk Ella &middot; Hedon &middot; Brough &middot; and the rest of the East Riding</div>
+        <div class="areas">Hull &middot; Beverley &middot; Cottingham &middot; Hessle &middot; Willerby &middot; Anlaby &middot; Kirk Ella &middot; Hedon &middot; Brough &middot; and the rest of the East Riding<br><span style="font-size:.84rem;opacity:.8">Balloon arches, organic garlands, shimmer walls and full venue styling for birthdays, weddings and baby showers across Hull and the East Riding.</span></div>
       </div>
     </div>
     <div class="credit">
@@ -702,13 +713,33 @@ footer .stack a{display:block;padding:5px 0}
   }, {threshold:.1});
   document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
 
-  document.getElementById('quoteform').addEventListener('submit', function(ev){
+  document.getElementById('quoteform').addEventListener('submit', async function(ev){
     ev.preventDefault();
+    var f = ev.target;
     var n = document.getElementById('f-name').value.trim() || 'you';
     var t = document.getElementById('toast');
-    t.textContent = 'Thanks ' + n + '. This is the demo version so nothing was sent, but on the live site this lands straight in Lily and Ellie\'s inbox.';
     t.style.display = 'block';
+    t.textContent = 'Sending...';
     t.scrollIntoView({behavior:'smooth', block:'nearest'});
+    try {
+      var r = await fetch('/demos/hullofaparty/enquire', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({
+          name: document.getElementById('f-name').value,
+          contact: document.getElementById('f-contact').value,
+          date: document.getElementById('f-date').value,
+          occasion: document.getElementById('f-occasion').value,
+          message: document.getElementById('f-msg').value,
+          website: document.getElementById('f-website').value
+        })
+      });
+      if (!r.ok) throw 0;
+      t.textContent = 'Thanks ' + n + ', it\'s with us. We reply within 24 hours, usually much faster.';
+      f.reset();
+    } catch (e) {
+      t.textContent = 'Hmm, that didn\'t send. Email us instead: hello@hullofaparty.co.uk';
+    }
   });
 })();
 </script>
